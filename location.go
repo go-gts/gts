@@ -227,9 +227,10 @@ func (location *JoinLocation) Shift(shifter Shifter) {
 
 var joinLocationParser = pars.Seq(
 	"join(", pars.Delim(&locatableParser, ','), ')',
-).Map(pars.Child(1)).Map(func(result *pars.Result) error {
-	locations := make([]Locatable, len(result.Children))
-	for i, child := range result.Children {
+).Map(func(result *pars.Result) error {
+	children := result.Children[1].Children
+	locations := make([]Locatable, len(children))
+	for i, child := range children {
 		locations[i] = child.Value.(Locatable)
 	}
 	result.Value = NewJoinLocation(locations)
@@ -281,10 +282,10 @@ var orderLocationParser = pars.Seq(
 
 func init() {
 	locatableParser = pars.Any(
+		rangeLocationParser,
 		orderLocationParser,
 		joinLocationParser,
 		complementLocationParser,
-		rangeLocationParser,
 		ambiguousLocationParser,
 		pointLocationParser,
 	)

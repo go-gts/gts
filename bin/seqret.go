@@ -1,16 +1,23 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/ktnyt/gd"
 	"github.com/ktnyt/pars"
 )
 
+var seqin = flag.String("seqin", "", "Sequence(s) to read")
+var seqout = flag.String("seqout", "", "Outfile")
+
 func main() {
-	file, err := os.Open(os.Args[1])
+	flag.Parse()
+
+	file, err := os.Open(*seqin)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -18,14 +25,24 @@ func main() {
 	defer file.Close()
 
 	log.Println("start")
+
+	start := time.Now()
+
 	state := pars.NewState(file)
-	ret, err := pars.Apply(gd.GenBankParser, state)
-	if err != nil {
-  	fmt.Println(string(state.Buffer[state.Index:]))
+	result := &pars.Result{}
+	if err := gd.GenBankParser(state, result); err != nil {
+		fmt.Println(string(state.Buffer[state.Index:]))
 		log.Fatal(err)
 	}
-	log.Println("finish")
 
-	gb := ret.(gd.GenBank)
-	fmt.Println(gb.Format())
+	elapsed := time.Since(start)
+
+	log.Println("finished in", elapsed)
+
+	gb := result.Value.(gd.GenBank)
+	f, err := os.Create(*seqout)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Fprintf(f, "%s", gb.Format())
 }

@@ -49,6 +49,18 @@ func wrapSpace(s string, indent int) string {
 	return t + "\n" + wrapSpace(r, indent)
 }
 
+func notByte(t byte) pars.ByteFilter {
+	return func(b byte) bool {
+		return b != t
+	}
+}
+
+func notFilter(f pars.ByteFilter) pars.ByteFilter {
+	return func(b byte) bool {
+		return !f(b)
+	}
+}
+
 var genbankFieldDepth = 12
 var genbankFeatureIndent = 5
 var genbankFeatureDepth = 21
@@ -119,12 +131,12 @@ type GenBankReference struct {
 func (reference GenBankReference) Format() string {
 	lines := make([]string, 0)
 	lines = append(lines, fmt.Sprintf("REFERENCE   %-2d (bases %d to %d)", reference.Number, reference.From, reference.To))
-	for _, key := range reference.Fields.Keys() {
+	for _, pair := range reference.Fields.Iter() {
+		key, value := pair.Key, pair.Value
 		pad := 2
 		if key == "PUBMED" {
 			pad = 3
 		}
-		value := reference.Fields.Get(key)
 		key = strings.Repeat(" ", pad) + key + strings.Repeat(" ", genbankFieldDepth-(pad+len(key)))
 		lines = append(lines, wrapSpace(key+value, genbankFieldDepth))
 	}
@@ -135,20 +147,25 @@ type GenBankFeature struct {
 	Type       string
 	Location   Locatable
 	Properties OrderedDict
-	DBXref     []string
 }
 
 func (feature GenBankFeature) Format() string {
 	lines := make([]string, 0)
 	featureType := strings.Repeat(" ", genbankFeatureIndent) + feature.Type + strings.Repeat(" ", genbankFeatureDepth-(genbankFeatureIndent+len(feature.Type)))
 	lines = append(lines, featureType+feature.Location.Format())
-	for _, key := range feature.Properties.Keys() {
+	for _, pair := range feature.Properties.Iter() {
 		property := strings.Repeat(" ", genbankFeatureDepth)
-		value := feature.Properties.Get(key)
+		key, value := pair.Key, pair.Value
 		if n, err := strconv.Atoi(value); err == nil {
 			property += fmt.Sprintf("/%s=%d", key, n)
+		} else if key == "rpt_type" || key == "transl_except" {
+			property += fmt.Sprintf("/%s=%s", key, value)
 		} else {
-			property += fmt.Sprintf("/%s=\"%s\"", key, value)
+			if len(value) > 0 {
+				property += fmt.Sprintf("/%s=\"%s\"", key, value)
+			} else {
+				property += fmt.Sprintf("/%s", key)
+			}
 		}
 		if key == "translation" {
 			property = wrap(property, genbankFeatureDepth)
@@ -156,10 +173,6 @@ func (feature GenBankFeature) Format() string {
 			property = wrapSpace(property, genbankFeatureDepth)
 		}
 		lines = append(lines, property)
-	}
-	for _, xref := range feature.DBXref {
-		property := strings.Repeat(" ", genbankFeatureDepth)
-		lines = append(lines, fmt.Sprintf("%s/db_xref=\"%s\"", property, xref))
 	}
 	return strings.Join(lines, "\n")
 }
@@ -184,10 +197,23 @@ func (gb GenBank) Format() string {
 	lines = append(lines, wrapSpace("DEFINITION  "+gb.Definition, genbankFieldDepth))
 	lines = append(lines, "ACCESSION   "+gb.Accession)
 	lines = append(lines, "VERSION     "+gb.Version)
+	if gb.DBLink.Len() > 0 {
+		for i, pair := range gb.DBLink.Iter() {
+			dblink := strings.Repeat(" ", genbankFieldDepth)
+			if i == 0 {
+				dblink = "DBLINK" + strings.Repeat(" ", genbankFieldDepth-6)
+			}
+			dblink += fmt.Sprintf("%s: %s", pair.Key, pair.Value)
+			lines = append(lines, dblink)
+		}
+	}
 	lines = append(lines, wrapSpace("KEYWORDS    "+strings.Join(gb.Keywords, "; ")+".", genbankFieldDepth))
 	lines = append(lines, gb.Source.Format())
 	for _, reference := range gb.References {
 		lines = append(lines, reference.Format())
+	}
+	if len(gb.Comment) > 0 {
+		lines = append(lines, wrapSpace("COMMENT     "+gb.Comment, genbankFieldDepth))
 	}
 	lines = append(lines, "FEATURES             Location/Qualifiers")
 	for _, feature := range gb.Features {
@@ -217,7 +243,7 @@ type genbankFieldName struct {
 
 var genbankFieldNameParser = pars.Seq(
 	pars.Many(' '),
-	pars.Many(pars.Upper).Map(pars.CatByte),
+	pars.UpperWord.Map(pars.CatByte),
 	pars.Many(' '),
 ).Map(func(result *pars.Result) error {
 	indent := len(result.Children[0].Children)
@@ -299,12 +325,12 @@ func genbankFieldBodyParser(indent, depth int) pars.Parser {
 }
 
 var genbankLocusParser = pars.Phrase(
-	pars.Word,
+	pars.WordLike(notFilter(pars.IsWhitespace)),
 	pars.Integer.Map(pars.Atoi), "bp",
 	pars.Word,
 	pars.Word,
 	pars.Word,
-	pars.AsParser(pars.Word).Map(pars.Time("02-Jan-2006")),
+	pars.AsParser(pars.Line).Map(pars.Time("02-Jan-2006")),
 ).Map(func(result *pars.Result) error {
 	result.Value = GenBankLocus{
 		Name:     result.Children[0].Value.(string),
@@ -319,8 +345,8 @@ var genbankLocusParser = pars.Phrase(
 })
 
 var genbankDBLinkEntryParser = pars.Seq(
-	pars.Many(pars.NotByte(':')).Map(pars.CatByte), ": ",
-	pars.Many(pars.NotByte('\n')).Map(pars.CatByte), '\n',
+	pars.WordLike(notByte(':')).Map(pars.CatByte), ": ",
+	pars.WordLike(notByte('\n')).Map(pars.CatByte), '\n',
 ).Map(pars.Children(0, 2))
 
 func genbankDBLinkParser(depth int) pars.Parser {
@@ -407,7 +433,7 @@ func genbankReferenceParser(depth int) pars.Parser {
 		to := result.Children[2].Value.(int)
 		pars.Try('\n')(state, result)
 
-		fields := NewOrderedDict()
+		pairs := make([]Pair, 0)
 
 		// Find all subfields.
 		indent := -1
@@ -429,7 +455,7 @@ func genbankReferenceParser(depth int) pars.Parser {
 					Number: number,
 					From:   from,
 					To:     to,
-					Fields: fields,
+					Fields: NewOrderedDictFromPairs(pairs),
 				}
 				result.Children = nil
 				return nil
@@ -440,7 +466,7 @@ func genbankReferenceParser(depth int) pars.Parser {
 				return pars.NewTraceError("GenBank Reference", err)
 			}
 			body := result.Value.(string)
-			fields.Set(name.Value, body)
+			pairs = append(pairs, Pair{Key: name.Value, Value: body})
 			state.Unmark()
 		}
 	}
@@ -454,7 +480,7 @@ type genbankFeatureName struct {
 
 var genbankFeatureNameParser = pars.Seq(
 	pars.Many(' '),
-	pars.Many(pars.Letter).Map(pars.CatByte),
+	pars.SnakeWord.Map(pars.CatByte),
 	pars.Many(' '),
 ).Map(func(result *pars.Result) error {
 	indent := len(result.Children[0].Children)
@@ -476,8 +502,7 @@ func genbankFeatureBodyParser(indent, depth int) pars.Parser {
 		location := result.Value.(Locatable)
 		pars.Try('\n')(state, result)
 
-		properties := NewOrderedDict()
-		dbxref := make([]string, 0)
+		pairs := make([]Pair, 0)
 
 		for {
 			// Count the leading spaces.
@@ -502,9 +527,8 @@ func genbankFeatureBodyParser(indent, depth int) pars.Parser {
 			if count <= indent {
 				state.Jump()
 				result.Value = GenBankFeature{
-					Location: location,
-					Properties: properties,
-					DBXref: dbxref,
+					Location:   location,
+					Properties: NewOrderedDictFromPairs(pairs),
 				}
 				result.Children = nil
 				return nil
@@ -528,11 +552,18 @@ func genbankFeatureBodyParser(indent, depth int) pars.Parser {
 			state.Advance(1)
 
 			// Match the name of the feature field.
-			if err := pars.Until('=')(state, result); err != nil {
+			if err := pars.Until(pars.Any('=', '\n'))(state, result); err != nil {
 				state.Jump()
 				return err
 			}
 			name := result.Value.(string)
+
+			if state.Buffer[state.Index] == '\n' {
+				pars.Try('\n')(state, result)
+				pairs = append(pairs, Pair{Key: name, Value: ""})
+				state.Unmark()
+				continue
+			}
 
 			// Next byte is guaranteed to be = by Until.
 			state.Advance(1)
@@ -557,11 +588,7 @@ func genbankFeatureBodyParser(indent, depth int) pars.Parser {
 			// Remove the newline.
 			pars.Try('\n')(state, result)
 
-			if name == "db_xref" {
-  			dbxref = append(dbxref, value)
-			} else {
-  			properties.Set(name, value)
-			}
+			pairs = append(pairs, Pair{Key: name, Value: value})
 
 			state.Unmark()
 		}
@@ -680,14 +707,16 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 
 		if fieldName.Value == "ORIGIN" {
 			pars.Try('\n')(state, result)
-			origin := ""
+			lines := make([]string, 0, gb.Locus.Length/60)
+
 			for state.Buffer[state.Index] == ' ' {
 				if err := genbankOriginLineParser(state, result); err != nil {
 					return pars.NewTraceError("GenBank", err)
 				}
-				origin += result.Value.(string)
+				lines = append(lines, result.Value.(string))
+				state.Clear()
 			}
-			gb.Origin = origin
+			gb.Origin = strings.Join(lines, "")
 			continue
 		}
 
