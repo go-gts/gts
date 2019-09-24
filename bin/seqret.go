@@ -14,9 +14,7 @@ import (
 var seqin = flag.String("seqin", "", "Sequence(s) to read")
 var seqout = flag.String("seqout", "", "Outfile")
 
-func main() {
-	flag.Parse()
-
+func read(filename string) gd.GenBank {
 	file, err := os.Open(*seqin)
 	if err != nil {
 		log.Fatal(err)
@@ -24,8 +22,7 @@ func main() {
 
 	defer file.Close()
 
-	log.Println("start")
-
+	log.Println("start read")
 	start := time.Now()
 
 	state := pars.NewState(file)
@@ -34,15 +31,30 @@ func main() {
 		fmt.Println(string(state.Buffer[state.Index:]))
 		log.Fatal(err)
 	}
+	gb := result.Value.(gd.GenBank)
 
 	elapsed := time.Since(start)
-
 	log.Println("finished in", elapsed)
 
-	gb := result.Value.(gd.GenBank)
+	return gb
+}
+
+func write(filename string, gb gd.GenBank) {
+	log.Println("start write")
+	start := time.Now()
+
 	f, err := os.Create(*seqout)
 	if err != nil {
 		log.Fatal(err)
 	}
 	fmt.Fprintf(f, "%s", gb.Format())
+
+	elapsed := time.Since(start)
+
+	log.Println("finished in", elapsed)
+}
+
+func main() {
+	flag.Parse()
+	write(*seqout, read(*seqin))
 }
