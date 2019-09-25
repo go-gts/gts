@@ -30,7 +30,7 @@ func NewPointLocation(pos int) Locatable {
 }
 
 func (location PointLocation) Locate(s string) string {
-	return s[location.Position : location.Position+1]
+	return s[location.Position-1 : location.Position]
 }
 
 func (location PointLocation) Format() string {
@@ -74,7 +74,7 @@ func NewPartialRangeLocation(start, end int, p5, p3 bool) Locatable {
 }
 
 func (location RangeLocation) Locate(s string) string {
-	return s[location.Start:location.End]
+	return s[location.Start-1 : location.End]
 }
 
 func (location RangeLocation) Format() string {
@@ -125,7 +125,7 @@ func NewAmbiguousLocation(start, end int) Locatable {
 }
 
 func (location AmbiguousLocation) Locate(s string) string {
-	return s[location.Start:location.End]
+	return s[location.Start-1 : location.End]
 }
 
 func (location AmbiguousLocation) Format() string {
@@ -144,10 +144,47 @@ func (location *AmbiguousLocation) Shift(shifter Shifter) {
 var ambiguousLocationParser = pars.Seq(
 	pars.Integer.Map(pars.Atoi), '.', pars.Integer.Map(pars.Atoi),
 ).Map(func(result *pars.Result) error {
-	result.Value = AmbiguousLocation{
-		Start: result.Children[0].Value.(int),
-		End:   result.Children[2].Value.(int),
+	result.Value = NewAmbiguousLocation(
+		result.Children[0].Value.(int),
+		result.Children[2].Value.(int),
+	)
+	result.Children = nil
+	return nil
+})
+
+type BetweenLocation struct {
+	Start int
+	End   int
+}
+
+func NewBetweenLocation(start, end int) Locatable {
+	return &BetweenLocation{Start: start, End: end}
+}
+
+func (location BetweenLocation) Locate(s string) string {
+	return ""
+}
+
+func (location BetweenLocation) Format() string {
+	return fmt.Sprintf("%d^%d", location.Start, location.End)
+}
+
+func (location *BetweenLocation) Shift(shifter Shifter) {
+	if shifter.Position <= location.Start {
+		location.Start += shifter.Amount
 	}
+	if shifter.Position <= location.End {
+		location.End += shifter.Amount
+	}
+}
+
+var betweenLocationParser = pars.Seq(
+	pars.Integer.Map(pars.Atoi), '^', pars.Integer.Map(pars.Atoi),
+).Map(func(result *pars.Result) error {
+	result.Value = NewBetweenLocation(
+		result.Children[0].Value.(int),
+		result.Children[2].Value.(int),
+	)
 	result.Children = nil
 	return nil
 })
@@ -170,6 +207,14 @@ func complementBase(b rune) rune {
 		return 'c'
 	case 'c':
 		return 'g'
+	case 'A':
+		return 'T'
+	case 'T':
+		return 'A'
+	case 'G':
+		return 'C'
+	case 'C':
+		return 'G'
 	default:
 		return b
 	}
@@ -287,6 +332,7 @@ func init() {
 		joinLocationParser,
 		complementLocationParser,
 		ambiguousLocationParser,
+		betweenLocationParser,
 		pointLocationParser,
 	)
 }
