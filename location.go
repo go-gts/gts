@@ -13,7 +13,7 @@ type Shifter struct {
 	Amount   int
 }
 
-type Locatable interface {
+type Locator interface {
 	Locate(string) string
 	Format() string
 	Shift(Shifter)
@@ -21,29 +21,29 @@ type Locatable interface {
 
 var locatableParser pars.Parser
 
-type PointLocation struct {
+type PointLocator struct {
 	Position int
 }
 
-func NewPointLocation(pos int) Locatable {
-	return &PointLocation{Position: pos}
+func NewPointLocator(pos int) Locator {
+	return &PointLocator{Position: pos}
 }
 
-func (location PointLocation) Locate(s string) string {
+func (location PointLocator) Locate(s string) string {
 	return s[location.Position-1 : location.Position]
 }
 
-func (location PointLocation) Format() string {
+func (location PointLocator) Format() string {
 	return strconv.Itoa(location.Position)
 }
 
-func (location *PointLocation) Shift(shifter Shifter) {
+func (location *PointLocator) Shift(shifter Shifter) {
 	if shifter.Position <= location.Position {
 		location.Position += shifter.Amount
 	}
 }
 
-var pointLocationParser = pars.Integer.Map(func(result *pars.Result) error {
+var pointLocatorParser = pars.Integer.Map(func(result *pars.Result) error {
 	n, err := strconv.Atoi(result.Value.(string))
 	if err != nil {
 		return err
@@ -53,19 +53,19 @@ var pointLocationParser = pars.Integer.Map(func(result *pars.Result) error {
 	return nil
 })
 
-type RangeLocation struct {
+type RangeLocator struct {
 	Start    int
 	End      int
 	Partial5 bool
 	Partial3 bool
 }
 
-func NewRangeLocation(start, end int, partial ...bool) Locatable {
-	return &RangeLocation{Start: start, End: end}
+func NewRangeLocator(start, end int, partial ...bool) Locator {
+	return &RangeLocator{Start: start, End: end}
 }
 
-func NewPartialRangeLocation(start, end int, p5, p3 bool) Locatable {
-	return &RangeLocation{
+func NewPartialRangeLocator(start, end int, p5, p3 bool) Locator {
+	return &RangeLocator{
 		Start:    start,
 		End:      end,
 		Partial5: p5,
@@ -73,11 +73,11 @@ func NewPartialRangeLocation(start, end int, p5, p3 bool) Locatable {
 	}
 }
 
-func (location RangeLocation) Locate(s string) string {
+func (location RangeLocator) Locate(s string) string {
 	return s[location.Start-1 : location.End]
 }
 
-func (location RangeLocation) Format() string {
+func (location RangeLocator) Format() string {
 	p5, p3 := "", ""
 	if location.Partial5 {
 		p5 = "<"
@@ -88,7 +88,7 @@ func (location RangeLocation) Format() string {
 	return fmt.Sprintf("%s%d..%s%d", p5, location.Start, p3, location.End)
 }
 
-func (location *RangeLocation) Shift(shifter Shifter) {
+func (location *RangeLocator) Shift(shifter Shifter) {
 	if shifter.Position <= location.Start {
 		location.Start += shifter.Amount
 	}
@@ -97,7 +97,7 @@ func (location *RangeLocation) Shift(shifter Shifter) {
 	}
 }
 
-var rangeLocationParser = pars.Seq(
+var rangeLocatorParser = pars.Seq(
 	pars.Try('<'),
 	pars.Integer.Map(pars.Atoi),
 	"..",
@@ -105,7 +105,7 @@ var rangeLocationParser = pars.Seq(
 	pars.Integer.Map(pars.Atoi),
 	pars.Try('>'), // Possibly required for some legacy entries.
 ).Map(func(result *pars.Result) error {
-	result.Value = NewPartialRangeLocation(
+	result.Value = NewPartialRangeLocator(
 		result.Children[1].Value.(int),
 		result.Children[4].Value.(int),
 		result.Children[0].Value != nil,
@@ -115,24 +115,24 @@ var rangeLocationParser = pars.Seq(
 	return nil
 })
 
-type AmbiguousLocation struct {
+type AmbiguousLocator struct {
 	Start int
 	End   int
 }
 
-func NewAmbiguousLocation(start, end int) Locatable {
-	return &AmbiguousLocation{Start: start, End: end}
+func NewAmbiguousLocator(start, end int) Locator {
+	return &AmbiguousLocator{Start: start, End: end}
 }
 
-func (location AmbiguousLocation) Locate(s string) string {
+func (location AmbiguousLocator) Locate(s string) string {
 	return s[location.Start-1 : location.End]
 }
 
-func (location AmbiguousLocation) Format() string {
+func (location AmbiguousLocator) Format() string {
 	return fmt.Sprintf("%d.%d", location.Start, location.End)
 }
 
-func (location *AmbiguousLocation) Shift(shifter Shifter) {
+func (location *AmbiguousLocator) Shift(shifter Shifter) {
 	if shifter.Position <= location.Start {
 		location.Start += shifter.Amount
 	}
@@ -141,10 +141,10 @@ func (location *AmbiguousLocation) Shift(shifter Shifter) {
 	}
 }
 
-var ambiguousLocationParser = pars.Seq(
+var ambiguousLocatorParser = pars.Seq(
 	pars.Integer.Map(pars.Atoi), '.', pars.Integer.Map(pars.Atoi),
 ).Map(func(result *pars.Result) error {
-	result.Value = NewAmbiguousLocation(
+	result.Value = NewAmbiguousLocator(
 		result.Children[0].Value.(int),
 		result.Children[2].Value.(int),
 	)
@@ -152,24 +152,24 @@ var ambiguousLocationParser = pars.Seq(
 	return nil
 })
 
-type BetweenLocation struct {
+type BetweenLocator struct {
 	Start int
 	End   int
 }
 
-func NewBetweenLocation(start, end int) Locatable {
-	return &BetweenLocation{Start: start, End: end}
+func NewBetweenLocator(start, end int) Locator {
+	return &BetweenLocator{Start: start, End: end}
 }
 
-func (location BetweenLocation) Locate(s string) string {
+func (location BetweenLocator) Locate(s string) string {
 	return ""
 }
 
-func (location BetweenLocation) Format() string {
+func (location BetweenLocator) Format() string {
 	return fmt.Sprintf("%d^%d", location.Start, location.End)
 }
 
-func (location *BetweenLocation) Shift(shifter Shifter) {
+func (location *BetweenLocator) Shift(shifter Shifter) {
 	if shifter.Position <= location.Start {
 		location.Start += shifter.Amount
 	}
@@ -178,10 +178,10 @@ func (location *BetweenLocation) Shift(shifter Shifter) {
 	}
 }
 
-var betweenLocationParser = pars.Seq(
+var betweenLocatorParser = pars.Seq(
 	pars.Integer.Map(pars.Atoi), '^', pars.Integer.Map(pars.Atoi),
 ).Map(func(result *pars.Result) error {
-	result.Value = NewBetweenLocation(
+	result.Value = NewBetweenLocator(
 		result.Children[0].Value.(int),
 		result.Children[2].Value.(int),
 	)
@@ -189,12 +189,12 @@ var betweenLocationParser = pars.Seq(
 	return nil
 })
 
-type ComplementLocation struct {
-	Location Locatable
+type ComplementLocator struct {
+	Locator Locator
 }
 
-func NewComplementLocation(location Locatable) Locatable {
-	return &ComplementLocation{Location: location}
+func NewComplementLocator(location Locator) Locator {
+	return &ComplementLocator{Locator: location}
 }
 
 func complementBase(b rune) rune {
@@ -220,119 +220,119 @@ func complementBase(b rune) rune {
 	}
 }
 
-func (location ComplementLocation) Locate(s string) string {
-	return strings.Map(complementBase, location.Location.Locate(s))
+func (location ComplementLocator) Locate(s string) string {
+	return strings.Map(complementBase, location.Locator.Locate(s))
 }
 
-func (location ComplementLocation) Format() string {
-	return fmt.Sprintf("complement(%s)", location.Location.Format())
+func (location ComplementLocator) Format() string {
+	return fmt.Sprintf("complement(%s)", location.Locator.Format())
 }
 
-func (location *ComplementLocation) Shift(shifter Shifter) {
-	location.Location.Shift(shifter)
+func (location *ComplementLocator) Shift(shifter Shifter) {
+	location.Locator.Shift(shifter)
 }
 
-var complementLocationParser = pars.Seq(
+var complementLocatorParser = pars.Seq(
 	"complement(", &locatableParser, ')',
 ).Map(pars.Child(1)).Map(func(result *pars.Result) error {
-	result.Value = NewComplementLocation(result.Value.(Locatable))
+	result.Value = NewComplementLocator(result.Value.(Locator))
 	result.Children = nil
 	return nil
 })
 
-type JoinLocation struct {
-	Locations []Locatable
+type JoinLocator struct {
+	Locators []Locator
 }
 
-func NewJoinLocation(locations []Locatable) Locatable {
-	return &JoinLocation{Locations: locations}
+func NewJoinLocator(locations []Locator) Locator {
+	return &JoinLocator{Locators: locations}
 }
 
-func (location JoinLocation) Locate(s string) string {
-	tmp := make([]string, len(location.Locations))
-	for i := range location.Locations {
-		tmp[i] = location.Locations[i].Locate(s)
+func (location JoinLocator) Locate(s string) string {
+	tmp := make([]string, len(location.Locators))
+	for i := range location.Locators {
+		tmp[i] = location.Locators[i].Locate(s)
 	}
 	return strings.Join(tmp, "")
 }
 
-func (location JoinLocation) Format() string {
-	tmp := make([]string, len(location.Locations))
-	for i := range location.Locations {
-		tmp[i] = location.Locations[i].Format()
+func (location JoinLocator) Format() string {
+	tmp := make([]string, len(location.Locators))
+	for i := range location.Locators {
+		tmp[i] = location.Locators[i].Format()
 	}
 	return fmt.Sprintf("join(%s)", strings.Join(tmp, ","))
 }
 
-func (location *JoinLocation) Shift(shifter Shifter) {
-	for i := range location.Locations {
-		location.Locations[i].Shift(shifter)
+func (location *JoinLocator) Shift(shifter Shifter) {
+	for i := range location.Locators {
+		location.Locators[i].Shift(shifter)
 	}
 }
 
-var joinLocationParser = pars.Seq(
+var joinLocatorParser = pars.Seq(
 	"join(", pars.Delim(&locatableParser, ','), ')',
 ).Map(func(result *pars.Result) error {
 	children := result.Children[1].Children
-	locations := make([]Locatable, len(children))
+	locations := make([]Locator, len(children))
 	for i, child := range children {
-		locations[i] = child.Value.(Locatable)
+		locations[i] = child.Value.(Locator)
 	}
-	result.Value = NewJoinLocation(locations)
+	result.Value = NewJoinLocator(locations)
 	result.Children = nil
 	return nil
 })
 
-type OrderLocation struct {
-	Locations []Locatable
+type OrderLocator struct {
+	Locators []Locator
 }
 
-func NewOrderLocation(locations []Locatable) Locatable {
-	return &OrderLocation{Locations: locations}
+func NewOrderLocator(locations []Locator) Locator {
+	return &OrderLocator{Locators: locations}
 }
 
-func (location OrderLocation) Locate(s string) string {
-	tmp := make([]string, len(location.Locations))
-	for i := range location.Locations {
-		tmp[i] = location.Locations[i].Locate(s)
+func (location OrderLocator) Locate(s string) string {
+	tmp := make([]string, len(location.Locators))
+	for i := range location.Locators {
+		tmp[i] = location.Locators[i].Locate(s)
 	}
 	return strings.Join(tmp, "")
 }
 
-func (location OrderLocation) Format() string {
-	tmp := make([]string, len(location.Locations))
-	for i := range location.Locations {
-		tmp[i] = location.Locations[i].Format()
+func (location OrderLocator) Format() string {
+	tmp := make([]string, len(location.Locators))
+	for i := range location.Locators {
+		tmp[i] = location.Locators[i].Format()
 	}
 	return fmt.Sprintf("order(%s)", strings.Join(tmp, ","))
 }
 
-func (location *OrderLocation) Shift(shifter Shifter) {
-	for i := range location.Locations {
-		location.Locations[i].Shift(shifter)
+func (location *OrderLocator) Shift(shifter Shifter) {
+	for i := range location.Locators {
+		location.Locators[i].Shift(shifter)
 	}
 }
 
-var orderLocationParser = pars.Seq(
+var orderLocatorParser = pars.Seq(
 	"order(", pars.Delim(&locatableParser, ','), ')',
 ).Map(pars.Child(1)).Map(func(result *pars.Result) error {
-	locations := make([]Locatable, len(result.Children))
+	locations := make([]Locator, len(result.Children))
 	for i, child := range result.Children {
-		locations[i] = child.Value.(Locatable)
+		locations[i] = child.Value.(Locator)
 	}
-	result.Value = NewOrderLocation(locations)
+	result.Value = NewOrderLocator(locations)
 	result.Children = nil
 	return nil
 })
 
 func init() {
 	locatableParser = pars.Any(
-		rangeLocationParser,
-		orderLocationParser,
-		joinLocationParser,
-		complementLocationParser,
-		ambiguousLocationParser,
-		betweenLocationParser,
-		pointLocationParser,
+		rangeLocatorParser,
+		orderLocatorParser,
+		joinLocatorParser,
+		complementLocatorParser,
+		ambiguousLocatorParser,
+		betweenLocatorParser,
+		pointLocatorParser,
 	)
 }

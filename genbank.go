@@ -145,7 +145,7 @@ func (reference GenBankReference) Format() string {
 
 type GenBankFeature struct {
 	Type       string
-	Location   Locatable
+	Location   Locator
 	Properties OrderedDict
 }
 
@@ -188,7 +188,7 @@ type GenBank struct {
 	References []GenBankReference
 	Comment    string
 	Features   []GenBankFeature
-	Origin     string
+	Origin     Sequence
 }
 
 func (gb GenBank) Format() string {
@@ -220,14 +220,14 @@ func (gb GenBank) Format() string {
 		lines = append(lines, feature.Format())
 	}
 	lines = append(lines, "ORIGIN      ")
-	for i := 0; i < len(gb.Origin); i += 60 {
+	for i := 0; i < gb.Origin.Length(); i += 60 {
 		seq := make([]string, 0, 6)
-		for j := 0; j < 60 && i+j < len(gb.Origin); j += 10 {
+		for j := 0; j < 60 && i+j < gb.Origin.Length(); j += 10 {
 			k := i + j + 10
-			if i+j+10 > len(gb.Origin) {
-				k = len(gb.Origin)
+			if i+j+10 > gb.Origin.Length() {
+				k = gb.Origin.Length()
 			}
-			seq = append(seq, gb.Origin[i+j:k])
+			seq = append(seq, gb.Origin.View(i+j, k).String())
 		}
 		lines = append(lines, fmt.Sprintf("%9d %s", i+1, strings.Join(seq, " ")))
 	}
@@ -499,7 +499,7 @@ func genbankFeatureBodyParser(indent, depth int) pars.Parser {
 		if err := locatableParser(state, result); err != nil {
 			return err
 		}
-		location := result.Value.(Locatable)
+		location := result.Value.(Locator)
 		pars.Try('\n')(state, result)
 
 		pairs := make([]Pair, 0)
@@ -707,16 +707,16 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 
 		if fieldName.Value == "ORIGIN" {
 			pars.Try('\n')(state, result)
-			lines := make([]string, 0, gb.Locus.Length/60)
+			origin := make([]byte, 0, gb.Locus.Length)
 
 			for state.Buffer[state.Index] == ' ' {
 				if err := genbankOriginLineParser(state, result); err != nil {
 					return pars.NewTraceError("GenBank", err)
 				}
-				lines = append(lines, result.Value.(string))
+				origin = append(origin, []byte(result.Value.(string))...)
 				state.Clear()
 			}
-			gb.Origin = strings.Join(lines, "")
+			gb.Origin = Seq(origin)
 			continue
 		}
 
