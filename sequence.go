@@ -12,26 +12,30 @@ type Sequence interface {
 	Replace(pos int, seq Sequence)
 }
 
-type SeqLike interface{}
+type BytesLike interface{}
 
-func Seq(s SeqLike) Sequence {
+func asBytes(s BytesLike) []byte {
 	switch v := s.(type) {
 	case []byte:
-		seq := &sequence{
-			bytes: []byte(v),
-			strch: make(chan []byte),
-			reqch: make(chan seqRange),
-			opch:  make(chan seqOp),
-		}
-		go seq.Start()
-		return seq
+		return v
 	case string:
-		return Seq([]byte(v))
+		return []byte(v)
 	case []rune:
-		return Seq([]byte(string(v)))
+		return []byte(string(v))
 	default:
-		panic(fmt.Errorf("cannot make a sequence from `%T`", v))
+		panic(fmt.Errorf("cannot make a byte slice from `%T`", v))
 	}
+}
+
+func Seq(s BytesLike) Sequence {
+	seq := &sequence{
+		bytes: asBytes(s),
+		strch: make(chan []byte),
+		reqch: make(chan seqRange),
+		opch:  make(chan seqOp),
+	}
+	go seq.Start()
+	return seq
 }
 
 func insertFunc(s []byte, pos int, vs []byte) []byte {
