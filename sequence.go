@@ -3,12 +3,28 @@ package gd
 import "fmt"
 
 type Sequence interface {
+	// View creates a mutable subsequence view.
 	View(start, end int) Sequence
+
+	// Locate obtains a copy of the given location.
+	Locate(locator Locator) Sequence
+
+	// Bytes returns the raw representation of the sequence.
 	Bytes() []byte
+
+	// String returns the string representation of the sequence.
 	String() string
+
+	// Length returns the length of the sequence.
 	Length() int
+
+	// Insert a sequence to the given position.
 	Insert(pos int, seq Sequence)
+
+	// Delete bytes from the sequence at the given position.
 	Delete(pos, count int)
+
+	// Replace a sequence at the given position.
 	Replace(pos int, seq Sequence)
 }
 
@@ -22,11 +38,14 @@ func asBytes(s BytesLike) []byte {
 		return []byte(v)
 	case []rune:
 		return []byte(string(v))
+	case Sequence:
+		return v.Bytes()
 	default:
 		panic(fmt.Errorf("cannot make a byte slice from `%T`", v))
 	}
 }
 
+// Seq creates a new sequence object.
 func Seq(s BytesLike) Sequence {
 	seq := &sequence{
 		bytes: asBytes(s),
@@ -148,12 +167,16 @@ func (s sequence) View(start, end int) Sequence {
 	}
 }
 
+func (s sequence) Locate(locator Locator) Sequence {
+	return Seq(locator.Locate(s.Bytes()))
+}
+
 func (s sequence) Bytes() []byte {
 	return s.bytes
 }
 
 func (s sequence) String() string {
-	return string(s.bytes)
+	return string(s.Bytes())
 }
 
 func (s sequence) Length() int {
@@ -220,6 +243,10 @@ func (s seqview) View(start, end int) Sequence {
 	}
 }
 
+func (s seqview) Locate(locator Locator) Sequence {
+	return Seq(locator.Locate(s.Bytes()))
+}
+
 func (s seqview) Bytes() []byte {
 	s.reqch <- seqRange{Start: s.start, End: s.end}
 	return <-s.strch
@@ -263,4 +290,15 @@ func (s seqview) Replace(pos int, seq Sequence) {
 		panic(fmt.Errorf("runtime error: index out of range [%d] with length %d", pos, s.Length()))
 	}
 	s.opch <- newReplaceOp(s.start+pos, seq.Bytes())
+}
+
+func Composition(seq Sequence) map[byte]int {
+	comp := make(map[byte]int)
+	for _, b := range seq.Bytes() {
+		if _, ok := comp[b]; !ok {
+			comp[b] = 0
+		}
+		comp[b]++
+	}
+	return comp
 }
