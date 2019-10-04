@@ -7,14 +7,14 @@ import (
 	"os"
 	"time"
 
-	"github.com/ktnyt/gd"
+	"github.com/ktnyt/gt1"
 	"github.com/ktnyt/pars"
 )
 
 var seqin = flag.String("seqin", "", "Sequence(s) to read")
 var seqout = flag.String("seqout", "", "Outfile")
 
-func read(filename string) gd.Record {
+func read(filename string) gt1.Record {
 	file, err := os.Open(*seqin)
 	if err != nil {
 		log.Fatal(err)
@@ -27,11 +27,11 @@ func read(filename string) gd.Record {
 
 	state := pars.NewState(file)
 	result := &pars.Result{}
-	if err := gd.GenBankParser(state, result); err != nil {
+	if err := gt1.GenBankParser(state, result); err != nil {
 		fmt.Println(string(state.Buffer[state.Index:]))
 		log.Fatal(err)
 	}
-	gb := result.Value.(gd.Record)
+	gb := result.Value.(gt1.Record)
 
 	elapsed := time.Since(start)
 	log.Println("finished in", elapsed)
@@ -39,7 +39,7 @@ func read(filename string) gd.Record {
 	return gb
 }
 
-func write(filename string, gb gd.Record) {
+func write(filename string, gb gt1.Record) {
 	log.Println("start write")
 	start := time.Now()
 
@@ -47,7 +47,7 @@ func write(filename string, gb gd.Record) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Fprintf(f, "%s", gd.FormatGenBank(gb))
+	fmt.Fprintf(f, "%s", gt1.FormatGenBank(gb))
 
 	elapsed := time.Since(start)
 

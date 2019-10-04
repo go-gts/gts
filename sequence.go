@@ -1,14 +1,8 @@
-package gd
+package gt1
 
 import "fmt"
 
 type Sequence interface {
-	// View creates a mutable subsequence view.
-	View(start, end int) Sequence
-
-	// Locate obtains a copy of the given location.
-	Locate(locator Locator) Sequence
-
 	// Bytes returns the raw representation of the sequence.
 	Bytes() []byte
 
@@ -18,14 +12,11 @@ type Sequence interface {
 	// Length returns the length of the sequence.
 	Length() int
 
-	// Insert a sequence to the given position.
-	Insert(pos int, seq Sequence)
+	// Slice returns the slice of the sequence.
+	Slice(start, end int) Sequence
 
-	// Delete bytes from the sequence at the given position.
-	Delete(pos, count int)
-
-	// Replace a sequence at the given position.
-	Replace(pos int, seq Sequence)
+	// Subseq returns the subsequence to the given location.
+	Subseq(loc Location) Sequence
 }
 
 type BytesLike interface{}
@@ -41,264 +32,64 @@ func asBytes(s BytesLike) []byte {
 	case Sequence:
 		return v.Bytes()
 	default:
-		panic(fmt.Errorf("cannot make a byte slice from `%T`", v))
+		panic(fmt.Errorf("cannot make a byte slice from type `%T`", v))
 	}
 }
 
 // Seq creates a new sequence object.
 func Seq(s BytesLike) Sequence {
-	seq := &sequence{
-		bytes: asBytes(s),
-		strch: make(chan []byte),
-		reqch: make(chan seqRange),
-		opch:  make(chan seqOp),
-	}
-	go seq.Start()
-	return seq
+	return sequence(asBytes(s))
 }
 
-func insertFunc(s []byte, pos int, vs []byte) []byte {
-	r := make([]byte, len(s)+len(vs))
-	copy(r[:pos], s[:pos])
-	copy(r[pos:], vs)
-	copy(r[pos+len(vs):], s[pos:])
-	return r
-}
-
-func deleteFunc(s []byte, pos, count int) []byte {
-	r := make([]byte, len(s)-count)
-	copy(r[:pos], s[:pos])
-	copy(r[pos:], s[pos+count:])
-	return r
-}
-
-func replaceFunc(s []byte, pos int, vs []byte) []byte {
-	r := make([]byte, len(s))
-	copy(r, s)
-	copy(r[pos:], vs)
-	return r
-}
-
-type seqRange struct {
-	Start int
-	End   int
-}
-
-type seqOp interface {
-	Apply([]byte) []byte
-}
-
-type insertOp struct {
-	Position int
-	Value    []byte
-}
-
-func newInsertOp(pos int, value []byte) seqOp {
-	return insertOp{Position: pos, Value: value}
-}
-
-func (op insertOp) Apply(s []byte) []byte {
-	return insertFunc(s, op.Position, op.Value)
-}
-
-type deleteOp struct {
-	Position int
-	Count    int
-}
-
-func newDeleteOp(pos, count int) seqOp {
-	return deleteOp{Position: pos, Count: count}
-}
-
-func (op deleteOp) Apply(s []byte) []byte {
-	return deleteFunc(s, op.Position, op.Count)
-}
-
-type replaceOp struct {
-	Position int
-	Value    []byte
-}
-
-func newReplaceOp(pos int, value []byte) seqOp {
-	return replaceOp{Position: pos, Value: value}
-}
-
-func (op replaceOp) Apply(s []byte) []byte {
-	return replaceFunc(s, op.Position, op.Value)
-}
-
-type sequence struct {
-	bytes []byte
-	strch chan []byte
-	reqch chan seqRange
-	opch  chan seqOp
-}
-
-func (s *sequence) Start() {
-	for {
-		select {
-		case req := <-s.reqch:
-			s.strch <- s.bytes[req.Start:req.End]
-		case op := <-s.opch:
-			s.bytes = op.Apply(s.bytes)
-		}
-	}
-}
-
-func (s sequence) View(start, end int) Sequence {
-	if start < 0 {
-		start += s.Length()
-	}
-	if end < 0 {
-		end += s.Length()
-	}
-	if end < start {
-		panic(fmt.Errorf("runtime error: View start %d is smaller than end %d", start, end))
-	}
-	if end > s.Length() {
-		panic(fmt.Errorf("runtime error: index out of range [%d] with length %d", end, s.Length()))
-	}
-	return &seqview{
-		start: start,
-		end:   end,
-		strch: s.strch,
-		reqch: s.reqch,
-		opch:  s.opch,
-	}
-}
-
-func (s sequence) Locate(locator Locator) Sequence {
-	return Seq(locator.Locate(s.Bytes()))
-}
+type sequence []byte
 
 func (s sequence) Bytes() []byte {
-	return s.bytes
+	return []byte(s)
 }
 
 func (s sequence) String() string {
-	return string(s.Bytes())
+	return string(s)
 }
 
 func (s sequence) Length() int {
-	return len(s.bytes)
+	return len(s)
 }
 
-func (s *sequence) Insert(pos int, seq Sequence) {
-	if pos < 0 {
-		pos += s.Length()
+func (s sequence) Slice(start, end int) Sequence {
+	for start < len(s) {
+		start += len(s)
 	}
-	if pos >= s.Length() {
-		panic(fmt.Errorf("runtime error: index out of range [%d] with length %d", pos, s.Length()))
+	for end < len(s) {
+		end += len(s)
 	}
-	s.bytes = insertFunc(s.bytes, pos, seq.Bytes())
+	return Seq(s[start:end])
 }
 
-func (s *sequence) Delete(pos, count int) {
-	if pos < 0 {
-		pos += s.Length()
-	}
-	if pos >= s.Length() {
-		panic(fmt.Errorf("runtime error: index out of range [%d] with length %d", pos, s.Length()))
-	}
-	s.bytes = deleteFunc(s.bytes, pos, count)
+func (s sequence) Subseq(loc Location) Sequence {
+	return loc.Locate(s)
 }
 
-func (s *sequence) Replace(pos int, seq Sequence) {
-	if pos < 0 {
-		pos += s.Length()
-	}
-	if pos >= s.Length() {
-		panic(fmt.Errorf("runtime error: index out of range [%d] with length %d", pos, s.Length()))
-	}
-	s.bytes = replaceFunc(s.bytes, pos, seq.Bytes())
+func Append(seq Sequence, arg Sequence) Sequence {
+	s0 := seq.Bytes()
+	s1 := arg.Bytes()
+	r := make([]byte, len(s0)+len(s1))
+	copy(r[:len(s0)], s0)
+	copy(r[len(s0):], s1)
+	return Seq(r)
 }
 
-type seqview struct {
-	start int
-	end   int
-	strch chan []byte
-	reqch chan seqRange
-	opch  chan seqOp
-}
+func Concat(seqs ...Sequence) Sequence {
+	l := 0
+	for _, seq := range seqs {
+		l += seq.Length()
+	}
 
-func (s seqview) View(start, end int) Sequence {
-	if start < 0 {
-		start += s.Length()
+	r := make([]byte, l)
+	i := 0
+	for _, seq := range seqs {
+		copy(r[i:], seq.Bytes())
+		i += seq.Length()
 	}
-	if end < 0 {
-		end += s.Length()
-	}
-	if end < start {
-		panic(fmt.Errorf("runtime error: View start %d is smaller than end %d", start, end))
-	}
-	if end > s.Length() {
-		panic(fmt.Errorf("runtime error: index out of range [%d] with length %d", end, s.Length()))
-	}
-	return &seqview{
-		start: s.start + start,
-		end:   s.start + end,
-		strch: s.strch,
-		reqch: s.reqch,
-		opch:  s.opch,
-	}
-}
 
-func (s seqview) Locate(locator Locator) Sequence {
-	return Seq(locator.Locate(s.Bytes()))
-}
-
-func (s seqview) Bytes() []byte {
-	s.reqch <- seqRange{Start: s.start, End: s.end}
-	return <-s.strch
-}
-
-func (s seqview) String() string {
-	return string(s.Bytes())
-}
-
-func (s seqview) Length() int {
-	return s.end - s.start
-}
-
-func (s *seqview) Insert(pos int, seq Sequence) {
-	if pos < 0 {
-		pos += s.Length()
-	}
-	if pos >= s.Length() {
-		panic(fmt.Errorf("runtime error: index out of range [%d] with length %d", pos, s.Length()))
-	}
-	s.opch <- newInsertOp(s.start+pos, seq.Bytes())
-	s.end += seq.Length()
-}
-
-func (s *seqview) Delete(pos, count int) {
-	if pos < 0 {
-		pos += s.Length()
-	}
-	if pos >= s.Length() {
-		panic(fmt.Errorf("runtime error: index out of range [%d] with length %d", pos, s.Length()))
-	}
-	s.opch <- newDeleteOp(s.start+pos, count)
-	s.end -= count
-}
-
-func (s seqview) Replace(pos int, seq Sequence) {
-	if pos < 0 {
-		pos += s.Length()
-	}
-	if pos >= s.Length() {
-		panic(fmt.Errorf("runtime error: index out of range [%d] with length %d", pos, s.Length()))
-	}
-	s.opch <- newReplaceOp(s.start+pos, seq.Bytes())
-}
-
-func Composition(seq Sequence) map[byte]int {
-	comp := make(map[byte]int)
-	for _, b := range seq.Bytes() {
-		if _, ok := comp[b]; !ok {
-			comp[b] = 0
-		}
-		comp[b]++
-	}
-	return comp
+	return Seq(r)
 }

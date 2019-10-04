@@ -1,4 +1,4 @@
-package gd
+package gt1
 
 import "github.com/ktnyt/pars"
 

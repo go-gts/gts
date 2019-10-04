@@ -1,4 +1,4 @@
-package gd
+package gt1
 
 import (
 	"fmt"
@@ -129,14 +129,14 @@ func FormatGenBank(gb Record) string {
 		lines = append(lines, formatFeatureGenBank(feature))
 	}
 	lines = append(lines, "ORIGIN      ")
-	for i := 0; i < gb.Origin.Length(); i += 60 {
+	for i := 0; i < gb.Length(); i += 60 {
 		seq := make([]string, 0, 6)
-		for j := 0; j < 60 && i+j < gb.Origin.Length(); j += 10 {
+		for j := 0; j < 60 && i+j < gb.Length(); j += 10 {
 			k := i + j + 10
-			if i+j+10 > gb.Origin.Length() {
-				k = gb.Origin.Length()
+			if i+j+10 > gb.Length() {
+				k = gb.Length()
 			}
-			seq = append(seq, gb.Origin.View(i+j, k).String())
+			seq = append(seq, gb.Slice(i+j, k).String())
 		}
 		lines = append(lines, fmt.Sprintf("%9d %s", i+1, strings.Join(seq, " ")))
 	}
@@ -409,7 +409,7 @@ func genbankFeatureBodyParser(indent, depth int) pars.Parser {
 		if err := locatableParser(state, result); err != nil {
 			return err
 		}
-		location := result.Value.(Locator)
+		location := result.Value.(Location)
 		pars.Try('\n')(state, result)
 
 		pairs := make([]Pair, 0)
@@ -636,7 +636,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				origin = append(origin, []byte(result.Value.(string))...)
 				state.Clear()
 			}
-			gb.Origin = Seq(origin)
+			gb.s = origin
 			continue
 		}
 
