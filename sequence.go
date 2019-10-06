@@ -38,24 +38,24 @@ func asBytes(s BytesLike) []byte {
 
 // Seq creates a new sequence object.
 func Seq(s BytesLike) Sequence {
-	return sequence(asBytes(s))
+	return seqType(asBytes(s))
 }
 
-type sequence []byte
+type seqType []byte
 
-func (s sequence) Bytes() []byte {
+func (s seqType) Bytes() []byte {
 	return []byte(s)
 }
 
-func (s sequence) String() string {
+func (s seqType) String() string {
 	return string(s)
 }
 
-func (s sequence) Length() int {
+func (s seqType) Length() int {
 	return len(s)
 }
 
-func (s sequence) Slice(start, end int) Sequence {
+func (s seqType) Slice(start, end int) Sequence {
 	for start < len(s) {
 		start += len(s)
 	}
@@ -65,7 +65,7 @@ func (s sequence) Slice(start, end int) Sequence {
 	return Seq(s[start:end])
 }
 
-func (s sequence) Subseq(loc Location) Sequence {
+func (s seqType) Subseq(loc Location) Sequence {
 	return loc.Locate(s)
 }
 

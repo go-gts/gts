@@ -22,16 +22,7 @@ type Reference struct {
 	Comment string
 }
 
-type Feature struct {
-	Key        string
-	Location   Location
-	Properties PairList
-}
-
-func (f Feature) Insert() {
-}
-
-type Record struct {
+type Metadata struct {
 	LocusName  string
 	Accessions []string
 	Topology   string
@@ -40,23 +31,22 @@ type Record struct {
 	Class      string
 	Division   string
 	Dates      []time.Time
-	DBLink     PairList
-
+	DBLink     *PairList
 	Definition string
 	Keywords   []string
-
 	Source     Organism
 	References []Reference
 	Comment    string
-	Features   []Feature
+}
 
-	s []byte
-
-	insch chan insArg
-	delch chan delArg
-	repch chan repArg
-	locch chan Location
-	seqch chan Sequence
+type Record interface {
+	Fields() *Metadata
+	Features() []Feature
+	AddFeature(feature Feature)
+	Sequence
+	Insert(pos int, seq Sequence)
+	Delete(pos, cnt int)
+	Replace(pos int, seq Sequence)
 }
 
 type insArg struct {
@@ -72,73 +62,6 @@ type delArg struct {
 type repArg struct {
 	Pos int
 	Seq Sequence
-}
-
-func NewRecord() *Record {
-	r := &Record{}
-	r.Start()
-	return r
-}
-
-func (record *Record) Start() {
-	go func() {
-		for {
-			select {
-			case msg := <-record.insch:
-				record.Insert(msg.Pos, msg.Seq)
-			case msg := <-record.delch:
-				record.Delete(msg.Pos, msg.Cnt)
-			case msg := <-record.repch:
-				record.Insert(msg.Pos, msg.Seq)
-			case loc := <-record.locch:
-				record.seqch <- loc.Locate(record)
-			}
-		}
-	}()
-}
-
-func (record Record) Bytes() []byte {
-	return record.s
-}
-
-func (record Record) String() string {
-	return string(record.s)
-}
-
-func (record Record) Length() int {
-	return len(record.s)
-}
-
-func (record Record) Slice(start, end int) Sequence {
-	for start < 0 {
-		start += len(record.s)
-	}
-	for end < 0 {
-		end += len(record.s)
-	}
-	return Seq(record.s[start:end])
-}
-
-func (record Record) Subseq(loc Location) Sequence {
-	return loc.Locate(record)
-}
-
-func (record *Record) Insert(pos int, seq Sequence) {
-	record.s = insertBytes(record.s, pos, seq.Bytes())
-	for _, feature := range record.Features {
-		feature.Location.Shift(pos, seq.Length())
-	}
-}
-
-func (record *Record) Delete(pos, cnt int) {
-	record.s = deleteBytes(record.s, pos, cnt)
-	for _, feature := range record.Features {
-		feature.Location.Shift(pos+cnt, -cnt)
-	}
-}
-
-func (record *Record) Replace(pos int, seq Sequence) {
-	record.s = replaceBytes(record.s, pos, seq.Bytes())
 }
 
 func insertBytes(s []byte, pos int, vs []byte) []byte {
@@ -162,4 +85,124 @@ func replaceBytes(s []byte, pos int, vs []byte) []byte {
 	copy(r[pos:], vs)
 	copy(r[pos+len(vs):], s[pos+len(vs):])
 	return r
+}
+
+type recordType struct {
+	fields   *Metadata
+	features []Feature
+
+	origin []byte
+	insch  chan insArg
+	delch  chan delArg
+	repch  chan repArg
+	locch  chan Location
+	seqch  chan Sequence
+}
+
+func NewRecord(fields *Metadata, features []Feature, origin Sequence) Record {
+	record := &recordType{
+		fields:   fields,
+		features: features,
+
+		origin: origin.Bytes(),
+		insch:  make(chan insArg),
+		delch:  make(chan delArg),
+		repch:  make(chan repArg),
+		locch:  make(chan Location),
+		seqch:  make(chan Sequence),
+	}
+	record.Start()
+	return record
+}
+
+func (record *recordType) Start() {
+	go func() {
+		for {
+			select {
+			case msg := <-record.insch:
+				record.Insert(msg.Pos, msg.Seq)
+			case msg := <-record.delch:
+				record.Delete(msg.Pos, msg.Cnt)
+			case msg := <-record.repch:
+				record.Insert(msg.Pos, msg.Seq)
+			case loc := <-record.locch:
+				record.seqch <- loc.Locate(record)
+			}
+		}
+	}()
+}
+
+func (record recordType) Fields() *Metadata {
+	return record.fields
+}
+
+func (record recordType) Features() []Feature {
+	return record.features
+}
+
+func (record *recordType) AddFeature(feature Feature) {
+	if f, ok := feature.(*featureType); ok {
+		f.insch = record.insch
+		f.delch = record.delch
+		f.repch = record.repch
+		f.locch = record.locch
+		f.seqch = record.seqch
+	}
+	record.features = append(record.features, feature)
+}
+
+func (record recordType) Bytes() []byte {
+	return record.origin
+}
+
+func (record recordType) String() string {
+	return string(record.origin)
+}
+
+func (record recordType) Length() int {
+	return len(record.origin)
+}
+
+func (record recordType) Slice(start, end int) Sequence {
+	for start < 0 {
+		start += len(record.origin)
+	}
+	for end < 0 {
+		end += len(record.origin)
+	}
+	return Seq(record.origin[start:end])
+}
+
+func (record recordType) Subseq(loc Location) Sequence {
+	return loc.Locate(record)
+}
+
+func (record *recordType) Insert(pos int, seq Sequence) {
+	if seq.Length() == 0 {
+		return
+	}
+
+	record.origin = insertBytes(record.origin, pos, seq.Bytes())
+	for _, feature := range record.Features() {
+		feature.Location().Shift(pos, seq.Length())
+	}
+}
+
+func (record *recordType) Delete(pos, cnt int) {
+	if cnt == 0 {
+		return
+	}
+
+	record.origin = deleteBytes(record.origin, pos, cnt)
+	for _, feature := range record.Features() {
+		feature.Location().Shift(pos+cnt, -cnt)
+	}
+}
+
+func (record *recordType) Replace(pos int, seq Sequence) {
+	if seq.Length() == 0 {
+		return
+	}
+
+	record.origin = replaceBytes(record.origin, pos, seq.Bytes())
 }
