@@ -1,2 +1,2 @@
-# gd
-The GenomeDesigner pilot repository.
+# gt1
+Genome Toolkit Version 1
