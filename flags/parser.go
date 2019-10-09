@@ -356,8 +356,6 @@ func (parser Parser) names() []string {
 		}
 	}
 
-	fmt.Println(ret)
-
 	return ret
 }
 
