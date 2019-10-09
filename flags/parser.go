@@ -289,8 +289,8 @@ func formatMultiArgUsage(short byte, long string, typename string) string {
 	return fmt.Sprintf("[-%c [<%s> [-%c [<%s> ...]]] | --%s[=<%s>] [--%s[=<%s>] ...]]", short, typename, short, typename, long, typename, long, typename)
 }
 
-func (parser Parser) argUsage(short byte, long string) string {
-	switch parser.values[long].(type) {
+func typeUsage(short byte, long string, value Value) string {
+	switch value.(type) {
 	case *BoolValue:
 		return formatSingleArgUsage(short, long, "bool")
 	case *IntValue:
@@ -304,8 +304,21 @@ func (parser Parser) argUsage(short byte, long string) string {
 	}
 }
 
-func findAlias(long string, aliases map[byte]string) byte {
-	for k, v := range aliases {
+func (parser Parser) argUsage(short byte, long string) string {
+	if v, ok := parser.values[long]; ok {
+		return typeUsage(short, long, v)
+	}
+	if _, ok := parser.switches[long]; ok {
+		if short == 0 {
+			return fmt.Sprintf("[--%s]", long)
+		}
+		return fmt.Sprintf("[-%c | --%s]", short, long)
+	}
+	panic(fmt.Errorf("value for name `%s` does not exist", long))
+}
+
+func (parser Parser) findAlias(long string) byte {
+	for k, v := range parser.aliases {
 		if v == long {
 			return k
 		}
@@ -313,19 +326,49 @@ func findAlias(long string, aliases map[byte]string) byte {
 	return 0
 }
 
+func (parser Parser) names() []string {
+	names := make([]string, 0)
+	for k := range parser.values {
+		if parser.findAlias(k) == 0 {
+			names = append(names, k)
+		}
+	}
+	for k := range parser.switches {
+		if parser.findAlias(k) == 0 {
+			names = append(names, k)
+		}
+	}
+	sort.Strings(names)
+
+	keys := []byte("0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz")
+
+	ret := make([]string, 0)
+
+	i := 0
+	for _, short := range keys {
+		if long, ok := parser.aliases[short]; ok {
+			ret = append(ret, long)
+		} else {
+			for i < len(names) && names[i][0] == short {
+				ret = append(ret, names[i])
+				i++
+			}
+		}
+	}
+
+	fmt.Println(ret)
+
+	return ret
+}
+
 func (parser Parser) Help() string {
 	usages := make([]string, 0)
 	usages = []string{"[-h | --help] [--version]"}
 
-	names := make([]string, 0)
-	for long := range parser.values {
-		names = append(names, long)
-	}
-
-	sort.Strings(names)
+	names := parser.names()
 
 	for _, long := range names {
-		short := findAlias(long, parser.aliases)
+		short := parser.findAlias(long)
 		usages = append(usages, parser.argUsage(short, long))
 	}
 
@@ -338,7 +381,7 @@ func (parser Parser) Help() string {
 	}
 
 	if len(parser.commands) > 0 {
-		usages = append(usages, "<command>")
+		usages = append(usages, "<command> [args...]")
 	}
 
 	usage := fmt.Sprintf("usage: %s %s", parser.program, strings.Join(usages, " "))
