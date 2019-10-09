@@ -1,7 +1,11 @@
 package gt1
 
 import (
+	"io"
+	"sort"
 	"time"
+
+	"github.com/ktnyt/pars"
 )
 
 type Organism struct {
@@ -102,7 +106,7 @@ type recordType struct {
 func NewRecord(fields *Metadata, features []Feature, origin Sequence) Record {
 	record := &recordType{
 		fields:   fields,
-		features: features,
+		features: make([]Feature, 0),
 
 		origin: origin.Bytes(),
 		insch:  make(chan insArg),
@@ -110,6 +114,9 @@ func NewRecord(fields *Metadata, features []Feature, origin Sequence) Record {
 		repch:  make(chan repArg),
 		locch:  make(chan Location),
 		seqch:  make(chan Sequence),
+	}
+	for _, feature := range features {
+		record.AddFeature(feature)
 	}
 	record.Start()
 	return record
@@ -148,7 +155,21 @@ func (record *recordType) AddFeature(feature Feature) {
 		f.locch = record.locch
 		f.seqch = record.seqch
 	}
-	record.features = append(record.features, feature)
+	i := sort.Search(len(record.features), func(i int) bool {
+		compare := record.features[i]
+		if compare.Key() == "source" && feature.Key() != "source" {
+			return false
+		}
+		if feature.Key() == "source" && compare.Key() != "source" {
+			return true
+		}
+		return LocationSmaller(feature.Location(), compare.Location())
+	})
+	features := make([]Feature, len(record.features)+1)
+	copy(features[:i], record.features[:i])
+	copy(features[i+1:], record.features[i:])
+	features[i] = feature
+	record.features = features
 }
 
 func (record recordType) Bytes() []byte {
@@ -205,4 +226,15 @@ func (record *recordType) Replace(pos int, seq Sequence) {
 	}
 
 	record.origin = replaceBytes(record.origin, pos, seq.Bytes())
+}
+
+var RecordParser = pars.Any(GenBankParser)
+
+func ReadRecord(r io.Reader) (Record, error) {
+	state := pars.NewState(r)
+	result, err := pars.Apply(RecordParser, state)
+	if err != nil {
+		return nil, err
+	}
+	return result.(Record), nil
 }

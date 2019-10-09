@@ -25,6 +25,22 @@ type Location interface {
 	Map(index int) int
 }
 
+func LocationSmaller(a, b Location) bool {
+	if a.Map(0) < b.Map(0) {
+		return true
+	}
+	if b.Map(0) < a.Map(0) {
+		return false
+	}
+	if a.Map(-1) < b.Map(-1) {
+		return true
+	}
+	if b.Map(-1) < a.Map(-1) {
+		return false
+	}
+	return false
+}
+
 func fixIndex(index, length int) int {
 	if index < 0 {
 		index += length
@@ -214,7 +230,7 @@ func (location *ComplementLocation) Shift(pos, n int) {
 }
 
 func (location ComplementLocation) Map(index int) int {
-	return location.Map(index)
+	return location.Location.Map(index)
 }
 
 type JoinLocation struct {
@@ -318,7 +334,7 @@ func (location OrderLocation) Map(index int) int {
 	panic("the program should never reach this state...")
 }
 
-var locatableParser pars.Parser
+var locationParser pars.Parser
 
 var pointLocationParser = pars.Integer.Map(func(result *pars.Result) error {
 	n, err := strconv.Atoi(result.Value.(string))
@@ -371,7 +387,7 @@ var betweenLocationParser = pars.Seq(
 })
 
 var complementLocationParser = pars.Seq(
-	"complement(", &locatableParser, ')',
+	"complement(", &locationParser, ')',
 ).Map(pars.Child(1)).Map(func(result *pars.Result) error {
 	result.Value = NewComplementLocation(result.Value.(Location))
 	result.Children = nil
@@ -379,7 +395,7 @@ var complementLocationParser = pars.Seq(
 })
 
 var joinLocationParser = pars.Seq(
-	"join(", pars.Delim(&locatableParser, ','), ')',
+	"join(", pars.Delim(&locationParser, ','), ')',
 ).Map(func(result *pars.Result) error {
 	children := result.Children[1].Children
 	locations := make([]Location, len(children))
@@ -392,7 +408,7 @@ var joinLocationParser = pars.Seq(
 })
 
 var orderLocationParser = pars.Seq(
-	"order(", pars.Delim(&locatableParser, ','), ')',
+	"order(", pars.Delim(&locationParser, ','), ')',
 ).Map(pars.Child(1)).Map(func(result *pars.Result) error {
 	locations := make([]Location, len(result.Children))
 	for i, child := range result.Children {
@@ -403,8 +419,17 @@ var orderLocationParser = pars.Seq(
 	return nil
 })
 
+func AsLocation(s string) Location {
+	state := pars.FromString(s)
+	result, err := pars.Apply(locationParser, state)
+	if err != nil {
+		panic("could not interpret string as Location")
+	}
+	return result.(Location)
+}
+
 func init() {
-	locatableParser = pars.Any(
+	locationParser = pars.Any(
 		rangeLocationParser,
 		orderLocationParser,
 		joinLocationParser,
