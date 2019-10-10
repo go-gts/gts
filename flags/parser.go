@@ -177,7 +177,7 @@ func (parser *Parser) handleShort(bytes []byte, args []string) ([]string, error)
 			return nil, err
 		}
 
-		if i+1 == len(bytes) {
+		if i+1 == len(bytes) && len(args) > 0 {
 			head, tail := args[0], args[1:]
 			if err := parser.trySetLong(name, head); err == nil {
 				return tail, nil
