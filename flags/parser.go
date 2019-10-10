@@ -225,7 +225,7 @@ func (parser *Parser) Parse(args []string) ([]string, error) {
 
 	for _, p := range parser.mandatory {
 		if len(parser.extras) == 0 {
-			return nil, fmt.Errorf("missing mandatory argument `%s`", p.Name)
+			return nil, fmt.Errorf("missing mandatory argument `%s`\n%s", p.Name, parser.Usage())
 		}
 		p.Value.Set(parser.extras[0])
 		parser.extras = parser.extras[1:]
@@ -243,7 +243,7 @@ func (parser *Parser) Parse(args []string) ([]string, error) {
 		return nil, nil
 	}
 
-	return nil, fmt.Errorf("too many arguments: %s", strings.Join(parser.extras, " "))
+	return nil, fmt.Errorf("too many arguments: %s\n%s", strings.Join(parser.extras, " "), parser.Usage())
 }
 
 func wrapSpace(s string, indent int) string {
@@ -359,16 +359,8 @@ func (parser Parser) names() []string {
 	return ret
 }
 
-func (parser Parser) Help() string {
+func (parser Parser) Usage() string {
 	usages := make([]string, 0)
-	usages = []string{"[-h | --help] [--version]"}
-
-	names := parser.names()
-
-	for _, long := range names {
-		short := parser.findAlias(long)
-		usages = append(usages, parser.argUsage(short, long))
-	}
 
 	for _, p := range parser.mandatory {
 		usages = append(usages, fmt.Sprintf("<%s>", p.Name))
@@ -382,6 +374,78 @@ func (parser Parser) Help() string {
 		usages = append(usages, "<command> [args...]")
 	}
 
-	usage := fmt.Sprintf("usage: %s %s", parser.program, strings.Join(usages, " "))
-	return wrapSpace(usage, len(parser.program)+8)
+	usage := strings.Join(usages, " ")
+	return fmt.Sprintf("usage: %s [options...] %s", parser.program, usage)
+}
+
+func (parser Parser) isSwitch(name string) bool {
+	_, ok := parser.switches[name]
+	return ok
+}
+
+func (parser Parser) isSlice(name string) bool {
+	if v, ok := parser.values[name]; ok {
+		_, ok = v.(*StringsValue)
+		return ok
+	}
+	return false
+}
+
+func (parser Parser) switchSyntax(short byte, long string) string {
+	if short == 0 {
+		return fmt.Sprintf("  --%s", long)
+	}
+	return fmt.Sprintf("  -%c, --%s", short, long)
+}
+
+func (parser Parser) sliceSyntax(short byte, long string) string {
+	upper := strings.ToUpper(long)
+	if short == 0 {
+		return strings.Join([]string{
+			fmt.Sprintf("  --%s <%s> [--%s <%s> ...]", long, upper, long, upper),
+			fmt.Sprintf("  --%s=<%s> [--%s=<%s> ...]", long, upper, long, upper),
+		}, "\n")
+	}
+	return strings.Join([]string{
+		fmt.Sprintf("  -%c <%s> [-%c <%s> ...]", short, upper, short, upper),
+		fmt.Sprintf("  --%s <%s> [--%s <%s> ...]", long, upper, long, upper),
+		fmt.Sprintf("  --%s=<%s> [--%s=<%s> ...]", long, upper, long, upper),
+	}, "\n")
+}
+
+func (parser Parser) argSyntax(short byte, long string) string {
+	if parser.isSwitch(long) {
+		return parser.switchSyntax(short, long)
+	}
+
+	if parser.isSlice(long) {
+		return parser.sliceSyntax(short, long)
+	}
+
+	upper := strings.ToUpper(long)
+	if short == 0 {
+		return fmt.Sprintf("  --%s <%s>, --%s=<%s>", long, upper, long, upper)
+	}
+	return fmt.Sprintf("  -%c <%s>, --%s <%s>, --%s=<%s>", short, upper, long, upper, long, upper)
+}
+
+func (parser Parser) argDesc(long string) string {
+	short := parser.findAlias(long)
+	syntax := parser.argSyntax(short, long)
+	usage := parser.usages[long]
+	if len(syntax) > 24 {
+		return fmt.Sprintf("%s\n%s%s", syntax, strings.Repeat(" ", 24), usage)
+	}
+	return fmt.Sprintf("%s%s%s", syntax, strings.Repeat(" ", 24-len(syntax)), usage)
+}
+
+func (parser Parser) Help() string {
+	lines := []string{parser.Usage()}
+	lines = append(lines, "", "optional arguments:")
+	lines = append(lines, "  -h, --help            show this help message and exit")
+	lines = append(lines, "  --version             show the version string and exit")
+	for _, name := range parser.names() {
+		lines = append(lines, parser.argDesc(name))
+	}
+	return strings.Join(lines, "\n")
 }
