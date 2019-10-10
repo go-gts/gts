@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/ktnyt/gt1"
 	"github.com/ktnyt/gt1/flags"
 )
 
 func init() {
-	register("feature", featureFunc)
+	register("feature", "manipulate features", featureFunc)
 }
 
 func includes(set []string, q string) bool {
@@ -20,22 +21,19 @@ func includes(set []string, q string) bool {
 	return false
 }
 
-func featureFunc(values flags.Values, parser *flags.Parser, args []string) error {
-	mergeFiles := parser.Strings('m', "merge", nil, "merge the features from the given feature file(s)")
-	selectKeys := parser.Strings('s', "select", nil, "select features with the given feature key(s)")
-	invert := parser.Switch('v', "invert-match", "select features that do not match the given criteria")
+func featureFunc(command *flags.Command, args []string) error {
+	mergeFiles := command.Strings('m', "merge", "merge the features from the given feature file(s)")
+	selectKeys := command.Strings('s', "select", "select features with the given feature key(s)")
+	invert := command.Switch('v', "invert-match", "select features that do not match the given criteria")
 
-	infile := parser.Optional("infile")
-	outfile := parser.Optional("outfile")
+	infile := command.Infile()
+	outfile := command.Outfile()
 
-	args, err := parser.Parse(args)
-	if err != nil {
+	if err := command.Run(args); err != nil {
 		return err
 	}
 
-	r, w := getReaderAndWriter(*infile, *outfile)
-
-	record, err := gt1.ReadRecord(r)
+	record, err := gt1.ReadRecord(infile)
 	if err != nil {
 		return err
 	}
@@ -43,7 +41,10 @@ func featureFunc(values flags.Values, parser *flags.Parser, args []string) error
 	features := record.Features()
 
 	for _, filename := range *mergeFiles {
-		f := Open(filename)
+		f, err := os.Open(filename)
+		if err != nil {
+			return err
+		}
 		tmp, err := gt1.ReadFeatures(f)
 		if err != nil {
 			return err
@@ -62,7 +63,7 @@ func featureFunc(values flags.Values, parser *flags.Parser, args []string) error
 	filtered := gt1.FilterFeatures(features, filter)
 
 	out := gt1.NewRecord(record.Fields(), filtered, record)
-	fmt.Fprintf(w, gt1.FormatGenBank(out))
+	fmt.Fprintf(outfile, gt1.FormatGenBank(out))
 
 	return nil
 }

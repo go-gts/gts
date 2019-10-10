@@ -1,6 +1,7 @@
 package gt1
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"strings"
@@ -376,6 +377,18 @@ type featureIO struct {
 	Qualifiers [][]string
 }
 
+func featuresFromFeatureIOSlice(fios []featureIO) []Feature {
+	features := make([]Feature, len(fios))
+	for i, fio := range fios {
+		pairs := make([]Pair, len(fio.Qualifiers))
+		for j, item := range fio.Qualifiers {
+			pairs[j] = Pair{item[0], item[1]}
+		}
+		features[i] = NewFeature(fio.Key, AsLocation(fio.Location), NewPairListFromPairs(pairs))
+	}
+	return features
+}
+
 func featureYamlParser(state *pars.State, result *pars.Result) error {
 	pSlice := new([]featureIO)
 	decoder := yaml.NewDecoder(state)
@@ -386,21 +399,29 @@ func featureYamlParser(state *pars.State, result *pars.Result) error {
 	}
 	state.Unmark()
 
-	features := make([]Feature, len(*pSlice))
-	for i, fio := range *pSlice {
-		pairs := make([]Pair, len(fio.Qualifiers))
-		for j, item := range fio.Qualifiers {
-			pairs[j] = Pair{item[0], item[1]}
-		}
-		features[i] = NewFeature(fio.Key, AsLocation(fio.Location), NewPairListFromPairs(pairs))
+	result.Value = featuresFromFeatureIOSlice(*pSlice)
+	result.Children = nil
+	return nil
+}
+
+func featureJsonParser(state *pars.State, result *pars.Result) error {
+	pSlice := new([]featureIO)
+	decoder := json.NewDecoder(state)
+	state.Mark()
+	if err := decoder.Decode(pSlice); err != nil {
+		state.Jump()
+		return err
 	}
-	result.Value = features
+
+	state.Unmark()
+	result.Value = featuresFromFeatureIOSlice(*pSlice)
 	result.Children = nil
 	return nil
 }
 
 var FeatureParser = pars.Any(
 	featureYamlParser,
+	featureJsonParser,
 	RecordParser.Map(recordToFeatureTable),
 )
 
