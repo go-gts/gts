@@ -16,8 +16,14 @@ func register(name, desc string, cmd flags.CommandFunc) {
 	command.Command(name, desc, cmd)
 }
 
-func main() {
+func run() int {
 	if err := command.Run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, err)
+		return 1
 	}
+	return 0
+}
+
+func main() {
+	os.Exit(run())
 }
