@@ -20,8 +20,6 @@ func (e UsageError) Error() string {
 	return string(e)
 }
 
-type CommandError error
-
 var shortKeys = []byte("#%123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz")
 
 func isLong(s string) bool {
@@ -472,15 +470,27 @@ func (command *Command) handleArgs(args []string) (err error) {
 	return nil
 }
 
-func (command *Command) Run(args []string) error {
+func (command *Command) Run(args []string, fs ...func() error) error {
 	if err := command.handleArgs(args); err != nil {
 		switch err.(type) {
-		case HelpError, UsageError, CommandError:
+		case HelpError, UsageError:
 			return err
 		default:
 			return UsageError(fmt.Sprintf("%s\n%s", err, command.Usage()))
 		}
 	}
+
+	for _, f := range fs {
+		if err := f(); err != nil {
+			switch err.(type) {
+			case HelpError, UsageError:
+				return err
+			default:
+				return UsageError(fmt.Sprintf("%s\n%s", err, command.Usage()))
+			}
+		}
+	}
+
 	return nil
 }
 

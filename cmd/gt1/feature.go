@@ -21,31 +21,29 @@ func featureSelectFunc(command *flags.Command, args []string) error {
 	infile := command.Infile("input record file")
 	outfile := command.Outfile("output record file")
 
-	if err := command.Run(args); err != nil {
-		return err
-	}
+	return command.Run(args, func() error {
+		record, err := gt1.ReadRecord(infile)
+		if err != nil {
+			return err
+		}
 
-	record, err := gt1.ReadRecord(infile)
-	if err != nil {
-		return flags.CommandError(err)
-	}
+		selectKeys := *extraKeys
+		if len(*mainKey) > 0 {
+			selectKeys = append(selectKeys, *mainKey)
+		}
 
-	selectKeys := *extraKeys
-	if len(*mainKey) > 0 {
-		selectKeys = append(selectKeys, *mainKey)
-	}
+		filter := gt1.FeatureKeyFilter(selectKeys)
+		if *invert {
+			filter = gt1.FeatureFilterInvert(filter)
+		}
 
-	filter := gt1.FeatureKeyFilter(selectKeys)
-	if *invert {
-		filter = gt1.FeatureFilterInvert(filter)
-	}
+		features := gt1.FilterFeatures(record.Features(), filter)
 
-	features := gt1.FilterFeatures(record.Features(), filter)
+		out := gt1.NewRecord(record.Fields(), features, record)
+		fmt.Fprintf(outfile, gt1.FormatGenBank(out))
 
-	out := gt1.NewRecord(record.Fields(), features, record)
-	fmt.Fprintf(outfile, gt1.FormatGenBank(out))
-
-	return nil
+		return nil
+	})
 }
 
 func featureMergeFunc(command *flags.Command, args []string) error {
@@ -55,33 +53,31 @@ func featureMergeFunc(command *flags.Command, args []string) error {
 	infile := command.Infile("input record file")
 	outfile := command.Outfile("output record file")
 
-	if err := command.Run(args); err != nil {
-		return err
-	}
-
-	record, err := gt1.ReadRecord(infile)
-	if err != nil {
-		return flags.CommandError(err)
-	}
-
-	features := record.Features()
-
-	for _, filename := range append(*extraFiles, *mainFile) {
-		f, err := os.Open(filename)
+	return command.Run(args, func() error {
+		record, err := gt1.ReadRecord(infile)
 		if err != nil {
-			return flags.CommandError(err)
+			return err
 		}
-		tmp, err := gt1.ReadFeatures(f)
-		if err != nil {
-			return flags.CommandError(err)
+
+		features := record.Features()
+
+		for _, filename := range append(*extraFiles, *mainFile) {
+			f, err := os.Open(filename)
+			if err != nil {
+				return err
+			}
+			tmp, err := gt1.ReadFeatures(f)
+			if err != nil {
+				return err
+			}
+			features = append(features, tmp...)
 		}
-		features = append(features, tmp...)
-	}
 
-	out := gt1.NewRecord(record.Fields(), features, record)
-	fmt.Fprintf(outfile, gt1.FormatGenBank(out))
+		out := gt1.NewRecord(record.Fields(), features, record)
+		fmt.Fprintf(outfile, gt1.FormatGenBank(out))
 
-	return nil
+		return nil
+	})
 }
 
 func featureFunc(command *flags.Command, args []string) error {
