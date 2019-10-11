@@ -7,7 +7,19 @@ import (
 	"strings"
 )
 
-var shortKeys = []byte("0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz")
+type HelpError string
+
+func (e HelpError) Error() string {
+	return string(e)
+}
+
+type UsageError string
+
+func (e UsageError) Error() string {
+	return string(e)
+}
+
+var shortKeys = []byte("#%&0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz")
 
 func isLong(s string) bool {
 	return strings.HasPrefix(s, "--") && s != "--"
@@ -22,12 +34,6 @@ func isName(s string) bool {
 }
 
 type CommandFunc func(*Command, []string) error
-
-type helpError string
-
-func (e helpError) Error() string {
-	return string(e)
-}
 
 type Pair struct {
 	Key   string
@@ -200,7 +206,7 @@ func (command Command) handleValue(value Value, args []string) ([]string, error)
 
 func (command Command) handleLong(long string, args []string) ([]string, error) {
 	if long == "help" {
-		return nil, helpError(command.Help())
+		return nil, HelpError(command.Help())
 	}
 
 	name, arg := splitEqual(long)
@@ -274,7 +280,7 @@ func (command Command) handleShortTail(short byte, args []string) ([]string, err
 
 func (command Command) handleShort(group string, args []string) ([]string, error) {
 	if strings.ContainsRune(group, 'h') {
-		return nil, helpError(command.Help())
+		return nil, HelpError(command.Help())
 	}
 
 	p := []byte(group)
@@ -309,14 +315,17 @@ func (command *Command) setStdout() {
 
 func (command *Command) handleOne(args []string) ([]string, error) {
 	head, tail := shift(args)
+
 	if isLong(head) {
 		long := strings.TrimPrefix(head, "--")
 		return command.handleLong(long, tail)
 	}
+
 	if isShort(head) {
 		group := strings.TrimPrefix(head, "-")
 		return command.handleShort(group, tail)
 	}
+
 	if head == "-" {
 		if command.infileMissing() {
 			command.setStdin()
@@ -327,11 +336,14 @@ func (command *Command) handleOne(args []string) ([]string, error) {
 			return tail, nil
 		}
 	}
+
 	if sub, ok := command.Commands[head]; ok {
 		f, desc := sub.Func, sub.Desc
 		name := fmt.Sprintf("%s %s", command.Prog, head)
+		command.Commands = make(map[string]Subcommand)
 		return nil, f(NewCommand(name, desc), tail)
 	}
+
 	command.Extras = append(command.Extras, head)
 	return tail, nil
 }
@@ -402,15 +414,23 @@ func (command *Command) handleArgs(args []string) (err error) {
 		return fmt.Errorf("too many arguments")
 	}
 
+	if len(command.Commands) != 0 {
+		return fmt.Errorf("command not specified")
+	}
+
 	return nil
 }
 
 func (command *Command) Run(args []string) error {
 	if err := command.handleArgs(args); err != nil {
-		if help, ok := err.(helpError); ok {
-			return help
+		switch err.(type) {
+		case HelpError:
+			return err
+		case UsageError:
+			return err
+		default:
+			return UsageError(fmt.Sprintf("%s\n%s", err, command.Usage()))
 		}
-		return fmt.Errorf("%s\n\n%s", err, command.Usage())
 	}
 	return nil
 }
