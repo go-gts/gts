@@ -173,6 +173,10 @@ func FeatureKeyFilter(keys []string) FeatureFilter {
 	}
 }
 
+func ClearFeatures(features []Feature) []Feature {
+	return FilterFeatures(features, func(feature Feature) bool { return false })
+}
+
 func FilterFeatures(features []Feature, filter FeatureFilter) []Feature {
 	f := FeatureFilterOr(baseFilter, filter)
 

@@ -80,9 +80,29 @@ func featureMergeFunc(command *flags.Command, args []string) error {
 	})
 }
 
+func featureClearFunc(command *flags.Command, args []string) error {
+	infile := command.Infile("input record file")
+	outfile := command.Outfile("output record file")
+
+	return command.Run(args, func() error {
+		record, err := gt1.ReadRecord(infile)
+		if err != nil {
+			return err
+		}
+
+		features := gt1.ClearFeatures(record.Features())
+
+		out := gt1.NewRecord(record.Fields(), features, record)
+		fmt.Fprintf(outfile, gt1.FormatGenBank(out))
+
+		return nil
+	})
+}
+
 func featureFunc(command *flags.Command, args []string) error {
 	command.Command("select", "select features by feature key", featureSelectFunc)
 	command.Command("merge", "merge features from a file", featureMergeFunc)
+	command.Command("clear", "remove all features (excluding sources)", featureClearFunc)
 
 	return command.Run(args)
 }
