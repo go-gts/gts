@@ -1,6 +1,7 @@
 package flags
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -19,7 +20,7 @@ func (e UsageError) Error() string {
 	return string(e)
 }
 
-var shortKeys = []byte("#%&0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz")
+var shortKeys = []byte("#%123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz")
 
 func isLong(s string) bool {
 	return strings.HasPrefix(s, "--") && s != "--"
@@ -212,7 +213,7 @@ func (command Command) handleValue(value Value, args []string) ([]string, error)
 		*p = BoolValue(true)
 		return args, nil
 	case SliceValue:
-		count := command.Mandatories.Len() + command.Optionals.Len()
+		count := command.Mandatories.Len() + command.Optionals.Len() - len(command.Extras)
 		if command.infileMissing() {
 			count++
 		}
@@ -223,7 +224,11 @@ func (command Command) handleValue(value Value, args []string) ([]string, error)
 		if n < 0 {
 			return nil, fmt.Errorf("not enough arguments")
 		}
-		return processSlice(p, args[:n])
+		tail, err := processSlice(p, args[:n])
+		if err != nil {
+			return nil, err
+		}
+		return append(tail, args[n:]...), nil
 	default:
 		return processValue(p, args)
 	}
@@ -351,17 +356,6 @@ func (command *Command) handleOne(args []string) ([]string, error) {
 		return command.handleShort(group, tail)
 	}
 
-	if head == "-" {
-		if command.infileMissing() {
-			command.setStdin()
-			return tail, nil
-		}
-		if command.outfileMissing() {
-			command.setStdout()
-			return tail, nil
-		}
-	}
-
 	if sub, ok := command.Commands[head]; ok {
 		f, desc := sub.Func, sub.Desc
 		name := fmt.Sprintf("%s %s", command.Prog, head)
@@ -373,11 +367,64 @@ func (command *Command) handleOne(args []string) ([]string, error) {
 	return tail, nil
 }
 
+func (command *Command) handleLastArg(arg string) error {
+	if arg == "-" {
+		if command.infileMissing() {
+			command.setStdin()
+			command.setStdout()
+			return nil
+		}
+
+		if command.outfileMissing() {
+			command.setStdout()
+			return nil
+		}
+
+		return nil
+	}
+
+	if command.infileMissing() {
+		command.setStdout()
+		return command.InfileValue.Set(arg)
+	}
+
+	if command.outfileMissing() {
+		command.setStdout()
+		return nil
+	}
+
+	return errors.New("too many arguments")
+}
+
+func (command *Command) handleLastArgs(first, second string) error {
+	if first == "-" {
+		command.setStdin()
+	} else {
+		if err := command.InfileValue.Set(first); err != nil {
+			return err
+		}
+	}
+
+	if second == "-" {
+		command.setStdout()
+	} else {
+		if err := command.OutfileValue.Set(second); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (command *Command) handleArgs(args []string) (err error) {
 	for len(args) != 0 {
 		if args, err = command.handleOne(args); err != nil {
 			return err
 		}
+	}
+
+	if len(command.Commands) != 0 {
+		return fmt.Errorf("command not specified")
 	}
 
 	extras := command.Extras
@@ -398,7 +445,7 @@ func (command *Command) handleArgs(args []string) (err error) {
 		if len(extras) != 0 {
 			arg, extras = shift(extras)
 			if err := pair.Value.Set(arg); err != nil {
-				return fmt.Errorf("%s for mandatory argument `%s`", err, pair.Key)
+				return fmt.Errorf("%s for optional argument `%s`", err, pair.Key)
 			}
 		}
 	}
@@ -413,34 +460,11 @@ func (command *Command) handleArgs(args []string) (err error) {
 			return nil
 		}
 	case 1:
-		extras, arg = pop(extras)
-		if command.infileMissing() {
-			command.InfileValue.Set(arg)
-			command.setStdout()
-			return nil
-		}
-		if command.outfileMissing() {
-			command.OutfileValue.Set(arg)
-			return nil
-		}
-		extras = append(extras, arg)
+		return command.handleLastArg(extras[0])
 	case 2:
-		if command.infileMissing() {
-			command.InfileValue.Set(extras[0])
-			command.setStdout()
-		}
-		if command.outfileMissing() {
-			command.OutfileValue.Set(extras[1])
-		}
-		return nil
-	}
-
-	if len(extras) != 0 {
+		return command.handleLastArgs(extras[0], extras[1])
+	default:
 		return fmt.Errorf("too many arguments")
-	}
-
-	if len(command.Commands) != 0 {
-		return fmt.Errorf("command not specified")
 	}
 
 	return nil
@@ -497,17 +521,17 @@ func (command Command) listNames() []string {
 	return ret
 }
 
-func appendWrap(s, t string) string {
+func appendWrap(s, t string, d int) string {
 	if strings.ContainsRune(s, '\n') {
 		i := strings.LastIndexByte(s, '\n') + 1
-		return s[:i] + appendWrap(s[i:], t)
+		return s[:i] + appendWrap(s[i:], t, d)
 	}
 
 	if len(s)+len(t) < 78 {
 		return s + " " + t
 	}
 
-	return s + "\n            " + t
+	return s + "\n" + strings.Repeat(" ", d) + t
 }
 
 func wrap(s string, d int) string {
@@ -553,42 +577,43 @@ func wrap(s string, d int) string {
 
 func (command Command) Usage() string {
 	usage := fmt.Sprintf("usage: %s", command.Prog)
-	usage = appendWrap(usage, "[-h | --help]")
+	depth := len(usage) + 1
+	usage = appendWrap(usage, "[-h | --help]", depth)
 
 	for _, short := range shortKeys {
 		if long, ok := command.Aliases[short]; ok {
 			switch command.Values[long].(type) {
 			case *BoolValue:
 				tmp := fmt.Sprintf("[-%c | --%s]", short, long)
-				usage = appendWrap(usage, tmp)
+				usage = appendWrap(usage, tmp, depth)
 			case SliceValue:
 				tmp := fmt.Sprintf("[-%c <%s> [<%s> ...]]", short, long, long)
-				usage = appendWrap(usage, tmp)
+				usage = appendWrap(usage, tmp, depth)
 			default:
 				tmp := fmt.Sprintf("[-%c <%s>]", short, long)
-				usage = appendWrap(usage, tmp)
+				usage = appendWrap(usage, tmp, depth)
 			}
 		}
 	}
 
 	for _, pair := range command.Mandatories.Iter() {
-		usage = appendWrap(usage, fmt.Sprintf("<%s>", pair.Key))
+		usage = appendWrap(usage, fmt.Sprintf("<%s>", pair.Key), depth)
 	}
 
 	for _, pair := range command.Optionals.Iter() {
-		usage = appendWrap(usage, fmt.Sprintf("[%s]", pair.Key))
+		usage = appendWrap(usage, fmt.Sprintf("[%s]", pair.Key), depth)
 	}
 
 	if command.InfileValue != nil {
-		usage = appendWrap(usage, "<infile>")
+		usage = appendWrap(usage, "<infile>", depth)
 	}
 
 	if command.OutfileValue != nil {
-		usage = appendWrap(usage, "<outfile>")
+		usage = appendWrap(usage, "<outfile>", depth)
 	}
 
 	if len(command.Commands) > 0 {
-		usage = appendWrap(usage, "<command> [<args>]")
+		usage = appendWrap(usage, "<command> [<args>]", depth)
 	}
 
 	return usage
