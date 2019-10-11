@@ -9,25 +9,51 @@ import (
 )
 
 func init() {
-	register("feature", "manipulate features", featureFunc)
+	desc := "manipulate feature table"
+	register("feature", desc, featureFunc)
 }
 
-func includes(set []string, q string) bool {
-	for i := range set {
-		if q == set[i] {
-			return true
-		}
-	}
-	return false
-}
-
-func featureFunc(command *flags.Command, args []string) error {
-	mergeFiles := command.Strings('m', "merge", "merge the features from the given feature file(s)")
-	selectKeys := command.Strings('s', "select", "select features with the given feature key(s)")
+func featureSelectFunc(command *flags.Command, args []string) error {
 	invert := command.Switch('v', "invert-match", "select features that do not match the given criteria")
+	extraKeys := command.Strings('a', "and", "additional feature key(s) to select")
+	mainKey := command.Mandatory("key", "feature key to select")
 
-	infile := command.Infile()
-	outfile := command.Outfile()
+	infile := command.Infile("input record file")
+	outfile := command.Outfile("output record file")
+
+	if err := command.Run(args); err != nil {
+		return err
+	}
+
+	record, err := gt1.ReadRecord(infile)
+	if err != nil {
+		return err
+	}
+
+	selectKeys := *extraKeys
+	if len(*mainKey) > 0 {
+		selectKeys = append(selectKeys, *mainKey)
+	}
+
+	filter := gt1.FeatureKeyFilter(selectKeys)
+	if *invert {
+		filter = gt1.FeatureFilterInvert(filter)
+	}
+
+	features := gt1.FilterFeatures(record.Features(), filter)
+
+	out := gt1.NewRecord(record.Fields(), features, record)
+	fmt.Fprintf(outfile, gt1.FormatGenBank(out))
+
+	return nil
+}
+
+func featureMergeFunc(command *flags.Command, args []string) error {
+	extraFiles := command.Strings('a', "and", "additional feature file(s) to merge")
+	mainFile := command.Mandatory("feature", "feature file to merge")
+
+	infile := command.Infile("input record file")
+	outfile := command.Outfile("output record file")
 
 	if err := command.Run(args); err != nil {
 		return err
@@ -40,7 +66,7 @@ func featureFunc(command *flags.Command, args []string) error {
 
 	features := record.Features()
 
-	for _, filename := range *mergeFiles {
+	for _, filename := range append(*extraFiles, *mainFile) {
 		f, err := os.Open(filename)
 		if err != nil {
 			return err
@@ -52,18 +78,15 @@ func featureFunc(command *flags.Command, args []string) error {
 		features = append(features, tmp...)
 	}
 
-	filter := gt1.FeatureFilterAnd(
-		gt1.FeatureKeyFilter(*selectKeys),
-	)
-
-	if *invert {
-		filter = gt1.FeatureFilterInvert(filter)
-	}
-
-	filtered := gt1.FilterFeatures(features, filter)
-
-	out := gt1.NewRecord(record.Fields(), filtered, record)
+	out := gt1.NewRecord(record.Fields(), features, record)
 	fmt.Fprintf(outfile, gt1.FormatGenBank(out))
 
 	return nil
+}
+
+func featureFunc(command *flags.Command, args []string) error {
+	command.Command("select", "select features by feature key", featureSelectFunc)
+	command.Command("merge", "merge features from a file", featureMergeFunc)
+
+	return command.Run(args)
 }
