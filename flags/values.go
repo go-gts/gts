@@ -190,6 +190,13 @@ func processSlice(value SliceValue, args []string) ([]string, error) {
 	}
 
 	head, args := shift(args)
+	if isLong(head) || isShort(head) {
+		if value.Len() == 0 {
+			return nil, fmt.Errorf("missing value")
+		}
+		return unshift(args, head), nil
+	}
+
 	if err := value.Set(head); err != nil {
 		if value.Len() == 0 {
 			return nil, err
