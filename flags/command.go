@@ -35,6 +35,25 @@ func isName(s string) bool {
 
 type CommandFunc func(*Command, []string) error
 
+type commandInfo struct {
+	Name string
+	Desc string
+}
+
+type commandByName []commandInfo
+
+func (c commandByName) Len() int {
+	return len(c)
+}
+
+func (c commandByName) Swap(i, j int) {
+	c[i], c[j] = c[j], c[i]
+}
+
+func (c commandByName) Less(i, j int) bool {
+	return c[i].Name < c[j].Name
+}
+
 type Pair struct {
 	Key   string
 	Value Value
@@ -52,6 +71,7 @@ type Command struct {
 	OutfileValue *FileValue
 	Mandatories  *Dictionary
 	Optionals    *Dictionary
+	Positionals  map[string]string
 }
 
 func NewCommand(prog, desc string) *Command {
@@ -67,6 +87,7 @@ func NewCommand(prog, desc string) *Command {
 		OutfileValue: nil,
 		Mandatories:  NewDictionary(),
 		Optionals:    NewDictionary(),
+		Positionals:  make(map[string]string),
 	}
 }
 
@@ -138,10 +159,11 @@ func (command *Command) File(short byte, long string, flag int, perm os.FileMode
 	return (*os.File)(value.File)
 }
 
-func (command *Command) Infile() *os.File {
+func (command *Command) Infile(desc string) *os.File {
 	if command.InfileValue != nil {
 		panic("only one positional input file is allowed")
 	}
+	command.Positionals["infile"] = desc
 	if IsTerminal(os.Stdin.Fd()) {
 		command.InfileValue = NewFileValue(os.O_RDONLY, 0)
 		return (*os.File)(command.InfileValue.File)
@@ -149,10 +171,11 @@ func (command *Command) Infile() *os.File {
 	return os.Stdin
 }
 
-func (command *Command) Outfile() *os.File {
+func (command *Command) Outfile(desc string) *os.File {
 	if command.OutfileValue != nil {
 		panic("only one positional output file is allowed")
 	}
+	command.Positionals["outfile"] = desc
 	if IsTerminal(os.Stdout.Fd()) {
 		command.OutfileValue = NewFileValue(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 		return (*os.File)(command.OutfileValue.File)
@@ -160,15 +183,17 @@ func (command *Command) Outfile() *os.File {
 	return os.Stdout
 }
 
-func (command *Command) Mandatory(name string) *string {
+func (command *Command) Mandatory(name, desc string) *string {
 	value := NewStringValue("")
 	command.Mandatories.Set(name, value)
+	command.Positionals[name] = desc
 	return (*string)(value)
 }
 
-func (command *Command) Optional(name string) *string {
+func (command *Command) Optional(name, desc string) *string {
 	value := NewStringValue("")
 	command.Optionals.Set(name, value)
+	command.Positionals[name] = desc
 	return (*string)(value)
 }
 
@@ -485,6 +510,47 @@ func appendWrap(s, t string) string {
 	return s + "\n            " + t
 }
 
+func wrap(s string, d int) string {
+	if strings.ContainsRune(s, '\n') {
+		lines := strings.Split(s, "\n")
+		ret := make([]string, len(lines))
+		for i, line := range lines {
+			ret[i] = wrap(line, d)
+		}
+		return strings.Join(ret, "\n")
+	}
+
+	if len(s) < 80 {
+		return s
+	}
+
+	if len(s) < 80 {
+		return s
+	}
+
+	i := 79
+	for i >= 0 && s[i] != ' ' {
+		i--
+	}
+
+	if i == 0 {
+		i = 79
+		for i < len(s) && s[i] != ' ' {
+			i++
+		}
+	}
+
+	if i == len(s) {
+		return s
+	}
+
+	t := s[:i]
+	r := strings.Repeat(" ", d-1) + s[i:]
+
+	return t + "\n" + wrap(r, d)
+
+}
+
 func (command Command) Usage() string {
 	usage := fmt.Sprintf("usage: %s", command.Prog)
 	usage = appendWrap(usage, "[-h | --help]")
@@ -506,11 +572,11 @@ func (command Command) Usage() string {
 	}
 
 	for _, pair := range command.Mandatories.Iter() {
-		usage = appendWrap(fmt.Sprintf("<%s>"), strings.ToUpper(pair.Key))
+		usage = appendWrap(usage, fmt.Sprintf("<%s>", pair.Key))
 	}
 
 	for _, pair := range command.Optionals.Iter() {
-		usage = appendWrap(fmt.Sprintf("[%s]"), strings.ToUpper(pair.Key))
+		usage = appendWrap(usage, fmt.Sprintf("[%s]", pair.Key))
 	}
 
 	if command.InfileValue != nil {
@@ -522,7 +588,7 @@ func (command Command) Usage() string {
 	}
 
 	if len(command.Commands) > 0 {
-		usage = appendWrap(usage, "<command> [args]")
+		usage = appendWrap(usage, "<command> [<args>]")
 	}
 
 	return usage
@@ -570,13 +636,63 @@ func (command Command) syntax(long string) string {
 	}
 }
 
+func (command Command) listCommands() []commandInfo {
+	commands := make([]commandInfo, 0)
+	for key, value := range command.Commands {
+		commands = append(commands, commandInfo{key, value.Desc})
+	}
+	sort.Sort(commandByName(commands))
+	return commands
+}
+
 func (command Command) Help() string {
 	parts := []string{
 		command.Usage(),
 		"",
-		"optional arguments:",
-		"  -h, --help            show this help message and exit",
+		"description:",
+		wrap(fmt.Sprintf("  %s", command.Desc), 2),
 	}
+
+	commands := command.listCommands()
+	if len(commands) > 0 {
+		parts = append(parts, "", "available commands:")
+		for _, info := range commands {
+			padding := strings.Repeat(" ", 22-len(info.Name))
+			part := fmt.Sprintf("  %s%s%s", info.Name, padding, info.Desc)
+			parts = append(parts, wrap(part, 24))
+		}
+	}
+
+	if len(command.Positionals) > 0 {
+		parts = append(parts, "", "positional arguments:")
+
+		for _, pair := range command.Mandatories.Iter() {
+			name, desc := pair.Key, command.Positionals[pair.Key]
+			padding := strings.Repeat(" ", 20-len(name))
+			part := fmt.Sprintf("  <%s>%s%s", name, padding, desc)
+			parts = append(parts, wrap(part, 24))
+		}
+
+		for _, pair := range command.Optionals.Iter() {
+			name, desc := pair.Key, command.Positionals[pair.Key]
+			padding := strings.Repeat(" ", 20-len(name))
+			part := fmt.Sprintf("  [%s]%s%s", name, padding, desc)
+			parts = append(parts, wrap(part, 24))
+		}
+
+		if desc, ok := command.Positionals["infile"]; ok {
+			part := fmt.Sprintf("  <infile>              %s", desc)
+			parts = append(parts, wrap(part, 24))
+		}
+
+		if desc, ok := command.Positionals["outfile"]; ok {
+			part := fmt.Sprintf("  <outfile>             %s", desc)
+			parts = append(parts, wrap(part, 24))
+		}
+	}
+
+	parts = append(parts, "", "optional arguments:",
+		"  -h, --help            show this help message and exit")
 
 	for _, name := range command.listNames() {
 		syntax := command.syntax(name)
@@ -585,7 +701,7 @@ func (command Command) Help() string {
 		if len(syntax) < 23 {
 			padding = strings.Repeat(" ", 24-len(syntax))
 		}
-		parts = append(parts, syntax+padding+usage)
+		parts = append(parts, wrap(syntax+padding+usage, 24))
 	}
 
 	help := strings.Join(parts, "\n")
