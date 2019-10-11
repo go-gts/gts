@@ -27,7 +27,7 @@ func featureSelectFunc(command *flags.Command, args []string) error {
 
 	record, err := gt1.ReadRecord(infile)
 	if err != nil {
-		return err
+		return flags.CommandError(err)
 	}
 
 	selectKeys := *extraKeys
@@ -61,7 +61,7 @@ func featureMergeFunc(command *flags.Command, args []string) error {
 
 	record, err := gt1.ReadRecord(infile)
 	if err != nil {
-		return err
+		return flags.CommandError(err)
 	}
 
 	features := record.Features()
@@ -69,11 +69,11 @@ func featureMergeFunc(command *flags.Command, args []string) error {
 	for _, filename := range append(*extraFiles, *mainFile) {
 		f, err := os.Open(filename)
 		if err != nil {
-			return err
+			return flags.CommandError(err)
 		}
 		tmp, err := gt1.ReadFeatures(f)
 		if err != nil {
-			return err
+			return flags.CommandError(err)
 		}
 		features = append(features, tmp...)
 	}

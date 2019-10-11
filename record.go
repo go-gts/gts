@@ -1,6 +1,7 @@
 package gt1
 
 import (
+	"errors"
 	"io"
 	"sort"
 	"time"
@@ -234,7 +235,7 @@ func ReadRecord(r io.Reader) (Record, error) {
 	state := pars.NewState(r)
 	result, err := pars.Apply(RecordParser, state)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("gt1 cannot interpret the input as a record format")
 	}
 	return result.(Record), nil
 }
