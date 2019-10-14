@@ -10,17 +10,15 @@ import (
 )
 
 func init() {
-	desc := "manipulate feature table"
-	register("feature", desc, featureFunc)
+	register("feature", "feature manipulation commands", featureFunc)
 }
 
 func featureSelectFunc(command *flags.Command, args []string) error {
+	infile := command.Infile("input record file")
+	outfile := command.Outfile("output record file")
 	invert := command.Switch('v', "invert-match", "select features that do not match the given criteria")
 	extraKeys := command.Strings(0, "and", "additional feature key(s) to select")
 	mainKey := command.Mandatory("key", "primary feature key to select")
-
-	infile := command.Infile("input record file")
-	outfile := command.Outfile("output record file")
 
 	return command.Run(args, func() error {
 		record, err := gt1.ReadRecord(infile)
@@ -48,11 +46,10 @@ func featureSelectFunc(command *flags.Command, args []string) error {
 }
 
 func featureMergeFunc(command *flags.Command, args []string) error {
-	extraFiles := command.Strings(0, "and", "additional feature file(s) to merge")
-	mainFile := command.Mandatory("feature", "primary feature file to merge")
-
 	infile := command.Infile("input record file")
 	outfile := command.Outfile("output record file")
+	extraFiles := command.Strings(0, "and", "additional feature file(s) to merge")
+	mainFile := command.Mandatory("feature", "primary feature file to merge")
 
 	return command.Run(args, func() error {
 		record, err := gt1.ReadRecord(infile)
@@ -84,7 +81,6 @@ func featureMergeFunc(command *flags.Command, args []string) error {
 func featureClearFunc(command *flags.Command, args []string) error {
 	infile := command.Infile("input record file")
 	outfile := command.Outfile("output record file")
-
 	return command.Run(args, func() error {
 		record, err := gt1.ReadRecord(infile)
 		if err != nil {
@@ -121,15 +117,14 @@ func extractFeatureQualifiers(feature gt1.Feature, keys []string) [][]string {
 }
 
 func featureExtractFunc(command *flags.Command, args []string) error {
+	infile := command.Infile("input record file")
+	outfile := command.Outfile("output text file")
 	delim := command.String('d', "delimiter", "\t", "string to insert between output qualifiers")
 	sep := command.String('s', "separator", ",", "string to insert between values with same qualifier keys")
 	featureKey := command.Switch('f', "feature-key", "extract the feature key")
 	location := command.Switch('l', "location", "extract the location")
 	extraKeys := command.Strings(0, "and", "additional qualifier key(s) to extract")
 	mainKey := command.Mandatory("qualifier", "primary qualifier key to extract")
-
-	infile := command.Infile("input record file")
-	outfile := command.Outfile("output text file")
 
 	return command.Run(args, func() error {
 		record, err := gt1.ReadRecord(infile)
