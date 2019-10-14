@@ -158,6 +158,11 @@ func NewFileValue(flag int, perm os.FileMode) *FileValue {
 	return (*FileValue)(p)
 }
 
+func NewFileValueWithFile(init *os.File) *FileValue {
+	p := &FileValue{File: init, Empty: false}
+	return (*FileValue)(p)
+}
+
 func (p *FileValue) Set(s string) error {
 	f, err := os.OpenFile(s, p.Flag, p.Perm)
 	if err != nil {

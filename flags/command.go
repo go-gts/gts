@@ -169,7 +169,7 @@ func (command *Command) Create(short byte, long string, usage string) *os.File {
 func (command *Command) File(short byte, long string, flag int, perm os.FileMode, usage string) *os.File {
 	value := NewFileValue(flag, perm)
 	command.Register(short, long, value, usage)
-	return (*os.File)(value.File)
+	return value.File
 }
 
 func (command *Command) Infile(desc string) *os.File {
@@ -181,7 +181,8 @@ func (command *Command) Infile(desc string) *os.File {
 		command.InfileValue = NewFileValue(os.O_RDONLY, 0)
 		return (*os.File)(command.InfileValue.File)
 	}
-	return os.Stdin
+	command.InfileValue = NewFileValueWithFile(os.Stdin)
+	return command.InfileValue.File
 }
 
 func (command *Command) Outfile(desc string) *os.File {
@@ -193,7 +194,8 @@ func (command *Command) Outfile(desc string) *os.File {
 		command.OutfileValue = NewFileValue(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 		return (*os.File)(command.OutfileValue.File)
 	}
-	return os.Stdout
+	command.OutfileValue = NewFileValueWithFile(os.Stdout)
+	return command.OutfileValue.File
 }
 
 func (command *Command) Mandatory(name, desc string) *string {
@@ -401,8 +403,7 @@ func (command *Command) handleLastArg(arg string) error {
 	}
 
 	if command.outfileMissing() {
-		command.setStdout()
-		return nil
+		return command.OutfileValue.Set(arg)
 	}
 
 	return errors.New("too many arguments")
