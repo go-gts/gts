@@ -37,6 +37,10 @@ func main() {
 		pos := 0
 		skew := 0.
 
+		names := []string{"GC Skew", "AT Skew", "Purine Skew", "Keto Skew"}
+
+		fmt.Fprintf(outfile, "Position\t%s\n", names[*metric])
+
 		for _, fragment := range fragments {
 			if !*cumulative {
 				skew = 0.
