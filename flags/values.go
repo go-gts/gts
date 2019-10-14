@@ -59,6 +59,27 @@ func (p IntValue) Format() string {
 	return strconv.Itoa(int(p))
 }
 
+type FloatValue float64
+
+func NewFloatValue(init float64) *FloatValue {
+	p := new(float64)
+	*p = init
+	return (*FloatValue)(p)
+}
+
+func (p *FloatValue) Set(s string) error {
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return fmt.Errorf("value `%s` cannot be interpreted as float", s)
+	}
+	*p = FloatValue(v)
+	return nil
+}
+
+func (p FloatValue) Format() string {
+	return strconv.FormatFloat(float64(p), 'g', -1, 64)
+}
+
 type StringValue string
 
 func NewStringValue(init string) *StringValue {
@@ -74,6 +95,31 @@ func (p *StringValue) Set(s string) error {
 
 func (p StringValue) Format() string {
 	return string(p)
+}
+
+type ChoiceValue struct {
+	Choices []string
+	Chosen  *int
+}
+
+func NewChoiceValue(choices []string, init int) *ChoiceValue {
+	p := new(int)
+	*p = init
+	return &ChoiceValue{choices, p}
+}
+
+func (p *ChoiceValue) Set(s string) error {
+	for i, c := range p.Choices {
+		if c == s {
+			*p.Chosen = i
+			return nil
+		}
+	}
+	return fmt.Errorf("value `%s` is not a valid choice: available values are `%s`", s, strings.Join(p.Choices, ", "))
+}
+
+func (p ChoiceValue) Format() string {
+	return p.Choices[*p.Chosen]
 }
 
 type StringsValue []string
@@ -92,7 +138,7 @@ func (p *StringsValue) Set(s string) error {
 }
 
 func (p StringsValue) Format() string {
-	return strings.Join([]string(p), ", ")
+	return fmt.Sprintf("{%s}", strings.Join([]string(p), ", "))
 }
 
 func (p StringsValue) Len() int {

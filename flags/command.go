@@ -134,10 +134,22 @@ func (command *Command) Switch(short byte, long string, usage string) *bool {
 	return (*bool)(value)
 }
 
+func (command *Command) Int(short byte, long string, init int, usage string) *int {
+	value := NewIntValue(init)
+	command.Register(short, long, value, usage)
+	return (*int)(value)
+}
+
 func (command *Command) String(short byte, long string, init string, usage string) *string {
 	value := NewStringValue(init)
 	command.Register(short, long, value, usage)
 	return (*string)(value)
+}
+
+func (command *Command) Choice(short byte, long string, usage string, choices ...string) *int {
+	value := NewChoiceValue(choices, 0)
+	command.Register(short, long, value, usage)
+	return (*int)(value.Chosen)
 }
 
 func (command *Command) Strings(short byte, long string, usage string) *[]string {
@@ -639,7 +651,7 @@ func (command Command) switchSyntax(short byte, long string) string {
 func (command Command) sliceSyntax(short byte, long string) string {
 	if short == 0 {
 		return strings.Join([]string{
-			fmt.Sprintf("  --%s <%s> [<%s> ...]", long, long, long, long),
+			fmt.Sprintf("  --%s <%s> [<%s> ...]", long, long, long),
 			fmt.Sprintf("  --%s <%s> [--%s <%s> ...]", long, long, long, long),
 			fmt.Sprintf("  --%s=<%s> [--%s=<%s> ...]", long, long, long, long),
 		}, ",\n")
@@ -732,11 +744,14 @@ func (command Command) Help() string {
 	for _, name := range command.listNames() {
 		syntax := command.syntax(name)
 		usage := command.Usages[name]
+		value := command.Values[name].Format()
 		padding := "\n                        "
 		if len(syntax) < 23 {
 			padding = strings.Repeat(" ", 24-len(syntax))
 		}
-		parts = append(parts, wrap(syntax+padding+usage, 24))
+		part := wrap(syntax+padding+usage, 24)
+		full := appendWrap(part, fmt.Sprintf("(value: %s)", value), 24)
+		parts = append(parts, full)
 	}
 
 	help := strings.Join(parts, "\n")
