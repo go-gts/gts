@@ -13,10 +13,10 @@ var genbankFieldDepth = 12
 var genbankFeatureIndent = 5
 var genbankFeatureDepth = 21
 
-func formatLocusGenBank(gb Record) string {
-	fields := gb.Fields()
+func formatLocusGenBank(record Record) string {
+	fields := record.Fields()
 	name := fields.LocusName
-	length := strconv.Itoa(gb.Length())
+	length := strconv.Itoa(record.Length())
 	pad1 := strings.Repeat(" ", 28-(len(name)+len(length)))
 	molecule := fields.Molecule
 	pad2 := strings.Repeat(" ", 8-len(molecule))
@@ -92,7 +92,7 @@ func formatFeatureGenBank(feature Feature) string {
 			}
 		}
 		if key == "translation" {
-			property = wrap(property, genbankFeatureDepth)
+			property = wrap(property, genbankFeatureDepth, 80)
 		} else {
 			property = wrapSpace(property, genbankFeatureDepth)
 		}
@@ -101,10 +101,10 @@ func formatFeatureGenBank(feature Feature) string {
 	return strings.Join(lines, "\n")
 }
 
-func FormatGenBank(gb Record) string {
-	m := gb.Fields()
+func FormatGenBank(record Record) string {
+	m := record.Fields()
 	lines := make([]string, 0)
-	lines = append(lines, formatLocusGenBank(gb))
+	lines = append(lines, formatLocusGenBank(record))
 	lines = append(lines, wrapSpace("DEFINITION  "+m.Definition, genbankFieldDepth))
 	lines = append(lines, "ACCESSION   "+m.Accessions[0])
 	lines = append(lines, "VERSION     "+m.Version)
@@ -127,18 +127,18 @@ func FormatGenBank(gb Record) string {
 		lines = append(lines, wrapSpace("COMMENT     "+m.Comment, genbankFieldDepth))
 	}
 	lines = append(lines, "FEATURES             Location/Qualifiers")
-	for _, feature := range gb.Features() {
+	for _, feature := range record.Features() {
 		lines = append(lines, formatFeatureGenBank(feature))
 	}
 	lines = append(lines, "ORIGIN      ")
-	for i := 0; i < gb.Length(); i += 60 {
+	for i := 0; i < record.Length(); i += 60 {
 		seq := make([]string, 0, 6)
-		for j := 0; j < 60 && i+j < gb.Length(); j += 10 {
+		for j := 0; j < 60 && i+j < record.Length(); j += 10 {
 			k := i + j + 10
-			if i+j+10 > gb.Length() {
-				k = gb.Length()
+			if i+j+10 > record.Length() {
+				k = record.Length()
 			}
-			seq = append(seq, gb.Slice(i+j, k).String())
+			seq = append(seq, record.Slice(i+j, k).String())
 		}
 		lines = append(lines, fmt.Sprintf("%9d %s", i+1, strings.Join(seq, " ")))
 	}

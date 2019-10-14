@@ -5,11 +5,11 @@ import (
 	"strings"
 )
 
-func wrap(s string, indent int) string {
+func wrap(s string, indent, width int) string {
 	if len(s) < 80 {
 		return s
 	}
-	return s[:79] + "\n" + wrap(strings.Repeat(" ", indent)+s[79:], indent)
+	return s[:79] + "\n" + wrap(strings.Repeat(" ", indent)+s[79:], indent, width)
 }
 
 func wrapSpace(s string, indent int) string {

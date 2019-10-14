@@ -1,6 +1,13 @@
 package gt1
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+	"io"
+	"strings"
+
+	"github.com/ktnyt/pars"
+)
 
 type Sequence interface {
 	// Bytes returns the raw representation of the sequence.
@@ -69,6 +76,20 @@ func (s seqType) Subseq(loc Location) Sequence {
 	return loc.Locate(s)
 }
 
+var SequenceParser = pars.Any(
+	RecordParser,
+	FastaParser,
+)
+
+func ReadSeq(r io.Reader) (Sequence, error) {
+	state := pars.NewState(r)
+	result, err := pars.Apply(SequenceParser, state)
+	if err != nil {
+		return nil, errors.New("gt1 cannot interpret the input as a sequence format")
+	}
+	return result.(Sequence), nil
+}
+
 func Append(seq Sequence, arg Sequence) Sequence {
 	s0 := seq.Bytes()
 	s1 := arg.Bytes()
@@ -92,4 +113,43 @@ func Concat(seqs ...Sequence) Sequence {
 	}
 
 	return Seq(r)
+}
+
+func Fragment(seq Sequence, window, slide int) []Sequence {
+	ret := make([]Sequence, 0)
+	for i := 0; i < seq.Length(); i += slide {
+		j := i + window
+		if j > seq.Length() {
+			j = seq.Length()
+		}
+		fragment := seq.Slice(i, j)
+		ret = append(ret, fragment)
+	}
+	return ret
+}
+
+func Composition(seq Sequence) map[byte]int {
+	comp := make(map[byte]int)
+	for _, b := range seq.Bytes() {
+		if _, ok := comp[b]; !ok {
+			comp[b] = 0
+		}
+		comp[b]++
+	}
+	return comp
+}
+
+func Skew(seq Sequence, nSet, pSet string) float64 {
+	comp := Composition(seq)
+	nCnt, pCnt := 0., 0.
+	for b, n := range comp {
+		v := float64(n)
+		if strings.ContainsRune(nSet, rune(b)) {
+			nCnt += v
+		}
+		if strings.ContainsRune(pSet, rune(b)) {
+			pCnt += v
+		}
+	}
+	return (pCnt - nCnt) / (pCnt + nCnt)
 }
