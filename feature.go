@@ -2,6 +2,7 @@ package gt1
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
@@ -415,21 +416,27 @@ func recordToFeatureTable(result *pars.Result) error {
 }
 
 type featureIO struct {
-	Key        string
-	Location   string
+	Key        *string
+	Location   *string
 	Qualifiers [][]string
 }
 
-func featureTableFromFeatureIOSlice(fios []featureIO) *FeatureTable {
+func featureTableFromFeatureIOSlice(fios []featureIO) (*FeatureTable, error) {
 	features := NewFeatureTable()
 	for _, fio := range fios {
+		if fio.Key == nil {
+			return nil, errors.New("missing feature key")
+		}
+		if fio.Location == nil {
+			return nil, errors.New("missing feature location")
+		}
 		qfs := gods.NewOrdered()
 		for _, item := range fio.Qualifiers {
 			qfs.Add(item[0], item[1])
 		}
-		features.Append(NewFeature(fio.Key, AsLocation(fio.Location), qfs))
+		features.Append(NewFeature(*(fio.Key), AsLocation(*(fio.Location)), qfs))
 	}
-	return features
+	return features, nil
 }
 
 func featureYamlParser(state *pars.State, result *pars.Result) error {
@@ -442,7 +449,11 @@ func featureYamlParser(state *pars.State, result *pars.Result) error {
 	}
 	state.Unmark()
 
-	result.Value = featureTableFromFeatureIOSlice(*pSlice)
+	features, err := featureTableFromFeatureIOSlice(*pSlice)
+	if err != nil {
+		return err
+	}
+	result.Value = features
 	result.Children = nil
 	return nil
 }
@@ -457,7 +468,11 @@ func featureJsonParser(state *pars.State, result *pars.Result) error {
 	}
 
 	state.Unmark()
-	result.Value = featureTableFromFeatureIOSlice(*pSlice)
+	features, err := featureTableFromFeatureIOSlice(*pSlice)
+	if err != nil {
+		return err
+	}
+	result.Value = features
 	result.Children = nil
 	return nil
 }
@@ -471,6 +486,12 @@ func ReadFeatures(r io.Reader) (*FeatureTable, error) {
 	state := pars.NewState(r)
 	result, err := pars.Apply(FeatureParser, state)
 	if err != nil {
+		switch e := err.(type) {
+		case *pars.TraceError:
+			return nil, e.Unwrap()
+		default:
+			return nil, e
+		}
 		return nil, err
 	}
 	return result.(*FeatureTable), nil
