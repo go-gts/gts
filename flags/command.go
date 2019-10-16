@@ -24,6 +24,11 @@ func isName(s string) bool {
 
 type CommandFunc func(*Command, []string) error
 
+type Subcommand struct {
+	Func CommandFunc
+	Desc string
+}
+
 type commandInfo struct {
 	Name string
 	Desc string
