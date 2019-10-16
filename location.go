@@ -394,8 +394,10 @@ var complementLocationParser = pars.Seq(
 	return nil
 })
 
+var locationDelimiter = pars.Seq(',', pars.Many(pars.Space))
+
 var joinLocationParser = pars.Seq(
-	"join(", pars.Delim(&locationParser, ','), ')',
+	"join(", pars.Delim(&locationParser, locationDelimiter), ')',
 ).Map(func(result *pars.Result) error {
 	children := result.Children[1].Children
 	locations := make([]Location, len(children))
@@ -408,10 +410,11 @@ var joinLocationParser = pars.Seq(
 })
 
 var orderLocationParser = pars.Seq(
-	"order(", pars.Delim(&locationParser, ','), ')',
-).Map(pars.Child(1)).Map(func(result *pars.Result) error {
-	locations := make([]Location, len(result.Children))
-	for i, child := range result.Children {
+	"order(", pars.Delim(&locationParser, locationDelimiter), ')',
+).Map(func(result *pars.Result) error {
+	children := result.Children[1].Children
+	locations := make([]Location, len(children))
+	for i, child := range children {
 		locations[i] = child.Value.(Location)
 	}
 	result.Value = NewOrderLocation(locations)
