@@ -17,7 +17,7 @@ func main() {
 	cumulative := command.Switch('c', "cumulative", "calculate cumulative skew")
 	metric := command.Choice('m', "metric", "bases to calculate skewness for", "gc", "at", "purine", "keto")
 	window := command.Int('w', "window", 10000, "window size")
-	slide := command.Int('s', "slide", *window, "slide size")
+	step := command.Int('s', "step", *window, "step size")
 
 	sets := [][]string{
 		[]string{"g", "c"},
@@ -36,7 +36,7 @@ func main() {
 
 		set := sets[*metric]
 
-		fragments := gt1.Fragment(seq, *window, *slide)
+		fragments := gt1.Fragment(seq, *window, *step)
 		pos := 0
 		skew := 0.
 
@@ -50,7 +50,7 @@ func main() {
 			}
 			skew += gt1.Skew(fragment, set[0], set[1])
 			fmt.Fprintf(outfile, "%d\t%f\n", pos, skew)
-			pos += *slide
+			pos += *step
 		}
 
 		return nil
