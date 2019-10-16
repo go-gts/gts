@@ -36,7 +36,7 @@ func loadXYData(r io.Reader, hasHeader bool, delim string, xIndex, yIndex int) (
 		header = []string{fields[xIndex], fields[yIndex]}
 	}
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := strings.TrimSpace(scanner.Text())
 		fields := strings.Split(line, delim)
 		x := mustFloat64(fields[xIndex])
 		y := mustFloat64(fields[yIndex])
