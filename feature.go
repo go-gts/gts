@@ -4,26 +4,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 
+	"github.com/ktnyt/gods"
 	"github.com/ktnyt/pars"
 	yaml "gopkg.in/yaml.v2"
 )
 
-type Feature interface {
-	Key() string
-	Location() Location
-	Qualifiers() *PairList
-	Sequence
-	Insert(pos int, seq Sequence)
-	Delete(pos, cnt int)
-	Replace(pos int, seq Sequence)
-}
-
-type featureType struct {
+type Feature struct {
 	key string
 	loc Location
-	qfs *PairList
+	qfs *gods.Ordered
 
 	insch chan insArg
 	delch chan delArg
@@ -32,15 +24,15 @@ type featureType struct {
 	seqch chan Sequence
 }
 
-func NewFeature(key string, loc Location, qfs *PairList) Feature {
-	return &featureType{key: key, loc: loc, qfs: qfs}
+func NewFeature(key string, loc Location, qfs *gods.Ordered) *Feature {
+	return &Feature{key: key, loc: loc, qfs: qfs}
 }
 
-func (feature featureType) Key() string           { return feature.key }
-func (feature featureType) Location() Location    { return feature.loc }
-func (feature featureType) Qualifiers() *PairList { return feature.qfs }
+func (feature Feature) Key() string               { return feature.key }
+func (feature Feature) Location() Location        { return feature.loc }
+func (feature Feature) Qualifiers() *gods.Ordered { return feature.qfs }
 
-func (feature featureType) Seq() Sequence {
+func (feature Feature) Seq() Sequence {
 	if feature.locch == nil || feature.seqch == nil {
 		panic("feature is not associated to a record: sequence is unavailable")
 	}
@@ -48,20 +40,20 @@ func (feature featureType) Seq() Sequence {
 	return <-feature.seqch
 }
 
-func (feature featureType) Bytes() []byte  { return feature.Seq().Bytes() }
-func (feature featureType) String() string { return feature.Seq().String() }
-func (feature featureType) Length() int    { return feature.Seq().Length() }
+func (feature Feature) Bytes() []byte  { return feature.Seq().Bytes() }
+func (feature Feature) String() string { return feature.Seq().String() }
+func (feature Feature) Len() int       { return feature.Seq().Len() }
 
-func (feature featureType) Slice(start, end int) Sequence {
+func (feature Feature) Slice(start, end int) Sequence {
 	return feature.Seq().Slice(start, end)
 }
 
-func (feature featureType) Subseq(loc Location) Sequence {
+func (feature Feature) Subseq(loc Location) Sequence {
 	return feature.Seq().Subseq(loc)
 }
 
-func (feature featureType) Insert(pos int, seq Sequence) {
-	if seq.Length() == 0 {
+func (feature Feature) Insert(pos int, seq Sequence) {
+	if seq.Len() == 0 {
 		return
 	}
 
@@ -71,7 +63,7 @@ func (feature featureType) Insert(pos int, seq Sequence) {
 	feature.insch <- insArg{feature.loc.Map(pos), seq}
 }
 
-func (feature featureType) Delete(pos, cnt int) {
+func (feature Feature) Delete(pos, cnt int) {
 	if cnt == 0 {
 		return
 	}
@@ -98,8 +90,8 @@ func (feature featureType) Delete(pos, cnt int) {
 	feature.delch <- delArg{pos, cnt}
 }
 
-func (feature featureType) Replace(pos int, seq Sequence) {
-	if seq.Length() == 0 {
+func (feature Feature) Replace(pos int, seq Sequence) {
+	if seq.Len() == 0 {
 		return
 	}
 
@@ -108,12 +100,12 @@ func (feature featureType) Replace(pos int, seq Sequence) {
 	}
 
 	// Create a list of mapped indices.
-	maps := make([]int, seq.Length())
-	for i := 0; i < seq.Length(); i++ {
+	maps := make([]int, seq.Len())
+	for i := 0; i < seq.Len(); i++ {
 		maps[i] = feature.loc.Map(pos + i)
 	}
 
-	for i := 1; i < seq.Length(); i++ {
+	for i := 1; i < seq.Len(); i++ {
 		// If there is a non-contiguous region, replace it separately.
 		if maps[i-1]+1 != maps[i] {
 			feature.repch <- repArg{maps[0], seq.Slice(0, i)}
@@ -125,10 +117,57 @@ func (feature featureType) Replace(pos int, seq Sequence) {
 	feature.repch <- repArg{pos, seq}
 }
 
-type FeatureFilter func(Feature) bool
+func CompareFeatures(a, b *Feature) bool {
+	if a.Key() == "source" && b.Key() != "source" {
+		return true
+	}
+	if b.Key() == "source" && a.Key() != "source" {
+		return false
+	}
+	return LocationSmaller(a.Location(), b.Location())
+}
+
+type FeatureTable []*Feature
+
+func NewFeatureTable() *FeatureTable {
+	ft := new([]*Feature)
+	*ft = make([]*Feature, 0)
+	return (*FeatureTable)(ft)
+}
+
+func (ft FeatureTable) Len() int {
+	return len(ft)
+}
+
+func (ft FeatureTable) Get(i int) *Feature {
+	return ft[i]
+}
+
+func (ft *FeatureTable) Add(feature *Feature) {
+	features := *ft
+	comp := func(i int) bool { return CompareFeatures(feature, features[i]) }
+	i := sort.Search(len(*ft), comp)
+	ret := make([]*Feature, len(features)+1)
+	copy(ret[:i], features[:i])
+	copy(ret[i+1:], features[i:])
+	ret[i] = feature
+	*ft = FeatureTable(ret)
+}
+
+func (ft *FeatureTable) Append(feature *Feature) {
+	features := *ft
+	features = append(features, feature)
+	*ft = FeatureTable(features)
+}
+
+func (ft *FeatureTable) Iter() []*Feature {
+	return []*Feature(*ft)
+}
+
+type FeatureFilter func(*Feature) bool
 
 func FeatureFilterOr(filters ...FeatureFilter) FeatureFilter {
-	return func(feature Feature) bool {
+	return func(feature *Feature) bool {
 		for _, filter := range filters {
 			if filter(feature) {
 				return true
@@ -139,7 +178,7 @@ func FeatureFilterOr(filters ...FeatureFilter) FeatureFilter {
 }
 
 func FeatureFilterAnd(filters ...FeatureFilter) FeatureFilter {
-	return func(feature Feature) bool {
+	return func(feature *Feature) bool {
 		for _, filter := range filters {
 			if !filter(feature) {
 				return false
@@ -150,17 +189,17 @@ func FeatureFilterAnd(filters ...FeatureFilter) FeatureFilter {
 }
 
 func FeatureFilterInvert(filter FeatureFilter) FeatureFilter {
-	return func(feature Feature) bool {
+	return func(feature *Feature) bool {
 		return !filter(feature)
 	}
 }
 
-func baseFilter(feature Feature) bool {
+func baseFilter(feature *Feature) bool {
 	return feature.Key() == "source"
 }
 
 func FeatureKeyFilter(keys []string) FeatureFilter {
-	return func(feature Feature) bool {
+	return func(feature *Feature) bool {
 		if len(keys) == 0 {
 			return true
 		}
@@ -173,32 +212,32 @@ func FeatureKeyFilter(keys []string) FeatureFilter {
 	}
 }
 
-func ClearFeatures(features []Feature) []Feature {
-	return FilterFeatures(features, func(feature Feature) bool { return false })
+func ClearFeatures(features *FeatureTable) *FeatureTable {
+	return FilterFeatures(features, func(feature *Feature) bool { return false })
 }
 
-func FilterFeatures(features []Feature, filter FeatureFilter) []Feature {
+func FilterFeatures(features *FeatureTable, filter FeatureFilter) *FeatureTable {
 	f := FeatureFilterOr(baseFilter, filter)
 
-	matches := make([]bool, len(features))
+	matches := make([]bool, features.Len())
 	count := 0
-	for i := range features {
-		if f(features[i]) {
+	for i, feature := range features.Iter() {
+		if f(feature) {
 			matches[i] = true
 			count++
 		}
 	}
 
-	ret := make([]Feature, count)
+	ret := make([]*Feature, count)
 	j := 0
-	for i := range features {
+	for i := range features.Iter() {
 		if matches[i] {
-			ret[j] = features[i]
+			ret[j] = features.Get(i)
 			j++
 		}
 	}
 
-	return ret
+	return (*FeatureTable)(&ret)
 }
 
 type featureName struct {
@@ -231,7 +270,7 @@ func featureBodyParser(key string, indent, depth int) pars.Parser {
 		loc := result.Value.(Location)
 		pars.Try('\n')(state, result)
 
-		pairs := make([]Pair, 0)
+		qfs := gods.NewOrdered()
 
 		for {
 			// Count the leading spaces.
@@ -255,7 +294,7 @@ func featureBodyParser(key string, indent, depth int) pars.Parser {
 			// End of feature so return.
 			if count <= indent {
 				state.Jump()
-				result.Value = NewFeature(key, loc, NewPairListFromPairs(pairs))
+				result.Value = NewFeature(key, loc, qfs)
 				result.Children = nil
 				return nil
 			}
@@ -286,7 +325,7 @@ func featureBodyParser(key string, indent, depth int) pars.Parser {
 
 			if state.Buffer[state.Index] == '\n' {
 				pars.Try('\n')(state, result)
-				pairs = append(pairs, Pair{Key: name, Value: ""})
+				qfs.Add(name, "")
 				state.Unmark()
 				continue
 			}
@@ -314,7 +353,7 @@ func featureBodyParser(key string, indent, depth int) pars.Parser {
 			// Remove the newline.
 			pars.Try('\n')(state, result)
 
-			pairs = append(pairs, Pair{Key: name, Value: value})
+			qfs.Add(name, value)
 
 			state.Unmark()
 		}
@@ -333,7 +372,7 @@ func FeatureTableParser(state *pars.State, result *pars.Result) error {
 
 	name := result.Value.(featureName)
 
-	features := make([]Feature, 1)
+	features := NewFeatureTable()
 
 	key := name.Value
 	indent := name.Indent
@@ -344,7 +383,7 @@ func FeatureTableParser(state *pars.State, result *pars.Result) error {
 		return pars.NewTraceError("Feature", err)
 	}
 
-	features[0] = result.Value.(Feature)
+	features.Append(result.Value.(*Feature))
 
 	// Continually process feature properties while indented.
 	for state.Buffer[state.Index] == ' ' {
@@ -356,7 +395,7 @@ func FeatureTableParser(state *pars.State, result *pars.Result) error {
 		if err := featureBodyParser(key, indent, depth)(state, result); err != nil {
 			return pars.NewTraceError("Feature", err)
 		}
-		features = append(features, result.Value.(Feature))
+		features.Append(result.Value.(*Feature))
 	}
 
 	result.Value = features
@@ -381,14 +420,14 @@ type featureIO struct {
 	Qualifiers [][]string
 }
 
-func featuresFromFeatureIOSlice(fios []featureIO) []Feature {
-	features := make([]Feature, len(fios))
-	for i, fio := range fios {
-		pairs := make([]Pair, len(fio.Qualifiers))
-		for j, item := range fio.Qualifiers {
-			pairs[j] = Pair{item[0], item[1]}
+func featureTableFromFeatureIOSlice(fios []featureIO) *FeatureTable {
+	features := NewFeatureTable()
+	for _, fio := range fios {
+		qfs := gods.NewOrdered()
+		for _, item := range fio.Qualifiers {
+			qfs.Add(item[0], item[1])
 		}
-		features[i] = NewFeature(fio.Key, AsLocation(fio.Location), NewPairListFromPairs(pairs))
+		features.Append(NewFeature(fio.Key, AsLocation(fio.Location), qfs))
 	}
 	return features
 }
@@ -403,7 +442,7 @@ func featureYamlParser(state *pars.State, result *pars.Result) error {
 	}
 	state.Unmark()
 
-	result.Value = featuresFromFeatureIOSlice(*pSlice)
+	result.Value = featureTableFromFeatureIOSlice(*pSlice)
 	result.Children = nil
 	return nil
 }
@@ -418,7 +457,7 @@ func featureJsonParser(state *pars.State, result *pars.Result) error {
 	}
 
 	state.Unmark()
-	result.Value = featuresFromFeatureIOSlice(*pSlice)
+	result.Value = featureTableFromFeatureIOSlice(*pSlice)
 	result.Children = nil
 	return nil
 }
@@ -426,14 +465,13 @@ func featureJsonParser(state *pars.State, result *pars.Result) error {
 var FeatureParser = pars.Any(
 	featureYamlParser,
 	featureJsonParser,
-	RecordParser.Map(recordToFeatureTable),
 )
 
-func ReadFeatures(r io.Reader) ([]Feature, error) {
+func ReadFeatures(r io.Reader) (*FeatureTable, error) {
 	state := pars.NewState(r)
 	result, err := pars.Apply(FeatureParser, state)
 	if err != nil {
 		return nil, err
 	}
-	return result.([]Feature), nil
+	return result.(*FeatureTable), nil
 }

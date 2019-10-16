@@ -12,8 +12,8 @@ type Location interface {
 	// Locate the bytes at the pointed location.
 	Locate(seq Sequence) Sequence
 
-	// Length returns the length of the pointed location.
-	Length() int
+	// Len returns the length of the pointed location.
+	Len() int
 
 	// Format the location.
 	Format() string
@@ -63,7 +63,7 @@ func (location PointLocation) Locate(seq Sequence) Sequence {
 	return seq.Slice(location.Position, location.Position+1)
 }
 
-func (location PointLocation) Length() int {
+func (location PointLocation) Len() int {
 	return 1
 }
 
@@ -78,7 +78,7 @@ func (location *PointLocation) Shift(pos, n int) {
 }
 
 func (location PointLocation) Map(index int) int {
-	index = fixIndex(index, location.Length())
+	index = fixIndex(index, location.Len())
 	return location.Position + index
 }
 
@@ -106,7 +106,7 @@ func (location RangeLocation) Locate(seq Sequence) Sequence {
 	return seq.Slice(location.Start, location.End)
 }
 
-func (location RangeLocation) Length() int {
+func (location RangeLocation) Len() int {
 	return location.End - location.Start
 }
 
@@ -131,7 +131,7 @@ func (location *RangeLocation) Shift(pos, n int) {
 }
 
 func (location RangeLocation) Map(index int) int {
-	index = fixIndex(index, location.Length())
+	index = fixIndex(index, location.Len())
 	return location.Start + index
 }
 
@@ -148,7 +148,7 @@ func (location AmbiguousLocation) Locate(seq Sequence) Sequence {
 	return seq.Slice(location.Start, location.End)
 }
 
-func (location AmbiguousLocation) Length() int {
+func (location AmbiguousLocation) Len() int {
 	return location.End - location.Start
 }
 
@@ -166,7 +166,7 @@ func (location *AmbiguousLocation) Shift(pos, n int) {
 }
 
 func (location AmbiguousLocation) Map(index int) int {
-	index = fixIndex(index, location.Length())
+	index = fixIndex(index, location.Len())
 	return location.Start + index
 }
 
@@ -183,7 +183,7 @@ func (location BetweenLocation) Locate(seq Sequence) Sequence {
 	return seq.Slice(location.Start, location.End)
 }
 
-func (location BetweenLocation) Length() int {
+func (location BetweenLocation) Len() int {
 	return location.End - location.Start
 }
 
@@ -201,7 +201,7 @@ func (location *BetweenLocation) Shift(pos, n int) {
 }
 
 func (location BetweenLocation) Map(index int) int {
-	index = fixIndex(index, location.Length())
+	index = fixIndex(index, location.Len())
 	return location.Start + index
 }
 
@@ -217,8 +217,8 @@ func (location ComplementLocation) Locate(seq Sequence) Sequence {
 	return Complement(seq.Subseq(location.Location))
 }
 
-func (location ComplementLocation) Length() int {
-	return location.Location.Length()
+func (location ComplementLocation) Len() int {
+	return location.Location.Len()
 }
 
 func (location ComplementLocation) Format() string {
@@ -242,19 +242,19 @@ func NewJoinLocation(locations []Location) Location {
 }
 
 func (location JoinLocation) Locate(seq Sequence) Sequence {
-	r := make([]byte, location.Length())
+	r := make([]byte, location.Len())
 	i := 0
 	for _, l := range location.Locations {
 		copy(r[i:], l.Locate(seq).Bytes())
-		i += l.Length()
+		i += l.Len()
 	}
 	return Seq(r)
 }
 
-func (location JoinLocation) Length() int {
+func (location JoinLocation) Len() int {
 	length := 0
 	for _, l := range location.Locations {
-		length += l.Length()
+		length += l.Len()
 	}
 	return length
 }
@@ -274,12 +274,12 @@ func (location *JoinLocation) Shift(pos, n int) {
 }
 
 func (location JoinLocation) Map(index int) int {
-	index = fixIndex(index, location.Length())
+	index = fixIndex(index, location.Len())
 	for _, l := range location.Locations {
-		if index < l.Length() {
+		if index < l.Len() {
 			return l.Map(index)
 		}
-		index -= l.Length()
+		index -= l.Len()
 	}
 	panic("the program should never reach this state...")
 }
@@ -293,18 +293,18 @@ func NewOrderLocation(locations []Location) Location {
 }
 
 func (location OrderLocation) Locate(seq Sequence) Sequence {
-	r := make([]byte, location.Length())
+	r := make([]byte, location.Len())
 	i := 0
 	for _, l := range location.Locations {
 		copy(r[i:], l.Locate(seq).Bytes())
-		i += l.Length()
+		i += l.Len()
 	}
 	return Seq(r)
 }
-func (location OrderLocation) Length() int {
+func (location OrderLocation) Len() int {
 	length := 0
 	for _, l := range location.Locations {
-		length += l.Length()
+		length += l.Len()
 	}
 	return length
 }
@@ -324,12 +324,12 @@ func (location *OrderLocation) Shift(pos, n int) {
 }
 
 func (location OrderLocation) Map(index int) int {
-	index = fixIndex(index, location.Length())
+	index = fixIndex(index, location.Len())
 	for _, l := range location.Locations {
-		if index < l.Length() {
+		if index < l.Len() {
 			return l.Map(index)
 		}
-		index -= l.Length()
+		index -= l.Len()
 	}
 	panic("the program should never reach this state...")
 }

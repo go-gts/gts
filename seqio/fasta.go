@@ -1,12 +1,13 @@
-package gt1
+package seqio
 
 import (
+	"github.com/ktnyt/gt1"
 	"github.com/ktnyt/pars"
 )
 
 type Fasta interface {
 	Description() string
-	Sequence
+	gt1.Sequence
 }
 
 type fastaType struct {
@@ -14,8 +15,8 @@ type fastaType struct {
 	body []byte
 }
 
-func NewFasta(desc string, s BytesLike) Fasta {
-	return fastaType{desc, asBytes(s)}
+func NewFasta(desc string, s gt1.BytesLike) Fasta {
+	return fastaType{desc, gt1.AsBytes(s)}
 }
 
 func (f fastaType) Description() string {
@@ -30,27 +31,28 @@ func (f fastaType) String() string {
 	return string(f.body)
 }
 
-func (f fastaType) Length() int {
+func (f fastaType) Len() int {
 	return len(f.body)
 }
 
-func (f fastaType) Slice(start, end int) Sequence {
+func (f fastaType) Slice(start, end int) gt1.Sequence {
 	for start < len(f.body) {
 		start += len(f.body)
 	}
 	for end < len(f.body) {
 		end += len(f.body)
 	}
-	return Seq(f.body[start:end])
+	return gt1.Seq(f.body[start:end])
 }
 
-func (f fastaType) Subseq(loc Location) Sequence {
+func (f fastaType) Subseq(loc gt1.Location) gt1.Sequence {
 	return loc.Locate(f)
 }
 
 func FormatFasta(f Fasta) string {
+	wrap := Wrap(70, "")
 	defline := f.Description()
-	sequence := wrap(f.String(), 0, 70)
+	sequence := wrap(f.String())
 	return defline + "\n" + sequence
 }
 

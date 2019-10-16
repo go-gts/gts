@@ -1,16 +1,29 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/ktnyt/gt1"
 	"github.com/ktnyt/gt1/flags"
+	"github.com/ktnyt/gt1/seqio"
 )
 
 func init() {
 	register("feature", "feature manipulation commands", featureFunc)
+}
+
+func ReadOneRecord(f *os.File) (*gt1.Record, error) {
+	scanner := seqio.NewScanner(f)
+	if !scanner.Scan() {
+		return nil, errors.New("input file cannot be interpreted as a sequence")
+	}
+	if record, ok := scanner.Seq().(*gt1.Record); ok {
+		return record, nil
+	}
+	return nil, errors.New("input file is not a record")
 }
 
 func featureSelectFunc(command *flags.Command, args []string) error {
@@ -21,7 +34,7 @@ func featureSelectFunc(command *flags.Command, args []string) error {
 	mainKey := command.Mandatory("key", "primary feature key to select")
 
 	return command.Run(args, func() error {
-		record, err := gt1.ReadRecord(infile)
+		record, err := ReadOneRecord(infile)
 		if err != nil {
 			return err
 		}
@@ -38,8 +51,8 @@ func featureSelectFunc(command *flags.Command, args []string) error {
 
 		features := gt1.FilterFeatures(record.Features(), filter)
 
-		out := gt1.NewRecord(record.Fields(), features, record)
-		fmt.Fprintf(outfile, gt1.FormatGenBank(out))
+		out := gt1.NewRecord(record.Metadata(), features, record)
+		fmt.Fprintf(outfile, seqio.FormatGenBank(out))
 
 		return nil
 	})
@@ -52,7 +65,7 @@ func featureMergeFunc(command *flags.Command, args []string) error {
 	mainFile := command.Mandatory("feature", "primary feature file to merge")
 
 	return command.Run(args, func() error {
-		record, err := gt1.ReadRecord(infile)
+		record, err := ReadOneRecord(infile)
 		if err != nil {
 			return err
 		}
@@ -68,11 +81,13 @@ func featureMergeFunc(command *flags.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			features = append(features, tmp...)
+			for _, feature := range tmp.Iter() {
+				features.Add(feature)
+			}
 		}
 
-		out := gt1.NewRecord(record.Fields(), features, record)
-		fmt.Fprintf(outfile, gt1.FormatGenBank(out))
+		out := gt1.NewRecord(record.Metadata(), features, record)
+		fmt.Fprintf(outfile, seqio.FormatGenBank(out))
 
 		return nil
 	})
@@ -82,15 +97,15 @@ func featureClearFunc(command *flags.Command, args []string) error {
 	infile := command.Infile("input record file")
 	outfile := command.Outfile("output record file")
 	return command.Run(args, func() error {
-		record, err := gt1.ReadRecord(infile)
+		record, err := ReadOneRecord(infile)
 		if err != nil {
 			return err
 		}
 
 		features := gt1.ClearFeatures(record.Features())
 
-		out := gt1.NewRecord(record.Fields(), features, record)
-		fmt.Fprintf(outfile, gt1.FormatGenBank(out))
+		out := gt1.NewRecord(record.Metadata(), features, record)
+		fmt.Fprintf(outfile, seqio.FormatGenBank(out))
 
 		return nil
 	})
@@ -104,7 +119,7 @@ func qualifierJoin(vs [][]string, delim, sep string) string {
 	return strings.Join(qs, delim)
 }
 
-func extractFeatureQualifiers(feature gt1.Feature, keys []string) [][]string {
+func extractFeatureQualifiers(feature *gt1.Feature, keys []string) [][]string {
 	values := make([][]string, len(keys))
 	for i, key := range keys {
 		value := feature.Qualifiers().All(key)
@@ -127,7 +142,7 @@ func featureExtractFunc(command *flags.Command, args []string) error {
 	mainKey := command.Mandatory("qualifier", "primary qualifier key to extract")
 
 	return command.Run(args, func() error {
-		record, err := gt1.ReadRecord(infile)
+		record, err := ReadOneRecord(infile)
 		if err != nil {
 			return err
 		}
@@ -147,7 +162,7 @@ func featureExtractFunc(command *flags.Command, args []string) error {
 
 		fmt.Fprintf(outfile, "%s\n", strings.Join(header, *delim))
 
-		for _, feature := range features {
+		for _, feature := range features.Iter() {
 			primary := feature.Qualifiers().All(*mainKey)
 
 			if len(primary) > 0 {

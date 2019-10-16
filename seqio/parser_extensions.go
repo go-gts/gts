@@ -1,4 +1,4 @@
-package gt1
+package seqio
 
 import "github.com/ktnyt/pars"
 

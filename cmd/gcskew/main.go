@@ -6,6 +6,7 @@ import (
 
 	"github.com/ktnyt/gt1"
 	"github.com/ktnyt/gt1/flags"
+	"github.com/ktnyt/gt1/seqio"
 )
 
 func main() {
@@ -26,10 +27,12 @@ func main() {
 	}
 
 	if err := command.Run(args, func() error {
-		seq, err := gt1.ReadSeq(infile)
-		if err != nil {
-			return err
+		scanner := seqio.NewScanner(infile)
+		if !scanner.Scan() {
+			return fmt.Errorf("input file could not be interpreted as a sequence")
 		}
+
+		seq := scanner.Seq()
 
 		set := sets[*metric]
 

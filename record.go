@@ -1,12 +1,9 @@
 package gt1
 
 import (
-	"errors"
-	"io"
-	"sort"
 	"time"
 
-	"github.com/ktnyt/pars"
+	"github.com/ktnyt/gods"
 )
 
 type Organism struct {
@@ -36,22 +33,12 @@ type Metadata struct {
 	Class      string
 	Division   string
 	Dates      []time.Time
-	DBLink     *PairList
+	DBLink     *gods.Ordered
 	Definition string
 	Keywords   []string
 	Source     Organism
 	References []Reference
 	Comment    string
-}
-
-type Record interface {
-	Fields() *Metadata
-	Features() []Feature
-	AddFeature(feature Feature)
-	Sequence
-	Insert(pos int, seq Sequence)
-	Delete(pos, cnt int)
-	Replace(pos int, seq Sequence)
 }
 
 type insArg struct {
@@ -69,38 +56,35 @@ type repArg struct {
 	Seq Sequence
 }
 
-type recordType struct {
-	fields   *Metadata
-	features []Feature
+type Record struct {
+	metadata *Metadata
+	features *FeatureTable
+	sequence []byte
 
-	origin []byte
-	insch  chan insArg
-	delch  chan delArg
-	repch  chan repArg
-	locch  chan Location
-	seqch  chan Sequence
+	insch chan insArg
+	delch chan delArg
+	repch chan repArg
+	locch chan Location
+	seqch chan Sequence
 }
 
-func NewRecord(fields *Metadata, features []Feature, origin Sequence) Record {
-	record := &recordType{
-		fields:   fields,
-		features: make([]Feature, 0),
+func NewRecord(metadata *Metadata, features *FeatureTable, sequence BytesLike) *Record {
+	record := &Record{
+		metadata: metadata,
+		features: features,
+		sequence: AsBytes(sequence),
 
-		origin: origin.Bytes(),
-		insch:  make(chan insArg),
-		delch:  make(chan delArg),
-		repch:  make(chan repArg),
-		locch:  make(chan Location),
-		seqch:  make(chan Sequence),
-	}
-	for _, feature := range features {
-		record.AddFeature(feature)
+		insch: make(chan insArg),
+		delch: make(chan delArg),
+		repch: make(chan repArg),
+		locch: make(chan Location),
+		seqch: make(chan Sequence),
 	}
 	record.Start()
 	return record
 }
 
-func (record *recordType) Start() {
+func (record *Record) Start() {
 	go func() {
 		for {
 			select {
@@ -117,102 +101,75 @@ func (record *recordType) Start() {
 	}()
 }
 
-func (record recordType) Fields() *Metadata {
-	return record.fields
+func (record Record) Metadata() *Metadata {
+	return record.metadata
 }
 
-func (record recordType) Features() []Feature {
+func (record Record) Features() *FeatureTable {
 	return record.features
 }
 
-func (record *recordType) AddFeature(feature Feature) {
-	if f, ok := feature.(*featureType); ok {
-		f.insch = record.insch
-		f.delch = record.delch
-		f.repch = record.repch
-		f.locch = record.locch
-		f.seqch = record.seqch
-	}
-	i := sort.Search(len(record.features), func(i int) bool {
-		compare := record.features[i]
-		if compare.Key() == "source" && feature.Key() != "source" {
-			return false
-		}
-		if feature.Key() == "source" && compare.Key() != "source" {
-			return true
-		}
-		return LocationSmaller(feature.Location(), compare.Location())
-	})
-	features := make([]Feature, len(record.features)+1)
-	copy(features[:i], record.features[:i])
-	copy(features[i+1:], record.features[i:])
-	features[i] = feature
-	record.features = features
+func (record *Record) AddFeature(feature *Feature) {
+	feature.insch = record.insch
+	feature.delch = record.delch
+	feature.repch = record.repch
+	feature.locch = record.locch
+	feature.seqch = record.seqch
+	record.features.Add(feature)
 }
 
-func (record recordType) Bytes() []byte {
-	return record.origin
+func (record Record) Bytes() []byte {
+	return record.sequence
 }
 
-func (record recordType) String() string {
-	return string(record.origin)
+func (record Record) String() string {
+	return string(record.sequence)
 }
 
-func (record recordType) Length() int {
-	return len(record.origin)
+func (record Record) Len() int {
+	return len(record.sequence)
 }
 
-func (record recordType) Slice(start, end int) Sequence {
+func (record Record) Slice(start, end int) Sequence {
 	for start < 0 {
-		start += len(record.origin)
+		start += len(record.sequence)
 	}
 	for end < 0 {
-		end += len(record.origin)
+		end += len(record.sequence)
 	}
-	return Seq(record.origin[start:end])
+	return Seq(record.sequence[start:end])
 }
 
-func (record recordType) Subseq(loc Location) Sequence {
+func (record Record) Subseq(loc Location) Sequence {
 	return loc.Locate(record)
 }
 
-func (record *recordType) Insert(pos int, seq Sequence) {
-	if seq.Length() == 0 {
+func (record *Record) Insert(pos int, seq Sequence) {
+	if seq.Len() == 0 {
 		return
 	}
 
-	record.origin = insertBytes(record.origin, pos, seq.Bytes())
-	for _, feature := range record.Features() {
-		feature.Location().Shift(pos, seq.Length())
+	record.sequence = insertBytes(record.sequence, pos, seq.Bytes())
+	for _, feature := range record.Features().Iter() {
+		feature.Location().Shift(pos, seq.Len())
 	}
 }
 
-func (record *recordType) Delete(pos, cnt int) {
+func (record *Record) Delete(pos, cnt int) {
 	if cnt == 0 {
 		return
 	}
 
-	record.origin = deleteBytes(record.origin, pos, cnt)
-	for _, feature := range record.Features() {
+	record.sequence = deleteBytes(record.sequence, pos, cnt)
+	for _, feature := range record.Features().Iter() {
 		feature.Location().Shift(pos+cnt, -cnt)
 	}
 }
 
-func (record *recordType) Replace(pos int, seq Sequence) {
-	if seq.Length() == 0 {
+func (record *Record) Replace(pos int, seq Sequence) {
+	if seq.Len() == 0 {
 		return
 	}
 
-	record.origin = replaceBytes(record.origin, pos, seq.Bytes())
-}
-
-var RecordParser = pars.Any(GenBankParser)
-
-func ReadRecord(r io.Reader) (Record, error) {
-	state := pars.NewState(r)
-	result, err := pars.Apply(RecordParser, state)
-	if err != nil {
-		return nil, errors.New("gt1 cannot interpret the input as a record format")
-	}
-	return result.(Record), nil
+	record.sequence = replaceBytes(record.sequence, pos, seq.Bytes())
 }

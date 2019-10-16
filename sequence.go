@@ -1,12 +1,8 @@
 package gt1
 
 import (
-	"errors"
 	"fmt"
-	"io"
 	"strings"
-
-	"github.com/ktnyt/pars"
 )
 
 type Sequence interface {
@@ -16,8 +12,8 @@ type Sequence interface {
 	// String returns the string representation of the sequence.
 	String() string
 
-	// Length returns the length of the sequence.
-	Length() int
+	// Len returns the length of the sequence.
+	Len() int
 
 	// Slice returns the slice of the sequence.
 	Slice(start, end int) Sequence
@@ -28,7 +24,7 @@ type Sequence interface {
 
 type BytesLike interface{}
 
-func asBytes(s BytesLike) []byte {
+func AsBytes(s BytesLike) []byte {
 	switch v := s.(type) {
 	case []byte:
 		return v
@@ -45,7 +41,7 @@ func asBytes(s BytesLike) []byte {
 
 // Seq creates a new sequence object.
 func Seq(s BytesLike) Sequence {
-	return seqType(asBytes(s))
+	return seqType(AsBytes(s))
 }
 
 type seqType []byte
@@ -58,7 +54,7 @@ func (s seqType) String() string {
 	return string(s)
 }
 
-func (s seqType) Length() int {
+func (s seqType) Len() int {
 	return len(s)
 }
 
@@ -76,20 +72,6 @@ func (s seqType) Subseq(loc Location) Sequence {
 	return loc.Locate(s)
 }
 
-var SequenceParser = pars.Any(
-	RecordParser,
-	FastaParser,
-)
-
-func ReadSeq(r io.Reader) (Sequence, error) {
-	state := pars.NewState(r)
-	result, err := pars.Apply(SequenceParser, state)
-	if err != nil {
-		return nil, errors.New("gt1 cannot interpret the input as a sequence format")
-	}
-	return result.(Sequence), nil
-}
-
 func Append(seq Sequence, arg Sequence) Sequence {
 	s0 := seq.Bytes()
 	s1 := arg.Bytes()
@@ -102,14 +84,14 @@ func Append(seq Sequence, arg Sequence) Sequence {
 func Concat(seqs ...Sequence) Sequence {
 	l := 0
 	for _, seq := range seqs {
-		l += seq.Length()
+		l += seq.Len()
 	}
 
 	r := make([]byte, l)
 	i := 0
 	for _, seq := range seqs {
 		copy(r[i:], seq.Bytes())
-		i += seq.Length()
+		i += seq.Len()
 	}
 
 	return Seq(r)
@@ -117,10 +99,10 @@ func Concat(seqs ...Sequence) Sequence {
 
 func Fragment(seq Sequence, window, slide int) []Sequence {
 	ret := make([]Sequence, 0)
-	for i := 0; i < seq.Length(); i += slide {
+	for i := 0; i < seq.Len(); i += slide {
 		j := i + window
-		if j > seq.Length() {
-			j = seq.Length()
+		if j > seq.Len() {
+			j = seq.Len()
 		}
 		fragment := seq.Slice(i, j)
 		ret = append(ret, fragment)
