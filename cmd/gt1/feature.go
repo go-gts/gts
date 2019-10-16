@@ -15,7 +15,7 @@ func init() {
 	register("feature", "feature manipulation commands", featureFunc)
 }
 
-func ReadOneRecord(f *os.File) (*gt1.Record, error) {
+func readOneRecord(f *os.File) (*gt1.Record, error) {
 	scanner := seqio.NewScanner(f)
 	if !scanner.Scan() {
 		return nil, errors.New("input file cannot be interpreted as a sequence")
@@ -34,7 +34,7 @@ func featureSelectFunc(command *flags.Command, args []string) error {
 	mainKey := command.Positional.String("key", "primary feature key to select")
 
 	return command.Run(args, func() error {
-		record, err := ReadOneRecord(infile)
+		record, err := readOneRecord(infile)
 		if err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ func featureMergeFunc(command *flags.Command, args []string) error {
 	mainFile := command.Positional.String("feature", "primary feature file to merge")
 
 	return command.Run(args, func() error {
-		record, err := ReadOneRecord(infile)
+		record, err := readOneRecord(infile)
 		if err != nil {
 			return err
 		}
@@ -97,7 +97,7 @@ func featureClearFunc(command *flags.Command, args []string) error {
 	infile := command.Infile("input record file")
 	outfile := command.Outfile("output record file")
 	return command.Run(args, func() error {
-		record, err := ReadOneRecord(infile)
+		record, err := readOneRecord(infile)
 		if err != nil {
 			return err
 		}
@@ -142,7 +142,7 @@ func featureExtractFunc(command *flags.Command, args []string) error {
 	mainKey := command.Positional.String("qualifier", "primary qualifier key to extract")
 
 	return command.Run(args, func() error {
-		record, err := ReadOneRecord(infile)
+		record, err := readOneRecord(infile)
 		if err != nil {
 			return err
 		}
