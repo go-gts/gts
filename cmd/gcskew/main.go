@@ -52,6 +52,6 @@ func main() {
 
 		return nil
 	}); err != nil {
-  	fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintln(os.Stderr, err)
 	}
 }
