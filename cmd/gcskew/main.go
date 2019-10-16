@@ -25,7 +25,7 @@ func main() {
 		[]string{"tg", "ac"},
 	}
 
-	command.Run(args, func() error {
+	if err := command.Run(args, func() error {
 		seq, err := gt1.ReadSeq(infile)
 		if err != nil {
 			return err
@@ -51,5 +51,7 @@ func main() {
 		}
 
 		return nil
-	})
+	}); err != nil {
+  	fmt.Fprintln(os.Stderr, err)
+	}
 }
