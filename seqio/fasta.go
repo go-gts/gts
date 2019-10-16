@@ -51,7 +51,7 @@ func (f fastaType) Subseq(loc gt1.Location) gt1.Sequence {
 
 func FormatFasta(f Fasta) string {
 	wrap := Wrap(70, "")
-	defline := f.Description()
+	defline := ">" + f.Description()
 	sequence := wrap(f.String())
 	return defline + "\n" + sequence
 }
