@@ -465,6 +465,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				}
 				originBytes = append(originBytes, []byte(result.Value.(string))...)
 				state.Clear()
+				state.Want(1)
 			}
 			origin = Seq(originBytes)
 			continue
