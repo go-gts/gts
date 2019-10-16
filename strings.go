@@ -19,12 +19,12 @@ func wrapSpace(s string, indent int) string {
 
 	// Search for the last space before the line limit.
 	i := 79
-	for i >= 0 && s[i] != ' ' {
+	for i > indent && s[i] != ' ' {
 		i--
 	}
 
 	// If the line is not breakable, find the closest space.
-	if i == 0 {
+	if i == indent {
 		i = 79
 		for i < len(s) && s[i] != ' ' {
 			i++
