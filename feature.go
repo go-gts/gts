@@ -2,12 +2,12 @@ package gt1
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
 
+	humanize "github.com/dustin/go-humanize"
 	"github.com/ktnyt/gods"
 	"github.com/ktnyt/pars"
 	yaml "gopkg.in/yaml.v2"
@@ -423,12 +423,12 @@ type featureIO struct {
 
 func featureTableFromFeatureIOSlice(fios []featureIO) (*FeatureTable, error) {
 	features := NewFeatureTable()
-	for _, fio := range fios {
+	for i, fio := range fios {
 		if fio.Key == nil {
-			return nil, errors.New("missing feature key")
+			return nil, fmt.Errorf("%s feature is missing a key", humanize.Ordinal(i+1))
 		}
 		if fio.Location == nil {
-			return nil, errors.New("missing feature location")
+			return nil, fmt.Errorf("%s feature is missing a location", humanize.Ordinal(i+1))
 		}
 		qfs := gods.NewOrdered()
 		for _, item := range fio.Qualifiers {
