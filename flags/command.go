@@ -8,18 +8,6 @@ import (
 	"strings"
 )
 
-type HelpError string
-
-func (e HelpError) Error() string {
-	return string(e)
-}
-
-type UsageError string
-
-func (e UsageError) Error() string {
-	return string(e)
-}
-
 var shortKeys = []byte("#%123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz")
 
 func isLong(s string) bool {
@@ -55,11 +43,6 @@ func (c commandByName) Less(i, j int) bool {
 	return c[i].Name < c[j].Name
 }
 
-type Pair struct {
-	Key   string
-	Value Value
-}
-
 type Command struct {
 	Prog         string
 	Desc         string
@@ -69,10 +52,10 @@ type Command struct {
 	Extras       []string
 	Commands     map[string]Subcommand
 	InfileValue  *FileValue
+	InfileUsage  string
 	OutfileValue *FileValue
-	Mandatories  *Dictionary
-	Optionals    *Dictionary
-	Positionals  map[string]string
+	OutfileUsage string
+	Positional   *Positional
 }
 
 func NewCommand(prog, desc string) *Command {
@@ -86,9 +69,7 @@ func NewCommand(prog, desc string) *Command {
 		Commands:     make(map[string]Subcommand),
 		InfileValue:  nil,
 		OutfileValue: nil,
-		Mandatories:  NewDictionary(),
-		Optionals:    NewDictionary(),
-		Positionals:  make(map[string]string),
+		Positional:   NewPositional(),
 	}
 }
 
@@ -116,6 +97,19 @@ func (command *Command) addAlias(short byte, long string) {
 	}
 
 	command.Aliases[short] = long
+}
+
+func (command Command) hasPositional() bool {
+	if command.Positional.Len() > 0 {
+		return true
+	}
+	if command.InfileValue != nil {
+		return true
+	}
+	if command.OutfileValue != nil {
+		return true
+	}
+	return false
 }
 
 func (command *Command) Register(short byte, long string, value Value, usage string) {
@@ -149,7 +143,7 @@ func (command *Command) String(short byte, long string, init string, usage strin
 func (command *Command) Choice(short byte, long string, usage string, choices ...string) *int {
 	value := NewChoiceValue(choices, 0)
 	command.Register(short, long, value, usage)
-	return (*int)(value.Chosen)
+	return value.Chosen
 }
 
 func (command *Command) Strings(short byte, long string, usage string) *[]string {
@@ -172,11 +166,11 @@ func (command *Command) File(short byte, long string, flag int, perm os.FileMode
 	return value.File
 }
 
-func (command *Command) Infile(desc string) *os.File {
+func (command *Command) Infile(usage string) *os.File {
 	if command.InfileValue != nil {
 		panic("only one positional input file is allowed")
 	}
-	command.Positionals["infile"] = desc
+	command.InfileUsage = usage
 	if IsTerminal(os.Stdin.Fd()) {
 		command.InfileValue = NewFileValue(os.O_RDONLY, 0)
 		return (*os.File)(command.InfileValue.File)
@@ -185,31 +179,17 @@ func (command *Command) Infile(desc string) *os.File {
 	return command.InfileValue.File
 }
 
-func (command *Command) Outfile(desc string) *os.File {
+func (command *Command) Outfile(usage string) *os.File {
 	if command.OutfileValue != nil {
 		panic("only one positional output file is allowed")
 	}
-	command.Positionals["outfile"] = desc
+	command.OutfileUsage = usage
 	if IsTerminal(os.Stdout.Fd()) {
 		command.OutfileValue = NewFileValue(os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 		return (*os.File)(command.OutfileValue.File)
 	}
 	command.OutfileValue = NewFileValueWithFile(os.Stdout)
 	return command.OutfileValue.File
-}
-
-func (command *Command) Mandatory(name, desc string) *string {
-	value := NewStringValue("")
-	command.Mandatories.Set(name, value)
-	command.Positionals[name] = desc
-	return (*string)(value)
-}
-
-func (command *Command) Optional(name, desc string) *string {
-	value := NewStringValue("")
-	command.Optionals.Set(name, value)
-	command.Positionals[name] = desc
-	return (*string)(value)
 }
 
 func splitEqual(s string) (string, string) {
@@ -227,7 +207,7 @@ func (command Command) handleValue(value Value, args []string) ([]string, error)
 		*p = BoolValue(true)
 		return args, nil
 	case SliceValue:
-		count := command.Mandatories.Len() + command.Optionals.Len() - len(command.Extras)
+		count := command.Positional.Len() - len(command.Extras)
 		if command.infileMissing() {
 			count++
 		}
@@ -440,27 +420,9 @@ func (command *Command) handleArgs(args []string) (err error) {
 		return fmt.Errorf("command not specified")
 	}
 
-	extras := command.Extras
-
-	var arg string
-
-	for _, pair := range command.Mandatories.Iter() {
-		if len(extras) == 0 {
-			return fmt.Errorf("missing mandatory argument `%s`", pair.Key)
-		}
-		arg, extras = shift(extras)
-		if err := pair.Value.Set(arg); err != nil {
-			return fmt.Errorf("%s for mandatory argument `%s`", err, pair.Key)
-		}
-	}
-
-	for _, pair := range command.Optionals.Iter() {
-		if len(extras) != 0 {
-			arg, extras = shift(extras)
-			if err := pair.Value.Set(arg); err != nil {
-				return fmt.Errorf("%s for optional argument `%s`", err, pair.Key)
-			}
-		}
+	extras, err := command.Positional.Handle(command.Extras)
+	if err != nil {
+		return err
 	}
 
 	switch len(extras) {
@@ -619,12 +581,8 @@ func (command Command) Usage() string {
 		}
 	}
 
-	for _, pair := range command.Mandatories.Iter() {
-		usage = appendWrap(usage, fmt.Sprintf("<%s>", pair.Key), depth)
-	}
-
-	for _, pair := range command.Optionals.Iter() {
-		usage = appendWrap(usage, fmt.Sprintf("[%s]", pair.Key), depth)
+	for _, name := range command.Positional.Order {
+		usage = appendWrap(usage, fmt.Sprintf("<%s>", name), depth)
 	}
 
 	if command.InfileValue != nil {
@@ -711,30 +669,23 @@ func (command Command) Help() string {
 		}
 	}
 
-	if len(command.Positionals) > 0 {
+	if command.hasPositional() {
 		parts = append(parts, "", "positional arguments:")
 
-		for _, pair := range command.Mandatories.Iter() {
-			name, desc := pair.Key, command.Positionals[pair.Key]
+		for _, name := range command.Positional.Order {
+			usage := command.Positional.Usages[name]
 			padding := strings.Repeat(" ", 20-len(name))
-			part := fmt.Sprintf("  <%s>%s%s", name, padding, desc)
+			part := fmt.Sprintf("  <%s>%s%s", name, padding, usage)
 			parts = append(parts, wrap(part, 24))
 		}
 
-		for _, pair := range command.Optionals.Iter() {
-			name, desc := pair.Key, command.Positionals[pair.Key]
-			padding := strings.Repeat(" ", 20-len(name))
-			part := fmt.Sprintf("  [%s]%s%s", name, padding, desc)
+		if command.InfileValue != nil {
+			part := fmt.Sprintf("  <infile>              %s", command.InfileUsage)
 			parts = append(parts, wrap(part, 24))
 		}
 
-		if desc, ok := command.Positionals["infile"]; ok {
-			part := fmt.Sprintf("  <infile>              %s", desc)
-			parts = append(parts, wrap(part, 24))
-		}
-
-		if desc, ok := command.Positionals["outfile"]; ok {
-			part := fmt.Sprintf("  <outfile>             %s", desc)
+		if command.OutfileValue != nil {
+			part := fmt.Sprintf("  <outfile>             %s", command.OutfileUsage)
 			parts = append(parts, wrap(part, 24))
 		}
 	}

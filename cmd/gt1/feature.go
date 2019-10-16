@@ -31,7 +31,7 @@ func featureSelectFunc(command *flags.Command, args []string) error {
 	outfile := command.Outfile("output record file")
 	invert := command.Switch('v', "invert-match", "select features that do not match the given criteria")
 	extraKeys := command.Strings(0, "and", "additional feature key(s) to select")
-	mainKey := command.Mandatory("key", "primary feature key to select")
+	mainKey := command.Positional.String("key", "primary feature key to select")
 
 	return command.Run(args, func() error {
 		record, err := ReadOneRecord(infile)
@@ -62,7 +62,7 @@ func featureMergeFunc(command *flags.Command, args []string) error {
 	infile := command.Infile("input record file")
 	outfile := command.Outfile("output record file")
 	extraFiles := command.Strings(0, "and", "additional feature file(s) to merge")
-	mainFile := command.Mandatory("feature", "primary feature file to merge")
+	mainFile := command.Positional.String("feature", "primary feature file to merge")
 
 	return command.Run(args, func() error {
 		record, err := ReadOneRecord(infile)
@@ -139,7 +139,7 @@ func featureExtractFunc(command *flags.Command, args []string) error {
 	featureKey := command.Switch('f', "feature-key", "extract the feature key")
 	location := command.Switch('l', "location", "extract the location")
 	extraKeys := command.Strings(0, "and", "additional qualifier key(s) to extract")
-	mainKey := command.Mandatory("qualifier", "primary qualifier key to extract")
+	mainKey := command.Positional.String("qualifier", "primary qualifier key to extract")
 
 	return command.Run(args, func() error {
 		record, err := ReadOneRecord(infile)

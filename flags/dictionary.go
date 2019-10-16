@@ -1,5 +1,10 @@
 package flags
 
+type Pair struct {
+	Key   string
+	Value Value
+}
+
 type Dictionary []Pair
 
 func NewDictionary() *Dictionary {
