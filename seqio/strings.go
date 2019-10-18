@@ -13,6 +13,10 @@ func RemoveIndent(s string) string {
 	return re.ReplaceAllString(s, " ")
 }
 
+func RemoveNewline(s string) string {
+	return strings.Join(strings.Split(s, "\n"), "")
+}
+
 func FlatFileSplit(s string) []string {
 	s = RemoveIndent(s)
 	s = strings.TrimSuffix(s, ".")

@@ -63,10 +63,9 @@ var FastaParser = pars.Seq(
 	fastaDeflineParser,
 	fastaSequenceParser,
 ).Map(func(result *pars.Result) error {
-	result.Value = NewFasta(
-		result.Children[0].Value.(string),
-		result.Children[1].Value.(string),
-	)
+	defline := result.Children[0].Value.(string)
+	sequence := RemoveNewline(result.Children[1].Value.(string))
+	result.Value = NewFasta(defline, sequence)
 	result.Children = nil
 	return nil
 })
