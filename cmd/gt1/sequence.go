@@ -10,7 +10,32 @@ import (
 )
 
 func init() {
-	register("seq", "sequence manipulation commands", sequenceFunc)
+	register("seq", "shorthand for `sequence`", sequenceFunc)
+	register("sequence", "sequence manipulation commands", sequenceFunc)
+}
+
+func sequenceFunc(command *flags.Command, args []string) error {
+	command.Command("length", "print the length of the input sequence(s)", sequenceLengthFunc)
+	command.Command("fragment", "split input sequence into equal sized fragments", sequenceFragmentFunc)
+	command.Command("skew", "calculate the skewness of the given sequence(s)", sequenceSkewFunc)
+
+	return command.Run(args)
+}
+
+func sequenceLengthFunc(command *flags.Command, args []string) error {
+	infile := command.Infile("input sequence file")
+	outfile := command.Outfile("output sequence file")
+
+	return command.Run(args, func() error {
+		scanner := seqio.NewScanner(infile)
+
+		for scanner.Scan() {
+			seq := scanner.Seq()
+			fmt.Fprintln(outfile, seq.Len())
+		}
+
+		return nil
+	})
 }
 
 func sequenceFragmentFunc(command *flags.Command, args []string) error {
@@ -66,11 +91,4 @@ func sequenceSkewFunc(command *flags.Command, args []string) error {
 
 		return nil
 	})
-}
-
-func sequenceFunc(command *flags.Command, args []string) error {
-	command.Command("fragment", "split input sequence into equal sized fragments", sequenceFragmentFunc)
-	command.Command("skew", "calculate the skewness of the given sequence", sequenceSkewFunc)
-
-	return command.Run(args)
 }
