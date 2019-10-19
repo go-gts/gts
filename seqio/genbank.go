@@ -225,7 +225,7 @@ func genbankFieldBodyParser(indent, depth int) pars.Parser {
 			// This must be processed first so the rest of the code does not mistake a
 			// valid body line for a subfield.
 			// Add a space first to accomodate for the indent.
-			if depth == count {
+			if depth <= count {
 				state.Unmark()
 				if err := pars.Line(state, result); err != nil {
 					return pars.NewTraceError("GenBank Field Body", err)
