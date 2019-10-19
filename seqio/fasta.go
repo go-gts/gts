@@ -1,6 +1,8 @@
 package seqio
 
 import (
+	"strings"
+
 	"github.com/ktnyt/gt1"
 	"github.com/ktnyt/pars"
 )
@@ -36,10 +38,10 @@ func (f fastaType) Len() int {
 }
 
 func (f fastaType) Slice(start, end int) gt1.Sequence {
-	for start < len(f.body) {
+	for start < 0 {
 		start += len(f.body)
 	}
-	for end < len(f.body) {
+	for end < 0 {
 		end += len(f.body)
 	}
 	return gt1.Seq(f.body[start:end])
@@ -64,7 +66,7 @@ var FastaParser = pars.Seq(
 	fastaSequenceParser,
 ).Map(func(result *pars.Result) error {
 	defline := result.Children[0].Value.(string)
-	sequence := RemoveNewline(result.Children[1].Value.(string))
+	sequence := strings.ToLower(RemoveNewline(result.Children[1].Value.(string)))
 	result.Value = NewFasta(defline, sequence)
 	result.Children = nil
 	return nil
