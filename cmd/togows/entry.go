@@ -11,25 +11,36 @@ import (
 )
 
 func init() {
-	register("fetch", "download data from various databases via TogoWS", fetchFunc)
+	register("entry", "download data from various databases", entryFunc)
 }
 
-func fetchFunc(command *flags.Command, args []string) error {
-	uniprot := newFetchEntryFunc("uniprot", "raw", "fasta", "gff", "json", "ttl", "xml")
-	ena := newFetchEntryFunc("ena", "raw", "fasta", "gff", "json", "xml")
-	ddbj := newFetchEntryFunc("ddbj", "raw", "fasta", "gff", "json", "xml")
-	refseqn := newFetchEntryFunc("nucleotide", "raw", "fasta", "gb", "gff", "json", "ttl", "xml")
+func entryFunc(command *flags.Command, args []string) error {
+	dblist, err := getEntryDBList()
+	if err != nil {
+		return err
+	}
 
-	command.Command("uniprot", "download a UniProt entry via TogoWS", uniprot)
-	command.Command("ena", "download a ENA entry via TogoWS", ena)
-	command.Command("ddbj", "download a DDBJ entry via TogoWS", ddbj)
-	command.Command("refseqn", "download a RefSeq nucleotide entry via TogoWS", refseqn)
+	for _, db := range dblist {
+		name, alias := db.Name, db.Alias
+
+		fields, err := getEntryFields(name)
+		if err != nil {
+			return err
+		}
+
+		f := newEntryFunc(name, fields)
+		usage := fmt.Sprintf("download an entry from %s", alias)
+		command.Command(alias, usage, f)
+	}
 
 	return command.Run(args)
 }
 
 func togowsEntryURL(db string, ids []string, field string, format string) string {
 	url := fmt.Sprintf("http://togows.org/entry/%s/%s", db, strings.Join(ids, ","))
+	if field == "none" {
+		field = ""
+	}
 	if field != "" {
 		url += "/" + field
 	}
@@ -42,17 +53,25 @@ func togowsEntryURL(db string, ids []string, field string, format string) string
 	return url
 }
 
-func newFetchEntryFunc(db string, formats ...string) flags.CommandFunc {
+func newEntryFunc(db string, fields []string) flags.CommandFunc {
+	fields = append([]string{"none"}, fields...)
+
 	return func(command *flags.Command, args []string) error {
+		formats, err := getEntryFormats(db)
+		if err != nil {
+			return err
+		}
+		formats = append([]string{"raw"}, formats...)
+
 		outfile := command.Outfile("output file")
 		id := command.Positional.String("id", "entry ID")
 		format := command.Choice('f', "format", "data format to retreive", formats...)
-		field := command.String(0, "field", "", "entry field to extract")
-		additional := command.Strings(0, "and", "additional entry ids to fetch")
+		field := command.Choice('e', "field", "entry field to extract", fields...)
+		additional := command.Strings(0, "and", "additional entry ids to download")
 
 		return command.Run(args, func() error {
 			ids := append([]string{*id}, (*additional)...)
-			url := togowsEntryURL(db, ids, *field, formats[*format])
+			url := togowsEntryURL(db, ids, fields[*field], formats[*format])
 
 			res, err := http.Get(url)
 			if err != nil {
