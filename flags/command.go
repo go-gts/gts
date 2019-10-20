@@ -147,6 +147,7 @@ func (command *Command) String(short byte, long string, init string, usage strin
 
 func (command *Command) Choice(short byte, long string, usage string, choices ...string) *int {
 	value := NewChoiceValue(choices, 0)
+	usage = fmt.Sprintf("%s (available values: [%s])", usage, strings.Join(choices, ", "))
 	command.Register(short, long, value, usage)
 	return value.Chosen
 }

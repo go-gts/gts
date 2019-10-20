@@ -1,6 +1,9 @@
 package flags
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Positional struct {
 	Order  []string
@@ -55,6 +58,7 @@ func (positional *Positional) String(name, usage string) *string {
 
 func (positional *Positional) Choice(name, usage string, choices ...string) *int {
 	value := NewChoiceValue(choices, 0)
+	usage = fmt.Sprintf("%s (available values: [%s])", usage, strings.Join(choices, ", "))
 	positional.Register(name, value, usage)
 	return value.Chosen
 }
