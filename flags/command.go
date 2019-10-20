@@ -8,6 +8,8 @@ import (
 	"strings"
 )
 
+func spaces(n int) string { return strings.Repeat(" ", n) }
+
 var shortKeys = []byte("#%123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz")
 
 func isLong(s string) bool {
@@ -522,7 +524,7 @@ func appendWrap(s, t string, d int) string {
 		return s + " " + t
 	}
 
-	return s + "\n" + strings.Repeat(" ", d) + t
+	return s + "\n" + spaces(d) + t
 }
 
 func wrap(s string, d int) string {
@@ -560,7 +562,7 @@ func wrap(s string, d int) string {
 	}
 
 	t := s[:i]
-	r := strings.Repeat(" ", d-1) + s[i:]
+	r := spaces(d-1) + s[i:]
 
 	return t + "\n" + wrap(r, d)
 
@@ -669,8 +671,11 @@ func (command Command) Help() string {
 	if len(commands) > 0 {
 		parts = append(parts, "", "available commands:")
 		for _, info := range commands {
-			padding := strings.Repeat(" ", 22-len(info.Name))
-			part := fmt.Sprintf("  %s%s%s", info.Name, padding, info.Desc)
+			part := fmt.Sprintf("  %s\n                        %s", info.Name, info.Desc)
+			if len(info.Name) < 22 {
+				padding := spaces(22 - len(info.Name))
+				part = fmt.Sprintf("  %s%s%s", info.Name, padding, info.Desc)
+			}
 			parts = append(parts, wrap(part, 24))
 		}
 	}
@@ -680,7 +685,7 @@ func (command Command) Help() string {
 
 		for _, name := range command.Positional.Order {
 			usage := command.Positional.Usages[name]
-			padding := strings.Repeat(" ", 20-len(name))
+			padding := spaces(20 - len(name))
 			part := fmt.Sprintf("  <%s>%s%s", name, padding, usage)
 			parts = append(parts, wrap(part, 24))
 		}
@@ -705,7 +710,7 @@ func (command Command) Help() string {
 		value := command.Values[name].Format()
 		padding := "\n                        "
 		if len(syntax) < 23 {
-			padding = strings.Repeat(" ", 24-len(syntax))
+			padding = spaces(24 - len(syntax))
 		}
 		part := wrap(syntax+padding+usage, 24)
 		full := appendWrap(part, fmt.Sprintf("(value: %s)", value), 24)
