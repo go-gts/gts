@@ -15,11 +15,30 @@ func init() {
 }
 
 func sequenceFunc(command *flags.Command, args []string) error {
+	command.Command("count", "count the number of sequences in the file", sequenceCountFunc)
 	command.Command("length", "print the length of the input sequence(s)", sequenceLengthFunc)
 	command.Command("fragment", "split input sequence into equal sized fragments", sequenceFragmentFunc)
 	command.Command("skew", "calculate the skewness of the given sequence(s)", sequenceSkewFunc)
 
 	return command.Run(args)
+}
+
+func sequenceCountFunc(command *flags.Command, args []string) error {
+	infile := command.Infile("input sequence file")
+	outfile := command.Outfile("output sequence file")
+
+	return command.Run(args, func() error {
+		scanner := seqio.NewScanner(infile)
+
+		count := 0
+		for scanner.Scan() {
+			count++
+		}
+
+		fmt.Fprintln(outfile, count)
+
+		return nil
+	})
 }
 
 func sequenceLengthFunc(command *flags.Command, args []string) error {
