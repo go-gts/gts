@@ -137,6 +137,7 @@ func literalQualifierParser(indent int) pars.Parser {
 	return pars.Seq('=', pars.Line).Child(1).Map(pars.ToString)
 }
 
+// QualfierParser will attempt to match a single qualifier name-value pair.
 func QualifierParser(indent int) pars.Parser {
 	wordParser := pars.Word(ascii.Not(ascii.IsSpace)).Map(pars.ToString)
 	nameParser := qualifierNameParser(indent)
