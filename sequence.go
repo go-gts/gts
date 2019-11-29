@@ -6,106 +6,48 @@ import (
 )
 
 type Sequence interface {
-	// Bytes returns the raw representation of the sequence.
 	Bytes() []byte
-
-	// String returns the string representation of the sequence.
-	String() string
-
-	// Len returns the length of the sequence.
-	Len() int
-
-	// Slice returns the slice of the sequence.
-	Slice(start, end int) Sequence
-
-	// Subseq returns the subsequence to the given location.
-	Subseq(loc Location) Sequence
 }
 
-type BytesLike interface{}
-
-func AsBytes(s BytesLike) []byte {
-	switch v := s.(type) {
-	case []byte:
-		return v
-	case string:
-		return []byte(v)
-	case []rune:
-		return []byte(string(v))
-	case Sequence:
-		return v.Bytes()
-	default:
-		panic(fmt.Errorf("cannot make a byte slice from type `%T`", v))
-	}
-}
-
-// Seq creates a new sequence object.
-func Seq(s BytesLike) Sequence {
-	return seqType(AsBytes(s))
+type Mutable interface {
+	Sequence
+	Insert(pos int, seq Sequence)
+	Delete(pos, cnt int)
+	Replace(pos int, seq Sequence)
 }
 
 type seqType []byte
 
-func (s seqType) Bytes() []byte {
-	return []byte(s)
-}
+func (seq seqType) Bytes() []byte { return []byte(seq) }
 
-func (s seqType) String() string {
-	return string(s)
-}
-
-func (s seqType) Len() int {
-	return len(s)
-}
-
-func (s seqType) Slice(start, end int) Sequence {
-	for start < len(s) {
-		start += len(s)
+func Seq(arg interface{}) Sequence {
+	switch v := arg.(type) {
+	case Sequence:
+		return v
+	case []byte:
+		return seqType(v)
+	case string:
+		return Seq([]byte(v))
+	case []rune:
+		return Seq(string(v))
+	default:
+		panic(fmt.Sprintf("cannot interpret object of type `%T` as a sequence", v))
 	}
-	for end < len(s) {
-		end += len(s)
-	}
-	return Seq(s[start:end])
 }
 
-func (s seqType) Subseq(loc Location) Sequence {
-	return loc.Locate(s)
-}
-
-func Append(seq Sequence, arg Sequence) Sequence {
-	s0 := seq.Bytes()
-	s1 := arg.Bytes()
-	r := make([]byte, len(s0)+len(s1))
-	copy(r[:len(s0)], s0)
-	copy(r[len(s0):], s1)
-	return Seq(r)
-}
-
-func Concat(seqs ...Sequence) Sequence {
-	l := 0
-	for _, seq := range seqs {
-		l += seq.Len()
-	}
-
-	r := make([]byte, l)
-	i := 0
-	for _, seq := range seqs {
-		copy(r[i:], seq.Bytes())
-		i += seq.Len()
-	}
-
-	return Seq(r)
+func Slice(seq Sequence, start, end int) Sequence {
+	return Seq(seq.Bytes()[start:end])
 }
 
 func Fragment(seq Sequence, window, slide int) []Sequence {
+	p := seq.Bytes()
 	ret := make([]Sequence, 0)
-	for i := 0; i < seq.Len(); i += slide {
+	for i := 0; i < len(p); i += slide {
 		j := i + window
-		if j > seq.Len() {
-			j = seq.Len()
+		if j > len(p) {
+			j = len(p)
 		}
-		fragment := seq.Slice(i, j)
-		ret = append(ret, fragment)
+		ret = append(ret, Seq(p[i:j]))
 	}
 	return ret
 }
