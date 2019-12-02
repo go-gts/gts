@@ -204,18 +204,6 @@ func quotedQualifierParser(prefix string) pars.Parser {
 	return parser.Map(mapping)
 }
 
-func chronobreak(parser pars.Parser) pars.Parser {
-	return func(state *pars.State, result *pars.Result) error {
-		state.Push()
-		if err := parser(state, result); err != nil {
-			state.Pop()
-			return err
-		}
-		state.Pop()
-		return nil
-	}
-}
-
 // QualfierParser will attempt to match a single qualifier name-value pair.
 func QualifierParser(prefix string) pars.Parser {
 	wordParser := pars.Word(ascii.Not(ascii.IsSpace)).ToString()
@@ -223,7 +211,7 @@ func QualifierParser(prefix string) pars.Parser {
 
 	quotedParser := quotedQualifierParser(prefix)
 	literalParser := pars.Seq('=', wordParser).Child(1)
-	toggleParser := chronobreak(pars.Any('\n', pars.End)).Bind("")
+	toggleParser := pars.Any('\n', pars.End).Bind("")
 
 	valueParsers := []pars.Parser{quotedParser, literalParser, toggleParser}
 
