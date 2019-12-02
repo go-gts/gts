@@ -211,6 +211,7 @@ var qualifierTestStrings = []string{
 	"/tissue_type=\"liver\"",
 	"/transgenic",
 	"/translation=\"MASTFPPWYRGCASTPSLKGLIMCTW\"",
+	"/translation=\"MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEALYLVCG\nERGFFYTPKTRREAEDLQVGQVELGGGPGAGSLQPLALEGSLQKRGIVEQCCTSICSL\nYQLENYCN\"",
 	"/transl_except=(pos:213..215,aa:Trp)",
 	"/transl_except=(pos:1017,aa:TERM)",
 	"/transl_except=(pos:2000..2001,aa:TERM)",
@@ -221,8 +222,11 @@ var qualifierTestStrings = []string{
 	"/type_material=\"holotype of Cercopitheus lomamiensis\"",
 	"/type_material=\"paratype of Cercopitheus lomamiensis\"",
 	"/variety=\"insularis\"",
+
 	// Non-defined qualifiers existing in databases.
 	"/calculated_mol_wt=3430",
+	"/site_type=\"other\"",
+	"/coded_by=\"NM_000207.3:60..392\"",
 }
 
 func testQualifierParserString(s string) assert.F {
