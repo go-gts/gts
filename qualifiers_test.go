@@ -69,8 +69,8 @@ var qualifierTestStrings = []string{
 	"/exception=\"rearrangement required for product\"",
 	"/exception=\"annotated by transcript or proteomic data\"",
 	"/experiment=\"5' RACE\"",
-	"/experiment=\"Northern blot [DOI:\n12.3456/FT.789.1.234-567.2010]\"",
-	"/experiment=\"heterologous expression system of Xenopus\nlaevis oocytes [PMID: 12345678, 10101010, 987654]\"",
+	"/experiment=\"Northern blot [DOI: 12.3456/FT.789.1.234-567.2010]\"",
+	"/experiment=\"heterologous expression system of Xenopus laevis\noocytes [PMID: 12345678, 10101010, 987654]\"",
 	"/experiment=\"COORDINATES: 5' and 3' RACE\"",
 	"/focus",
 	"/frequency=\"23/108\"",
@@ -89,7 +89,7 @@ var qualifierTestStrings = []string{
 	"/identified_by=\"John Burns\"",
 	"/inference=\"COORDINATES:profile:tRNAscan:2.1\"",
 	"/inference=\"similar to DNA sequence:INSD:AY411252.1\"",
-	"/inference=\"similar to RNA sequence,\nmRNA:RefSeq:NM_000041.2\"",
+	"/inference=\"similar to RNA sequence, mRNA:RefSeq:NM_000041.2\"",
 	"/inference=\"similar to DNA sequence (same\nspecies):INSD:AACN010222672.1\"",
 	"/inference=\"protein motif:InterPro:IPR001900\"",
 	"/inference=\"ab initio prediction:Genscan:2.0\"",
@@ -97,7 +97,7 @@ var qualifierTestStrings = []string{
 	"/inference=\"alignment:Splign:1.26p:RefSeq:NM_000041.2,INSD:BC003557.1\"",
 	"/isolate=\"Patient #152\"",
 	"/isolate=\"DGGE band PSBAC-13\"",
-	"/isolation_source=\"rumen isolates from standard Pelleted\nration-fed steer #67\"",
+	"/isolation_source=\"rumen isolates from standard\nPelleted ration-fed steer #67\"",
 	"/isolation_source=\"permanent Antarctic sea ice\"",
 	"/isolation_source=\"denitrifying activated sludge from\ncarbon_limited continuous reactor\"",
 	"/lab_host=\"Gallus gallus\"",
@@ -146,9 +146,9 @@ var qualifierTestStrings = []string{
 	"/organism=\"Homo sapiens\"",
 	"/partial",
 	"/PCR_conditions=\"Initial denaturation:94degC,1.5min\"",
-	"/PCR_primers=\"fwd_name: CO1P1, fwd_seq:\nttgattttttggtcayccwgaagt, rev_name: CO1R4, rev_seq:\nccwvytardcctarraartgttg\"",
+	"/PCR_primers=\"fwd_name: CO1P1, fwd_seq: ttgattttttggtcayccwgaagt,\nrev_name: CO1R4, rev_seq:ccwvytardcctarraartgttg\"",
 	"/PCR_primers=\" fwd_name: hoge1, fwd_seq: cgkgtgtatcttact,\nrev_name: hoge2, rev_seq: cg<i>gtgtatcttact\"",
-	"/PCR_primers=\"fwd_name: CO1P1, fwd_seq:\nttgattttttggtcayccwgaagt, fwd_name: CO1P2, fwd_seq:\ngatacacaggtcayccwgaagt, rev_name: CO1R4, rev_seq:\nccwvytardcctarraartgttg\"",
+	"/PCR_primers=\"fwd_name: CO1P1, fwd_seq: ttgattttttggtcayccwgaagt,\nfwd_name: CO1P2, fwd_seq: gatacacaggtcayccwgaagt, rev_name: CO1R4,\nrev_seq: ccwvytardcctarraartgttg\"",
 	"/phenotype=\"erythromycin resistance\"",
 	"/plasmid=\"C-589\"",
 	"/pop_variant=\"pop1\"",
@@ -221,21 +221,22 @@ var qualifierTestStrings = []string{
 	"/type_material=\"holotype of Cercopitheus lomamiensis\"",
 	"/type_material=\"paratype of Cercopitheus lomamiensis\"",
 	"/variety=\"insularis\"",
+	// Non-defined qualifiers existing in databases.
+	"/calculated_mol_wt=3430",
 }
 
 func testQualifierParserString(s string) assert.F {
 	indent := 21
-	width := 80
-	spaces := strings.Repeat(" ", indent)
-	s = spaces + strings.ReplaceAll(s, "\n", "\n"+spaces)
+	prefix := strings.Repeat(" ", indent)
+	s = prefix + strings.ReplaceAll(s, "\n", "\n"+prefix)
 
 	state := pars.FromString(s)
 	result := pars.Result{}
-	parser := pars.Exact(gt1.QualifierParser(indent))
+	parser := pars.Exact(gt1.QualifierParser(prefix))
 
 	return assert.All(
 		assert.NoError(parser(state, &result)),
-		assert.Equal(result.Value.(gt1.Qualifier).Format(indent, width), s),
+		assert.Equal(result.Value.(gt1.Qualifier).Format(prefix), s),
 	)
 }
 

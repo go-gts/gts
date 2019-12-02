@@ -2,33 +2,43 @@ package gt1
 
 import "strings"
 
-func smartWrapImpl(ss []string, s string, width int) []string {
+// WrapByte will wrap the string at the last given byte located before the
+// given width limit. If there is not such byte available, the string will be
+// wrapped at the first occurence of the said byte. If the given byte does not
+// exist in the string, the entire string will be returned.
+func WrapByte(s string, width int, c byte) string {
+	i := strings.IndexByte(s, '\n')
+	if i >= 0 {
+		return WrapByte(s[:i], width, c) + "\n" + WrapByte(s[i+1:], width, c)
+	}
+
 	if len(s) < width {
-		return append(ss, s)
+		return s
 	}
-	i := strings.LastIndexByte(s[:width], ' ')
-	if i < 0 {
-		i = width + strings.IndexByte(s[width:], ' ')
-		if i < width {
-			return append(ss, s)
-		}
+
+	i = strings.LastIndexByte(s[:width], c)
+	if i >= 0 {
+		return s[:i] + "\n" + WrapByte(s[i+1:], width, c)
 	}
-	ss = append(ss, s[:i])
-	return smartWrapImpl(ss, s[i+1:], width)
+
+	i = strings.IndexByte(s, c)
+	if i >= 0 {
+		return s[:i] + "\n" + WrapByte(s[i+1:], width, c)
+	}
+
+	return s
 }
 
-func smartWrap(s string, width int) []string {
-	return smartWrapImpl([]string{}, s, width)
-}
+// Wrap will wrap the string at the given width.
+func Wrap(s string, width int) string {
+	i := strings.IndexByte(s, '\n')
+	if i >= 0 {
+		return Wrap(s[:i], width) + "\n" + Wrap(s[i+1:], width)
+	}
 
-func wrapImpl(ss []string, s string, width int) []string {
 	if len(s) < width {
-		return append(ss, s)
+		return s
 	}
-	ss = append(ss, s[:width])
-	return wrapImpl(ss, s, width)
-}
 
-func wrap(s string, width int) []string {
-	return wrapImpl([]string{}, s, width)
+	return s[:width] + "\n" + Wrap(s[width:], width)
 }

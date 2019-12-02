@@ -2,58 +2,12 @@ package gt1
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ktnyt/ascii"
 	"github.com/ktnyt/pars"
 )
-
-type qualifierValueType int
-
-const (
-	quotedQualifierValue qualifierValueType = iota
-	translQualifierValue
-	literalQualifierValue
-	toggleQualifierValue
-	unknownQualifierValue
-)
-
-func getQualifierValueType(name string) qualifierValueType {
-	switch name {
-	case "allele", "altitude", "artificial_location", "bio_material",
-		"bound_moiety", "cell_line", "cell_type", "chromosome", "clone",
-		"clone_lib", "collected_by", "collection_date", "country",
-		"cultivar", "culture_collection", "db_xref", "dev_stage",
-		"EC_number", "ecotype", "exception", "experiment", "frequency",
-		"function", "gap_type", "gene", "gene_synonym", "haplogroup",
-		"haplotype", "host", "identified_by", "inference", "isolate",
-		"isolation_source", "lab_host", "lat_lon", "linkage_evidence",
-		"locus_tag", "map", "mating_type", "metagenome_source",
-		"mobile_element_type", "mol_type", "ncRNA_class", "note",
-		"old_locus_tag", "operon", "organelle", "organism",
-		"PCR_conditions", "PCR_primers", "phenotype", "plasmid",
-		"pop_variant", "product", "protein_id", "pseudogene",
-		"recombination_class", "regulatory_class", "replace",
-		"rpt_family", "rpt_unit_seq", "satellite", "segment",
-		"serotype", "serovar", "sex", "specimen_voucher",
-		"standard_name", "strain", "sub_clone", "submitter_seqid",
-		"sub_species", "sub_strain", "tissue_lib", "tissue_type",
-		"type_material", "variety":
-		return quotedQualifierValue
-	case "anticodon", "citation", "codon_start", "compare", "direction",
-		"estimated_length", "mod_base", "number", "rpt_type", "rpt_unit_range",
-		"tag_peptide", "transl_except", "transl_table":
-		return literalQualifierValue
-	case "environmental_sample", "focus", "germline", "macronuclear",
-		"partial", "proviral", "pseudo", "rearranged", "ribosomal_slippage",
-		"transgenic", "trans_splicing":
-		return toggleQualifierValue
-	case "translation":
-		return translQualifierValue
-	default:
-		return unknownQualifierValue
-	}
-}
 
 // Qualifier represents a single qualifier name-value pair.
 type Qualifier struct {
@@ -61,25 +15,23 @@ type Qualifier struct {
 	Value string
 }
 
-// Format will format the qualifier.
-func (q Qualifier) Format(indent, width int) string {
-	var ss []string
-	switch getQualifierValueType(q.Name) {
-	case quotedQualifierValue:
-		ss = smartWrap(fmt.Sprintf("/%s=\"%s\"", q.Name, q.Value), width-indent)
-	case translQualifierValue:
-		ss = wrap(fmt.Sprintf("/%s=\"%s\"", q.Name, q.Value), width-indent)
-	case literalQualifierValue:
-		ss = smartWrap(fmt.Sprintf("/%s=%s", q.Name, q.Value), width-indent)
-	case toggleQualifierValue:
-		ss = []string{fmt.Sprintf("/%s", q.Name)}
+// String satisfies the fmt.Stringer interface.
+func (q Qualifier) String() string {
+	switch GetQualifierType(q.Name) {
+	case QuotedQualifier:
+		return fmt.Sprintf("/%s=\"%s\"", q.Name, q.Value)
+	case LiteralQualifier:
+		return fmt.Sprintf("/%s=%s", q.Name, q.Value)
+	case ToggleQualifier:
+		return "/" + q.Name
 	default:
-		panic(fmt.Sprintf("unknown qualifier name `%s`", q.Name))
+		panic(fmt.Sprintf("gt1 does not know how to format a qualifier of name `%s`", q.Name))
 	}
-	for i := range ss {
-		ss[i] = spaces(indent) + ss[i]
-	}
-	return strings.Join(ss, "\n")
+}
+
+// Format will format the qualifier.
+func (q Qualifier) Format(prefix string) string {
+	return prefix + strings.ReplaceAll(q.String(), "\n", "\n"+prefix)
 }
 
 // Qualifiers represents a collection of feature qualifiers.
@@ -105,14 +57,133 @@ func (q Qualifiers) Add(name, value string) { q[name] = append(q[name], value) }
 // Del will delete the qualifier values associated to the given name.
 func (q Qualifiers) Del(name string) { delete(q, name) }
 
-func spaces(indent int) string { return strings.Repeat(" ", indent) }
+// Names of qualifiers.
+var (
+	QuotedQualifierNames = []string{
+		"allele", "altitude", "artificial_location", "bio_material",
+		"bound_moiety", "cell_line", "cell_type", "chromosome",
+		"clone", "clone_lib", "collected_by", "collection_date",
+		"country", "cultivar", "culture_collection", "db_xref",
+		"dev_stage", "EC_number", "ecotype", "exception",
+		"experiment", "frequency", "function", "gap_type", "gene",
+		"gene_synonym", "haplogroup", "haplotype", "host",
+		"identified_by", "inference", "isolate", "isolation_source",
+		"lab_host", "lat_lon", "linkage_evidence", "locus_tag", "map",
+		"mating_type", "metagenome_source", "mobile_element_type",
+		"mol_type", "ncRNA_class", "note", "old_locus_tag", "operon",
+		"organelle", "organism", "PCR_conditions", "PCR_primers",
+		"phenotype", "plasmid", "pop_variant", "product",
+		"protein_id", "pseudogene", "recombination_class",
+		"regulatory_class", "replace", "rpt_family", "rpt_unit_seq",
+		"satellite", "segment", "serotype", "serovar", "sex",
+		"specimen_voucher", "standard_name", "strain", "sub_clone",
+		"submitter_seqid", "sub_species", "sub_strain", "tissue_lib",
+		"tissue_type", "translation", "type_material", "variety",
+	}
 
-func qualifierNameParser(indent int) pars.Parser {
-	return pars.Seq(spaces(indent)+"/", pars.Word(ascii.IsSnake)).Child(1)
+	LiteralQualifierNames = []string{
+		"anticodon", "citation", "codon_start", "compare",
+		"direction", "estimated_length", "mod_base", "number",
+		"rpt_type", "rpt_unit_range", "tag_peptide", "transl_except",
+		"transl_table",
+	}
+
+	ToggleQualifierNames = []string{
+		"environmental_sample", "focus", "germline", "macronuclear",
+		"partial", "proviral", "pseudo", "rearranged",
+		"ribosomal_slippage", "transgenic", "trans_splicing",
+	}
+)
+
+func init() {
+	sort.Strings(QuotedQualifierNames)
+	sort.Strings(LiteralQualifierNames)
+	sort.Strings(ToggleQualifierNames)
 }
 
-func quotedQualifierMap(indent int, sep string) pars.Map {
-	parser := pars.Delim(pars.Line, spaces(indent))
+// RegisterQuotedQualifier will register the given qualifier names as being a
+// quoted qualifer (i.e. /name="value").
+func RegisterQuotedQualifier(names ...string) {
+	QuotedQualifierNames = append(QuotedQualifierNames, names...)
+	sort.Strings(QuotedQualifierNames)
+}
+
+// RegisterLiteralQualifier will register the given qualifier names as being a
+// literal qualifier (i.e. /name=value).
+func RegisterLiteralQualifier(names ...string) {
+	LiteralQualifierNames = append(LiteralQualifierNames, names...)
+	sort.Strings(LiteralQualifierNames)
+}
+
+// RegisterToggleQualifier will register the given qualifier names as being a
+// toggle qualifier (i.e. /name).
+func RegisterToggleQualifier(names ...string) {
+	ToggleQualifierNames = append(ToggleQualifierNames, names...)
+	sort.Strings(ToggleQualifierNames)
+}
+
+func searchString(s string, ss []string) bool {
+	if len(ss) == 0 {
+		return false
+	}
+	n := len(ss) / 2
+	l, m, r := ss[:n], ss[n], ss[n+1:]
+	switch {
+	case s < m:
+		return searchString(s, l)
+	case s > m:
+		return searchString(s, r)
+	default:
+		return true
+	}
+}
+
+// IsQuotedQualifier tests if the given qualifier name is a quoted qualifier.
+func IsQuotedQualifier(name string) bool {
+	return searchString(name, QuotedQualifierNames)
+}
+
+// IsLiteralQualifier tests if the given qualifier name is a literal qualifier.
+func IsLiteralQualifier(name string) bool {
+	return searchString(name, LiteralQualifierNames)
+}
+
+// IsToggleQualifier tests if the given qualifier name is a toggle qualifier.
+func IsToggleQualifier(name string) bool {
+	return searchString(name, ToggleQualifierNames)
+}
+
+// QualifierType represents the type of qualifier.
+type QualifierType int
+
+// Available qualifier types.
+const (
+	QuotedQualifier QualifierType = iota
+	LiteralQualifier
+	ToggleQualifier
+	UnknownQualifier
+)
+
+// GetQualifierType will return the qualifier type of the given qualifier name.
+func GetQualifierType(name string) QualifierType {
+	switch {
+	case IsQuotedQualifier(name):
+		return QuotedQualifier
+	case IsLiteralQualifier(name):
+		return LiteralQualifier
+	case IsToggleQualifier(name):
+		return ToggleQualifier
+	default:
+		return UnknownQualifier
+	}
+}
+
+func qualifierNameParser(prefix string) pars.Parser {
+	return pars.Seq(prefix+"/", pars.Word(ascii.IsSnake)).Child(1)
+}
+
+func quotedQualifierMap(prefix string) pars.Map {
+	parser := pars.Delim(pars.Line, prefix)
 	return func(result *pars.Result) error {
 		state := pars.FromBytes(result.Token)
 		if err := parser(state, result); err != nil {
@@ -122,31 +193,39 @@ func quotedQualifierMap(indent int, sep string) pars.Map {
 		for i, child := range result.Children {
 			ss[i] = string(child.Token)
 		}
-		result.SetValue(strings.Join(ss, sep))
+		result.SetValue(strings.Join(ss, "\n"))
 		return nil
 	}
 }
 
-func quotedQualifierParser(indent int, sep string) pars.Parser {
+func quotedQualifierParser(prefix string) pars.Parser {
 	parser := pars.Seq('=', pars.Quoted('"')).Child(1)
-	mapping := quotedQualifierMap(indent, sep)
+	mapping := quotedQualifierMap(prefix)
 	return parser.Map(mapping)
 }
 
-func literalQualifierParser(indent int) pars.Parser {
-	return pars.Seq('=', pars.Line).Child(1).Map(pars.ToString)
+func chronobreak(parser pars.Parser) pars.Parser {
+	return func(state *pars.State, result *pars.Result) error {
+		state.Push()
+		if err := parser(state, result); err != nil {
+			state.Pop()
+			return err
+		}
+		state.Pop()
+		return nil
+	}
 }
 
 // QualfierParser will attempt to match a single qualifier name-value pair.
-func QualifierParser(indent int) pars.Parser {
-	wordParser := pars.Word(ascii.Not(ascii.IsSpace)).Map(pars.ToString)
-	nameParser := qualifierNameParser(indent)
-	valueParsers := []pars.Parser{
-		quotedQualifierParser(indent, " "),
-		quotedQualifierParser(indent, ""),
-		pars.Seq('=', wordParser).Child(1),
-		pars.AsParser(pars.Epsilon).Bind(""),
-	}
+func QualifierParser(prefix string) pars.Parser {
+	wordParser := pars.Word(ascii.Not(ascii.IsSpace)).ToString()
+	nameParser := qualifierNameParser(prefix)
+
+	quotedParser := quotedQualifierParser(prefix)
+	literalParser := pars.Seq('=', wordParser).Child(1)
+	toggleParser := chronobreak(pars.Any('\n', pars.End)).Bind("")
+
+	valueParsers := []pars.Parser{quotedParser, literalParser, toggleParser}
 
 	return func(state *pars.State, result *pars.Result) error {
 		if err := nameParser(state, result); err != nil {
@@ -154,15 +233,23 @@ func QualifierParser(indent int) pars.Parser {
 		}
 		name := string(result.Token)
 
-		valueType := getQualifierValueType(name)
-		if valueType == unknownQualifierValue {
-			panic(fmt.Sprintf("unknown qualifier name `%s`", name))
+		switch qtype := GetQualifierType(name); qtype {
+		case UnknownQualifier:
+			switch {
+			case quotedParser(state, result) == nil:
+				RegisterQuotedQualifier(name)
+			case literalParser(state, result) == nil:
+				RegisterLiteralQualifier(name)
+			case toggleParser(state, result) == nil:
+				RegisterToggleQualifier(name)
+			}
+		default:
+			valueParser := valueParsers[qtype]
+			if err := valueParser(state, result); err != nil {
+				return err
+			}
 		}
 
-		valueParser := valueParsers[valueType]
-		if err := valueParser(state, result); err != nil {
-			return nil
-		}
 		value := result.Value.(string)
 
 		result.SetValue(Qualifier{name, value})
