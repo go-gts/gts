@@ -217,7 +217,7 @@ func QualifierParser(prefix string) pars.Parser {
 
 	return func(state *pars.State, result *pars.Result) error {
 		if err := nameParser(state, result); err != nil {
-			return nil
+			return err
 		}
 		name := string(result.Token)
 
