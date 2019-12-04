@@ -30,7 +30,7 @@ func (f Feature) Format(prefix string, depth int) string {
 	prefix = prefix + strings.Repeat(" ", depth-len(prefix))
 
 	builder.WriteString(padding)
-	builder.WriteString(f.Loc.Format())
+	builder.WriteString(f.Loc.String())
 
 	ordered := make([]string, len(f.order))
 	remains := []string{}

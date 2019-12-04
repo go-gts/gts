@@ -1,6 +1,7 @@
 package gt1
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -10,34 +11,35 @@ import (
 
 // Location represents a feature location as defined by the INSDC.
 type Location interface {
-	// Map the sequence at the pointing loc.
-	Map(seq Sequence) Sequence
+	// Locate the sequence at the pointing location.
+	Locate(seq Sequence) Sequence
 
-	// Len returns the length spanned by the loc.
+	// Len returns the length spanned by the location.
 	Len() int
 
-	// Format the loc.
-	Format() string
+	// String satisfies the fmt.Stringer interface.
+	String() string
 
-	// Shift the loc position[s] if needed.
-	Shift(pos, n int)
+	// Shift the location by the given amount if needed.
+	// Returns false if the shift invalidates the location.
+	Shift(offset, amount int) bool
 
-	// Convert the given local index to a global index.
-	Convert(index int) int
+	// Map the given local index to a global index.
+	Map(index int) int
 }
 
-// LocationSmaller tests if the one location is smaller than the other.
-func LocationSmaller(a, b Location) bool {
-	if a.Convert(0) < b.Convert(0) {
+// LocationLess tests if the one location is smaller than the other.
+func LocationLess(a, b Location) bool {
+	if a.Map(0) < b.Map(0) {
 		return true
 	}
-	if b.Convert(0) < a.Convert(0) {
+	if b.Map(0) < a.Map(0) {
 		return false
 	}
-	if a.Convert(-1) < b.Convert(-1) {
+	if a.Map(-1) < b.Map(-1) {
 		return true
 	}
-	if b.Convert(-1) < a.Convert(-1) {
+	if b.Map(-1) < a.Map(-1) {
 		return false
 	}
 	return false
@@ -61,8 +63,8 @@ func NewPointLocation(pos int) Location {
 	return &PointLocation{Position: pos}
 }
 
-// Map the sequence at the pointing location.
-func (loc PointLocation) Map(seq Sequence) Sequence {
+// Locate the sequence at the pointing location.
+func (loc PointLocation) Locate(seq Sequence) Sequence {
 	return Slice(seq, loc.Position, loc.Position+1)
 }
 
@@ -71,22 +73,55 @@ func (loc PointLocation) Len() int {
 	return 1
 }
 
-// Format the location.
-func (loc PointLocation) Format() string {
+// String satisfies the fmt.Stringer interface.
+func (loc PointLocation) String() string {
 	return strconv.Itoa(loc.Position + 1)
 }
 
 // Shift the location position[s] if needed.
-func (loc *PointLocation) Shift(pos, n int) {
-	if pos <= loc.Position {
-		loc.Position += n
+// Returns false if the shift invalidates the location.
+func (loc *PointLocation) Shift(offset, amount int) bool {
+	if amount == 0 || loc.Position < offset {
+		return true
 	}
+	if amount < 0 && loc.Position < offset-amount {
+		return false
+	}
+	loc.Position += amount
+	return true
 }
 
-// Convert the given local index to a global index.
-func (loc PointLocation) Convert(index int) int {
+// Map the given local index to a global index.
+func (loc PointLocation) Map(index int) int {
 	index = fixIndex(index, loc.Len())
 	return loc.Position + index
+}
+
+func shiftRange(a, b, i, n int) (int, int, bool) {
+	switch {
+	case n > 0:
+		if i <= a {
+			a += n
+		}
+		if i <= b {
+			b += n
+		}
+		return a, b, true
+	case n < 0:
+		c, d := a, b
+		if i-n <= c {
+			c += n
+		}
+		if i-n <= d {
+			d += n
+		}
+		if c < d-1 {
+			return c, d, true
+		}
+		return a, b, false
+	default:
+		return a, b, true
+	}
 }
 
 // RangeLocation represents a range of locations.
@@ -112,8 +147,8 @@ func NewPartialRangeLocation(start, end int, p5, p3 bool) Location {
 	}
 }
 
-// Map the sequence at the pointing location.
-func (loc RangeLocation) Map(seq Sequence) Sequence {
+// Locate the sequence at the pointing location.
+func (loc RangeLocation) Locate(seq Sequence) Sequence {
 	return Slice(seq, loc.Start, loc.End)
 }
 
@@ -122,8 +157,8 @@ func (loc RangeLocation) Len() int {
 	return loc.End - loc.Start
 }
 
-// Format the location.
-func (loc RangeLocation) Format() string {
+// String satisfies the fmt.Stringer interface.
+func (loc RangeLocation) String() string {
 	p5, p3 := "", ""
 	if loc.Partial5 {
 		p5 = "<"
@@ -135,17 +170,14 @@ func (loc RangeLocation) Format() string {
 }
 
 // Shift the location position[s] if needed.
-func (loc *RangeLocation) Shift(pos, n int) {
-	if pos <= loc.Start {
-		loc.Start += n
-	}
-	if pos <= loc.End {
-		loc.End += n
-	}
+// Returns false if the shift invalidates the location.
+func (loc *RangeLocation) Shift(offset, amount int) (ok bool) {
+	loc.Start, loc.End, ok = shiftRange(loc.Start, loc.End, offset, amount)
+	return
 }
 
-// Convert the given local index to a global index.
-func (loc RangeLocation) Convert(index int) int {
+// Map the given local index to a global index.
+func (loc RangeLocation) Map(index int) int {
 	index = fixIndex(index, loc.Len())
 	return loc.Start + index
 }
@@ -161,8 +193,8 @@ func NewAmbiguousLocation(start, end int) Location {
 	return &AmbiguousLocation{Start: start, End: end}
 }
 
-// Map the sequence at the pointing location.
-func (loc AmbiguousLocation) Map(seq Sequence) Sequence {
+// Locate the sequence at the pointing location.
+func (loc AmbiguousLocation) Locate(seq Sequence) Sequence {
 	return Slice(seq, loc.Start, loc.End)
 }
 
@@ -171,23 +203,20 @@ func (loc AmbiguousLocation) Len() int {
 	return loc.End - loc.Start
 }
 
-// Format the location.
-func (loc AmbiguousLocation) Format() string {
+// String satisfies the fmt.Stringer interface.
+func (loc AmbiguousLocation) String() string {
 	return fmt.Sprintf("%d.%d", loc.Start+1, loc.End)
 }
 
 // Shift the location position[s] if needed.
-func (loc *AmbiguousLocation) Shift(pos, n int) {
-	if pos <= loc.Start {
-		loc.Start += n
-	}
-	if pos <= loc.End {
-		loc.End += n
-	}
+// Returns false if the shift invalidates the location.
+func (loc *AmbiguousLocation) Shift(offset, amount int) (ok bool) {
+	loc.Start, loc.End, ok = shiftRange(loc.Start, loc.End, offset, amount)
+	return
 }
 
-// Convert the given local index to a global index.
-func (loc AmbiguousLocation) Convert(index int) int {
+// Map the given local index to a global index.
+func (loc AmbiguousLocation) Map(index int) int {
 	index = fixIndex(index, loc.Len())
 	return loc.Start + index
 }
@@ -203,8 +232,8 @@ func NewBetweenLocation(start, end int) Location {
 	return &BetweenLocation{Start: start, End: end}
 }
 
-// Map the sequence at the pointing location.
-func (loc BetweenLocation) Map(seq Sequence) Sequence {
+// Locate the sequence at the pointing location.
+func (loc BetweenLocation) Locate(seq Sequence) Sequence {
 	return Slice(seq, loc.Start, loc.End)
 }
 
@@ -213,23 +242,20 @@ func (loc BetweenLocation) Len() int {
 	return loc.End - loc.Start
 }
 
-// Format the location.
-func (loc BetweenLocation) Format() string {
+// String satisfies the fmt.Stringer interface.
+func (loc BetweenLocation) String() string {
 	return fmt.Sprintf("%d^%d", loc.Start+1, loc.End)
 }
 
 // Shift the location position[s] if needed.
-func (loc *BetweenLocation) Shift(pos, n int) {
-	if pos <= loc.Start {
-		loc.Start += n
-	}
-	if pos <= loc.End {
-		loc.End += n
-	}
+// Returns false if the shift invalidates the location.
+func (loc *BetweenLocation) Shift(offset, amount int) (ok bool) {
+	loc.Start, loc.End, ok = shiftRange(loc.Start, loc.End, offset, amount)
+	return
 }
 
-// Convert the given local index to a global index.
-func (loc BetweenLocation) Convert(index int) int {
+// Map the given local index to a global index.
+func (loc BetweenLocation) Map(index int) int {
 	index = fixIndex(index, loc.Len())
 	return loc.Start + index
 }
@@ -244,9 +270,9 @@ func NewComplementLocation(loc Location) Location {
 	return &ComplementLocation{Location: loc}
 }
 
-// Map the sequence at the pointing location.
-func (loc ComplementLocation) Map(seq Sequence) Sequence {
-	return Complement(loc.Location.Map(seq))
+// Locate the sequence at the pointing location.
+func (loc ComplementLocation) Locate(seq Sequence) Sequence {
+	return Complement(loc.Location.Locate(seq))
 }
 
 // Len returns the length spanned by the location.
@@ -254,19 +280,20 @@ func (loc ComplementLocation) Len() int {
 	return loc.Location.Len()
 }
 
-// Format the location.
-func (loc ComplementLocation) Format() string {
-	return fmt.Sprintf("complement(%s)", loc.Location.Format())
+// String satisfies the fmt.Stringer interface.
+func (loc ComplementLocation) String() string {
+	return fmt.Sprintf("complement(%s)", loc.Location.String())
 }
 
 // Shift the location position[s] if needed.
-func (loc *ComplementLocation) Shift(pos, n int) {
-	loc.Location.Shift(pos, n)
+// Returns false if the shift invalidates the location.
+func (loc *ComplementLocation) Shift(offset, amount int) bool {
+	return loc.Location.Shift(offset, amount)
 }
 
-// Convert the given local index to a global index.
-func (loc ComplementLocation) Convert(index int) int {
-	return loc.Location.Convert(index)
+// Map the given local index to a global index.
+func (loc ComplementLocation) Map(index int) int {
+	return loc.Location.Map(index)
 }
 
 // JoinLocation represents multiple joined locations.
@@ -279,12 +306,12 @@ func NewJoinLocation(locs []Location) Location {
 	return &JoinLocation{Locations: locs}
 }
 
-// Map the sequence at the pointing location.
-func (loc JoinLocation) Map(seq Sequence) Sequence {
+// Locate the sequence at the pointing location.
+func (loc JoinLocation) Locate(seq Sequence) Sequence {
 	r := make([]byte, loc.Len())
 	i := 0
 	for _, l := range loc.Locations {
-		copy(r[i:], l.Map(seq).Bytes())
+		copy(r[i:], l.Locate(seq).Bytes())
 		i += l.Len()
 	}
 	return Seq(r)
@@ -299,28 +326,33 @@ func (loc JoinLocation) Len() int {
 	return length
 }
 
-// Format the location.
-func (loc JoinLocation) Format() string {
+// String satisfies the fmt.Stringer interface.
+func (loc JoinLocation) String() string {
 	tmp := make([]string, len(loc.Locations))
 	for i := range loc.Locations {
-		tmp[i] = loc.Locations[i].Format()
+		tmp[i] = loc.Locations[i].String()
 	}
 	return fmt.Sprintf("join(%s)", strings.Join(tmp, ","))
 }
 
 // Shift the location position[s] if needed.
-func (loc *JoinLocation) Shift(pos, n int) {
+// Returns false if the shift invalidates the location.
+func (loc *JoinLocation) Shift(pos, n int) bool {
+	ok := true
 	for i := range loc.Locations {
-		loc.Locations[i].Shift(pos, n)
+		if !loc.Locations[i].Shift(pos, n) {
+			ok = false
+		}
 	}
+	return ok
 }
 
-// Convert the given local index to a global index.
-func (loc JoinLocation) Convert(index int) int {
+// Map the given local index to a global index.
+func (loc JoinLocation) Map(index int) int {
 	index = fixIndex(index, loc.Len())
 	for _, l := range loc.Locations {
 		if index < l.Len() {
-			return l.Convert(index)
+			return l.Map(index)
 		}
 		index -= l.Len()
 	}
@@ -337,12 +369,12 @@ func NewOrderLocation(locs []Location) Location {
 	return &OrderLocation{Locations: locs}
 }
 
-// Map the sequence at the pointing location.
-func (loc OrderLocation) Map(seq Sequence) Sequence {
+// Locate the sequence at the pointing location.
+func (loc OrderLocation) Locate(seq Sequence) Sequence {
 	r := make([]byte, loc.Len())
 	i := 0
 	for _, l := range loc.Locations {
-		copy(r[i:], l.Map(seq).Bytes())
+		copy(r[i:], l.Locate(seq).Bytes())
 		i += l.Len()
 	}
 	return Seq(r)
@@ -357,28 +389,33 @@ func (loc OrderLocation) Len() int {
 	return length
 }
 
-// Format the location.
-func (loc OrderLocation) Format() string {
+// String satisfies the fmt.Stringer interface.
+func (loc OrderLocation) String() string {
 	tmp := make([]string, len(loc.Locations))
 	for i := range loc.Locations {
-		tmp[i] = loc.Locations[i].Format()
+		tmp[i] = loc.Locations[i].String()
 	}
 	return fmt.Sprintf("order(%s)", strings.Join(tmp, ","))
 }
 
 // Shift the location position[s] if needed.
-func (loc *OrderLocation) Shift(pos, n int) {
+// Returns false if the shift invalidates the location.
+func (loc *OrderLocation) Shift(pos, n int) bool {
+	ok := true
 	for i := range loc.Locations {
-		loc.Locations[i].Shift(pos, n)
+		if !loc.Locations[i].Shift(pos, n) {
+			ok = false
+		}
 	}
+	return ok
 }
 
-// Convert the given local index to a global index.
-func (loc OrderLocation) Convert(index int) int {
+// Map the given local index to a global index.
+func (loc OrderLocation) Map(index int) int {
 	index = fixIndex(index, loc.Len())
 	for _, l := range loc.Locations {
 		if index < l.Len() {
-			return l.Convert(index)
+			return l.Map(index)
 		}
 		index -= l.Len()
 	}
@@ -472,6 +509,19 @@ var OrderLocationParser = pars.Seq(
 	result.SetValue(loc)
 	return nil
 })
+
+var errNotLocation = errors.New("string is not a Location")
+
+// AsLocation will attempt to interpret the given string as a Location.
+func AsLocation(s string) (Location, error) {
+	state := pars.FromString(s)
+	result := pars.Result{}
+	parser := pars.Exact(LocationParser).Error(errNotLocation)
+	if err := parser(state, &result); err != nil {
+		return nil, err
+	}
+	return result.Value.(Location), nil
+}
 
 func init() {
 	LocationParser = pars.Any(

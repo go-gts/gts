@@ -71,9 +71,9 @@ func TestSkew(t *testing.T) {
 	seq := gt1.Seq("atgcatgc")
 
 	values := []struct {
-		nSet string
-		pSet string
-		skew float64
+		NSet string
+		PSet string
+		Skew float64
 	}{
 		{"g", "c", 0.0},
 		{"a", "t", 0.0},
@@ -83,7 +83,7 @@ func TestSkew(t *testing.T) {
 
 	cases := make([]assert.F, len(values))
 	for i, value := range values {
-		nSet, pSet, skew := value.nSet, value.pSet, value.skew
+		nSet, pSet, skew := value.NSet, value.PSet, value.Skew
 		cases[i] = assert.Equal(gt1.Skew(seq, nSet, pSet), skew)
 	}
 
