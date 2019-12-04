@@ -163,9 +163,7 @@ func quotedQualifierMap(prefix string) pars.Map {
 	parser := pars.Delim(pars.Line, prefix)
 	return func(result *pars.Result) error {
 		state := pars.FromBytes(result.Token)
-		if err := parser(state, result); err != nil {
-			return err
-		}
+		parser(state, result)
 		ss := make([]string, len(result.Children))
 		for i, child := range result.Children {
 			ss[i] = string(child.Token)
@@ -183,8 +181,8 @@ func quotedQualifierParser(prefix string) pars.Parser {
 
 // QualfierParser will attempt to match a single qualifier name-value pair.
 func QualifierParser(prefix string) pars.Parser {
-	wordParser := pars.Word(ascii.Not(ascii.IsSpace)).ToString()
 	nameParser := qualifierNameParser(prefix)
+	wordParser := pars.Word(ascii.Not(ascii.IsSpace)).ToString()
 
 	quotedParser := quotedQualifierParser(prefix)
 	literalParser := pars.Seq('=', wordParser).Child(1)

@@ -9,7 +9,7 @@ import (
 	"github.com/ktnyt/pars"
 )
 
-func testQualifierIOString(s string) assert.F {
+func testQualifierIOValid(s string) assert.F {
 	prefix := strings.Repeat(" ", 21)
 
 	state := pars.FromString(s)
@@ -26,12 +26,32 @@ func testQualifierIOString(s string) assert.F {
 	)
 }
 
+func testQualifierIOInvalid(s string) assert.F {
+	prefix := strings.Repeat(" ", 21)
+	state := pars.FromString(s)
+	parser := pars.Exact(gt1.QualifierParser(prefix))
+	return assert.IsError(parser(state, pars.Void))
+}
+
 func TestQualifierIO(t *testing.T) {
 	s := ReadGolden(t)
 	ss := RecordSplit(s)
-	cases := make([]assert.F, len(ss))
-	for i, s := range ss {
-		cases[i] = testQualifierIOString(s)
+
+	n := len(ss) - 2
+	validStrings, invalidStrings := ss[:n], ss[n:]
+
+	validCases := make([]assert.F, len(validStrings))
+	for i, s := range validStrings {
+		validCases[i] = testQualifierIOValid(s)
 	}
-	assert.Apply(t, cases...)
+
+	invalidCases := make([]assert.F, len(invalidStrings))
+	for i, s := range invalidStrings {
+		invalidCases[i] = testQualifierIOInvalid(s)
+	}
+
+	assert.Apply(t,
+		assert.C("valid", validCases...),
+		assert.C("invalid", invalidCases...),
+	)
 }
