@@ -25,12 +25,10 @@ func testFeatureIOStrings(s string) assert.F {
 
 func TestFeatureIO(t *testing.T) {
 	s := ReadGolden(t)
-	testFeatureStrings := RecordSplit(s)
-	cases := make([]assert.F, len(testFeatureStrings))
-
-	for i, s := range testFeatureStrings {
+	ss := RecordSplit(s)
+	cases := make([]assert.F, len(ss))
+	for i, s := range ss {
 		cases[i] = testFeatureIOStrings(s)
 	}
-
 	assert.Apply(t, cases...)
 }
