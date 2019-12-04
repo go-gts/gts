@@ -34,29 +34,6 @@ func (q Qualifier) Format(prefix string) string {
 	return prefix + strings.ReplaceAll(q.String(), "\n", "\n"+prefix)
 }
 
-// Qualifiers represents a collection of feature qualifiers.
-type Qualifiers map[string][]string
-
-// Get will return the qualifier values associated to the given name.
-func (q Qualifiers) Get(key string) []string {
-	if q == nil {
-		return nil
-	}
-	if v, ok := q[key]; ok {
-		return v
-	}
-	return nil
-}
-
-// Set will overwrite the qualifier values associated to the given name.
-func (q Qualifiers) Set(name string, values ...string) { q[name] = values }
-
-// Add will add a value to the qualifier associated to the given name.
-func (q Qualifiers) Add(name, value string) { q[name] = append(q[name], value) }
-
-// Del will delete the qualifier values associated to the given name.
-func (q Qualifiers) Del(name string) { delete(q, name) }
-
 // Names of qualifiers.
 var (
 	QuotedQualifierNames = []string{
