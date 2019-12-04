@@ -8,7 +8,7 @@ import (
 	"github.com/ktnyt/pars"
 )
 
-func testFeatureParserStrings(s string) assert.F {
+func testFeatureIOStrings(s string) assert.F {
 	state := pars.FromString(s)
 	result := pars.Result{}
 	parser := pars.Exact(gt1.FeatureParser(""))
@@ -23,13 +23,13 @@ func testFeatureParserStrings(s string) assert.F {
 	)
 }
 
-func TestFeatureParser(t *testing.T) {
+func TestFeatureIO(t *testing.T) {
 	s := ReadGolden(t)
 	testFeatureStrings := RecordSplit(s)
 	cases := make([]assert.F, len(testFeatureStrings))
 
 	for i, s := range testFeatureStrings {
-		cases[i] = testFeatureParserStrings(s)
+		cases[i] = testFeatureIOStrings(s)
 	}
 
 	assert.Apply(t, cases...)

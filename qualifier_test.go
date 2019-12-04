@@ -244,7 +244,7 @@ func testQualifierParserString(s string) assert.F {
 	)
 }
 
-func TestQualifierParser(t *testing.T) {
+func TestQualifierIO(t *testing.T) {
 	cases := make([]assert.F, len(qualifierTestStrings))
 	for i, s := range qualifierTestStrings {
 		cases[i] = testQualifierParserString(s)
