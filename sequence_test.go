@@ -7,6 +7,10 @@ import (
 	"github.com/ktnyt/gt1"
 )
 
+type Stringer string
+
+func (s Stringer) String() string { return string(s) }
+
 func TestSeq(t *testing.T) {
 	s := "atgc"
 	p := []byte(s)
@@ -15,15 +19,21 @@ func TestSeq(t *testing.T) {
 	seqs := gt1.Seq(s)
 	seqp := gt1.Seq(p)
 	seqr := gt1.Seq(r)
+	seqi := gt1.Seq(Stringer(s))
 	seq := gt1.Seq(seqs)
 
 	assert.Apply(t,
-		assert.Equal(seq, seqs),
-		assert.Equal(seq, seqp),
-		assert.Equal(seq, seqr),
-		assert.True(gt1.Equal(seq, seqs)),
-		assert.True(gt1.Equal(seq, seqp)),
-		assert.True(gt1.Equal(seq, seqr)),
+		assert.Equal(seqs, seq),
+		assert.Equal(seqp, seq),
+		assert.Equal(seqr, seq),
+		assert.Equal(seqi, seq),
+
+		assert.True(gt1.Equal(seqs, seq)),
+		assert.True(gt1.Equal(seqp, seq)),
+		assert.True(gt1.Equal(seqr, seq)),
+		assert.True(gt1.Equal(seqi, seq)),
+
+		assert.Panic(func() { gt1.Seq(0) }),
 	)
 }
 
