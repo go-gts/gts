@@ -1,4 +1,4 @@
-package gt1
+package gts
 
 import (
 	"fmt"
@@ -25,7 +25,7 @@ func (q Qualifier) String() string {
 	case ToggleQualifier:
 		return "/" + q.Name
 	default:
-		panic(fmt.Sprintf("gt1 does not know how to format a qualifier of name `%s`", q.Name))
+		panic(fmt.Sprintf("gts does not know how to format a qualifier of name `%s`", q.Name))
 	}
 }
 

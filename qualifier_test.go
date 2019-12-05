@@ -1,11 +1,11 @@
-package gt1_test
+package gts_test
 
 import (
 	"strings"
 	"testing"
 
 	"github.com/ktnyt/assert"
-	"github.com/ktnyt/gt1"
+	"github.com/ktnyt/gts"
 	"github.com/ktnyt/pars"
 )
 
@@ -14,10 +14,10 @@ func testQualifierIOValid(s string) assert.F {
 
 	state := pars.FromString(s)
 	result := pars.Result{}
-	parser := pars.Exact(gt1.QualifierParser(prefix))
+	parser := pars.Exact(gts.QualifierParser(prefix))
 
 	err := parser(state, &result)
-	q, ok := result.Value.(gt1.Qualifier)
+	q, ok := result.Value.(gts.Qualifier)
 
 	return assert.All(
 		assert.NoError(err),
@@ -29,7 +29,7 @@ func testQualifierIOValid(s string) assert.F {
 func testQualifierIOInvalid(s string) assert.F {
 	prefix := strings.Repeat(" ", 21)
 	state := pars.FromString(s)
-	parser := pars.Exact(gt1.QualifierParser(prefix))
+	parser := pars.Exact(gts.QualifierParser(prefix))
 	return assert.IsError(parser(state, pars.Void))
 }
 

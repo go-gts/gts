@@ -1,4 +1,4 @@
-package gt1
+package gts
 
 func complementBase(b byte) byte {
 	switch b {

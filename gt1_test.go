@@ -1,4 +1,4 @@
-package gt1_test
+package gts_test
 
 import (
 	"io/ioutil"

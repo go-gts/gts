@@ -1,4 +1,4 @@
-package gt1
+package gts
 
 import (
 	"sort"

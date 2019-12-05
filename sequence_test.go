@@ -1,10 +1,10 @@
-package gt1_test
+package gts_test
 
 import (
 	"testing"
 
 	"github.com/ktnyt/assert"
-	"github.com/ktnyt/gt1"
+	"github.com/ktnyt/gts"
 )
 
 type Stringer string
@@ -16,11 +16,11 @@ func TestSeq(t *testing.T) {
 	p := []byte(s)
 	r := []rune(s)
 
-	seqs := gt1.Seq(s)
-	seqp := gt1.Seq(p)
-	seqr := gt1.Seq(r)
-	seqi := gt1.Seq(Stringer(s))
-	seq := gt1.Seq(seqs)
+	seqs := gts.Seq(s)
+	seqp := gts.Seq(p)
+	seqr := gts.Seq(r)
+	seqi := gts.Seq(Stringer(s))
+	seq := gts.Seq(seqs)
 
 	assert.Apply(t,
 		assert.Equal(seqs, seq),
@@ -28,34 +28,34 @@ func TestSeq(t *testing.T) {
 		assert.Equal(seqr, seq),
 		assert.Equal(seqi, seq),
 
-		assert.True(gt1.Equal(seqs, seq)),
-		assert.True(gt1.Equal(seqp, seq)),
-		assert.True(gt1.Equal(seqr, seq)),
-		assert.True(gt1.Equal(seqi, seq)),
+		assert.True(gts.Equal(seqs, seq)),
+		assert.True(gts.Equal(seqp, seq)),
+		assert.True(gts.Equal(seqr, seq)),
+		assert.True(gts.Equal(seqi, seq)),
 
-		assert.Panic(func() { gt1.Seq(0) }),
+		assert.Panic(func() { gts.Seq(0) }),
 	)
 }
 
 func TestSlice(t *testing.T) {
-	seq := gt1.Seq("atatgcgc")
-	e := gt1.Seq("atgc")
-	s := gt1.Slice(seq, 2, 6)
+	seq := gts.Seq("atatgcgc")
+	e := gts.Seq("atgc")
+	s := gts.Slice(seq, 2, 6)
 
 	assert.Apply(t, assert.Equal(s, e))
 }
 
 func TestFragment(t *testing.T) {
-	seq := gt1.Seq("atgcatgc")
+	seq := gts.Seq("atgcatgc")
 
-	e44 := gt1.Seq("atgc")
-	f44 := gt1.Fragment(seq, 4, 4)
+	e44 := gts.Seq("atgc")
+	f44 := gts.Fragment(seq, 4, 4)
 
-	e24 := gt1.Seq("at")
-	f24 := gt1.Fragment(seq, 2, 4)
+	e24 := gts.Seq("at")
+	f24 := gts.Fragment(seq, 2, 4)
 
-	e42 := []gt1.Sequence{gt1.Seq("atgc"), gt1.Seq("gcat")}
-	f42 := gt1.Fragment(seq, 4, 2)
+	e42 := []gts.Sequence{gts.Seq("atgc"), gts.Seq("gcat")}
+	f42 := gts.Fragment(seq, 4, 2)
 
 	assert.Apply(t,
 		assert.Equal(f44[0], e44),
@@ -70,15 +70,15 @@ func TestFragment(t *testing.T) {
 }
 
 func TestComposition(t *testing.T) {
-	seq := gt1.Seq("atgcatgc")
-	c := gt1.Composition(seq)
+	seq := gts.Seq("atgcatgc")
+	c := gts.Composition(seq)
 	e := map[byte]int{'a': 2, 't': 2, 'g': 2, 'c': 2}
 
 	assert.Apply(t, assert.Equal(c, e))
 }
 
 func TestSkew(t *testing.T) {
-	seq := gt1.Seq("atgcatgc")
+	seq := gts.Seq("atgcatgc")
 
 	values := []struct {
 		NSet string
@@ -94,7 +94,7 @@ func TestSkew(t *testing.T) {
 	cases := make([]assert.F, len(values))
 	for i, value := range values {
 		nSet, pSet, skew := value.NSet, value.PSet, value.Skew
-		cases[i] = assert.Equal(gt1.Skew(seq, nSet, pSet), skew)
+		cases[i] = assert.Equal(gts.Skew(seq, nSet, pSet), skew)
 	}
 
 	assert.Apply(t, cases...)

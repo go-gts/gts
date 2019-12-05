@@ -1,4 +1,4 @@
-package gt1
+package gts
 
 // Qualifiers represents a collection of feature qualifiers.
 type Qualifiers map[string][]string

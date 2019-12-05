@@ -1,18 +1,18 @@
-package gt1_test
+package gts_test
 
 import (
 	"fmt"
 	"testing"
 
 	"github.com/ktnyt/assert"
-	"github.com/ktnyt/gt1"
+	"github.com/ktnyt/gts"
 	"github.com/ktnyt/pars"
 )
 
 func ints(is ...int) []int { return is }
 
-func forceLocation(s string) gt1.Location {
-	loc, err := gt1.AsLocation(s)
+func forceLocation(s string) gts.Location {
+	loc, err := gts.AsLocation(s)
 	if err != nil {
 		panic(err)
 	}
@@ -34,8 +34,8 @@ func TestLocationLess(t *testing.T) {
 		for j := range values {
 			a, b := forceLocation(values[i]), forceLocation(values[j])
 			tmp[j] = assert.All(
-				assert.Equal(gt1.LocationLess(a, b), i < j),
-				assert.Equal(gt1.LocationLess(b, a), j < i),
+				assert.Equal(gts.LocationLess(a, b), i < j),
+				assert.Equal(gts.LocationLess(b, a), j < i),
 			)
 		}
 		cases[i] = assert.All(tmp...)
@@ -45,76 +45,76 @@ func TestLocationLess(t *testing.T) {
 }
 
 func TestLocationsLocate(t *testing.T) {
-	seq := gt1.Seq("atgcatgc")
+	seq := gts.Seq("atgcatgc")
 
 	values := []struct {
-		Loc  gt1.Location
-		ESeq gt1.Sequence
+		Loc  gts.Location
+		ESeq gts.Sequence
 		EIdx []int
 	}{
-		{gt1.NewPointLocation(0), gt1.Seq("a"), ints(0)},
-		{gt1.NewPointLocation(1), gt1.Seq("t"), ints(1)},
-		{gt1.NewPointLocation(2), gt1.Seq("g"), ints(2)},
-		{gt1.NewPointLocation(3), gt1.Seq("c"), ints(3)},
+		{gts.NewPointLocation(0), gts.Seq("a"), ints(0)},
+		{gts.NewPointLocation(1), gts.Seq("t"), ints(1)},
+		{gts.NewPointLocation(2), gts.Seq("g"), ints(2)},
+		{gts.NewPointLocation(3), gts.Seq("c"), ints(3)},
 
-		{gt1.NewRangeLocation(0, 4), gt1.Seq("atgc"), ints(0, 1, 2, 3)},
-		{gt1.NewRangeLocation(2, 6), gt1.Seq("gcat"), ints(2, 3, 4, 5)},
-		{gt1.NewRangeLocation(4, 8), gt1.Seq("atgc"), ints(4, 5, 6, 7)},
+		{gts.NewRangeLocation(0, 4), gts.Seq("atgc"), ints(0, 1, 2, 3)},
+		{gts.NewRangeLocation(2, 6), gts.Seq("gcat"), ints(2, 3, 4, 5)},
+		{gts.NewRangeLocation(4, 8), gts.Seq("atgc"), ints(4, 5, 6, 7)},
 
-		{gt1.NewAmbiguousLocation(0, 4), gt1.Seq("atgc"), ints(0, 1, 2, 3)},
-		{gt1.NewAmbiguousLocation(2, 6), gt1.Seq("gcat"), ints(2, 3, 4, 5)},
-		{gt1.NewAmbiguousLocation(4, 8), gt1.Seq("atgc"), ints(4, 5, 6, 7)},
+		{gts.NewAmbiguousLocation(0, 4), gts.Seq("atgc"), ints(0, 1, 2, 3)},
+		{gts.NewAmbiguousLocation(2, 6), gts.Seq("gcat"), ints(2, 3, 4, 5)},
+		{gts.NewAmbiguousLocation(4, 8), gts.Seq("atgc"), ints(4, 5, 6, 7)},
 
-		{gt1.NewBetweenLocation(0, 4), gt1.Seq("atgc"), ints(0, 1, 2, 3)},
-		{gt1.NewBetweenLocation(2, 6), gt1.Seq("gcat"), ints(2, 3, 4, 5)},
-		{gt1.NewBetweenLocation(4, 8), gt1.Seq("atgc"), ints(4, 5, 6, 7)},
+		{gts.NewBetweenLocation(0, 4), gts.Seq("atgc"), ints(0, 1, 2, 3)},
+		{gts.NewBetweenLocation(2, 6), gts.Seq("gcat"), ints(2, 3, 4, 5)},
+		{gts.NewBetweenLocation(4, 8), gts.Seq("atgc"), ints(4, 5, 6, 7)},
 
 		{
-			gt1.NewComplementLocation(gt1.NewRangeLocation(0, 4)),
-			gt1.Complement(gt1.Seq("atgc")), ints(0, 1, 2, 3),
+			gts.NewComplementLocation(gts.NewRangeLocation(0, 4)),
+			gts.Complement(gts.Seq("atgc")), ints(0, 1, 2, 3),
 		},
 		{
-			gt1.NewComplementLocation(gt1.NewRangeLocation(2, 6)),
-			gt1.Complement(gt1.Seq("gcat")), ints(2, 3, 4, 5),
+			gts.NewComplementLocation(gts.NewRangeLocation(2, 6)),
+			gts.Complement(gts.Seq("gcat")), ints(2, 3, 4, 5),
 		},
 		{
-			gt1.NewComplementLocation(gt1.NewRangeLocation(4, 8)),
-			gt1.Complement(gt1.Seq("atgc")), ints(4, 5, 6, 7),
+			gts.NewComplementLocation(gts.NewRangeLocation(4, 8)),
+			gts.Complement(gts.Seq("atgc")), ints(4, 5, 6, 7),
 		},
 
 		{
-			gt1.NewJoinLocation([]gt1.Location{
-				gt1.NewRangeLocation(0, 2),
-				gt1.NewRangeLocation(3, 5),
-				gt1.NewRangeLocation(6, 8),
+			gts.NewJoinLocation([]gts.Location{
+				gts.NewRangeLocation(0, 2),
+				gts.NewRangeLocation(3, 5),
+				gts.NewRangeLocation(6, 8),
 			}),
-			gt1.Seq("atcagc"),
+			gts.Seq("atcagc"),
 			ints(0, 1, 3, 4, 6, 7),
 		},
 		{
-			gt1.NewJoinLocation([]gt1.Location{
-				gt1.NewRangeLocation(0, 3),
-				gt1.NewRangeLocation(5, 8),
+			gts.NewJoinLocation([]gts.Location{
+				gts.NewRangeLocation(0, 3),
+				gts.NewRangeLocation(5, 8),
 			}),
-			gt1.Seq("atgtgc"),
+			gts.Seq("atgtgc"),
 			ints(0, 1, 2, 5, 6, 7),
 		},
 
 		{
-			gt1.NewOrderLocation([]gt1.Location{
-				gt1.NewRangeLocation(0, 2),
-				gt1.NewRangeLocation(3, 5),
-				gt1.NewRangeLocation(6, 8),
+			gts.NewOrderLocation([]gts.Location{
+				gts.NewRangeLocation(0, 2),
+				gts.NewRangeLocation(3, 5),
+				gts.NewRangeLocation(6, 8),
 			}),
-			gt1.Seq("atcagc"),
+			gts.Seq("atcagc"),
 			ints(0, 1, 3, 4, 6, 7),
 		},
 		{
-			gt1.NewOrderLocation([]gt1.Location{
-				gt1.NewRangeLocation(0, 3),
-				gt1.NewRangeLocation(5, 8),
+			gts.NewOrderLocation([]gts.Location{
+				gts.NewRangeLocation(0, 3),
+				gts.NewRangeLocation(5, 8),
 			}),
-			gt1.Seq("atgtgc"),
+			gts.Seq("atgtgc"),
 			ints(0, 1, 2, 5, 6, 7),
 		},
 	}
@@ -314,13 +314,13 @@ var locationStrings = []struct {
 }
 
 var locationNameMap = map[string]pars.Parser{
-	"PointLocationParser":      gt1.PointLocationParser,
-	"RangeLocationParser":      gt1.RangeLocationParser,
-	"AmbiguousLocationParser":  gt1.AmbiguousLocationParser,
-	"BetweenLocationParser":    gt1.BetweenLocationParser,
-	"OrderLocationParser":      gt1.OrderLocationParser,
-	"JoinLocationParser":       gt1.JoinLocationParser,
-	"ComplementLocationParser": gt1.ComplementLocationParser,
+	"PointLocationParser":      gts.PointLocationParser,
+	"RangeLocationParser":      gts.RangeLocationParser,
+	"AmbiguousLocationParser":  gts.AmbiguousLocationParser,
+	"BetweenLocationParser":    gts.BetweenLocationParser,
+	"OrderLocationParser":      gts.OrderLocationParser,
+	"JoinLocationParser":       gts.JoinLocationParser,
+	"ComplementLocationParser": gts.ComplementLocationParser,
 }
 
 func testLocationStrings(name string) assert.F {
@@ -337,7 +337,7 @@ func testLocationStrings(name string) assert.F {
 
 			validCases = append(validCases, assert.All(
 				assert.NoError(p(s, &r)),
-				assert.Equal(r.Value.(gt1.Location).String(), e),
+				assert.Equal(r.Value.(gts.Location).String(), e),
 			))
 		} else {
 			invalidCases = append(invalidCases, assert.IsError(p(s, pars.Void)))
@@ -368,11 +368,11 @@ func TestLocationIO(t *testing.T) {
 	}
 
 	for _, pair := range locationStrings {
-		_, err := gt1.AsLocation(pair.Value)
+		_, err := gts.AsLocation(pair.Value)
 		cases = append(cases, assert.NoError(err))
 	}
 
-	_, err := gt1.AsLocation("")
+	_, err := gts.AsLocation("")
 	cases = append(cases, assert.IsError(err))
 
 	assert.Apply(t, cases...)

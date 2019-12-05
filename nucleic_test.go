@@ -1,14 +1,14 @@
-package gt1_test
+package gts_test
 
 import (
 	"testing"
 
 	"github.com/ktnyt/assert"
-	"github.com/ktnyt/gt1"
+	"github.com/ktnyt/gts"
 )
 
 func TestComplement(t *testing.T) {
-	original := gt1.Seq("atgcATGCnN")
-	complement := gt1.Seq("tacgTACGnN")
-	assert.Apply(t, assert.Equal(gt1.Complement(original), complement))
+	original := gts.Seq("atgcATGCnN")
+	complement := gts.Seq("tacgTACGnN")
+	assert.Apply(t, assert.Equal(gts.Complement(original), complement))
 }

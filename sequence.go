@@ -1,4 +1,4 @@
-package gt1
+package gts
 
 import (
 	"bytes"
@@ -24,7 +24,7 @@ type Mutable interface {
 // alternate definition of a byte slice.
 type BasicSequence []byte
 
-// Bytes satisifies the gt1.Sequence interface.
+// Bytes satisifies the gts.Sequence interface.
 func (seq BasicSequence) Bytes() []byte { return []byte(seq) }
 
 // Seq is a convenience utility function which will take the given argument

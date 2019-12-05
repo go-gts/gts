@@ -1,20 +1,20 @@
-package gt1_test
+package gts_test
 
 import (
 	"testing"
 
 	"github.com/ktnyt/assert"
-	"github.com/ktnyt/gt1"
+	"github.com/ktnyt/gts"
 	"github.com/ktnyt/pars"
 )
 
 func testFeatureIOStrings(s string) assert.F {
 	state := pars.FromString(s)
 	result := pars.Result{}
-	parser := pars.Exact(gt1.FeatureParser(""))
+	parser := pars.Exact(gts.FeatureParser(""))
 
 	err := parser(state, &result)
-	feature, ok := result.Value.(gt1.Feature)
+	feature, ok := result.Value.(gts.Feature)
 
 	return assert.All(
 		assert.NoError(err),

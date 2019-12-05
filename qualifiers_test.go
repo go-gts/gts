@@ -1,17 +1,17 @@
-package gt1_test
+package gts_test
 
 import (
 	"testing"
 
 	"github.com/ktnyt/assert"
-	"github.com/ktnyt/gt1"
+	"github.com/ktnyt/gts"
 )
 
 func TestQualifiers(t *testing.T) {
-	qs := gt1.Qualifiers{}
+	qs := gts.Qualifiers{}
 
 	assert.Apply(t,
-		assert.True(gt1.Qualifiers(nil).Get("foo") == nil),
+		assert.True(gts.Qualifiers(nil).Get("foo") == nil),
 		assert.True(qs.Get("foo") == nil),
 		assert.Eval(func() { qs.Set("foo", "bar") }),
 		assert.Equal(qs.Get("foo"), []string{"bar"}),
