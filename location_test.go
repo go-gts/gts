@@ -21,8 +21,8 @@ func forceLocation(s string) gt1.Location {
 
 func TestLocationLess(t *testing.T) {
 	values := []string{
-		"0",
-		"0..42",
+		"1",
+		"1..42",
 		"42",
 		"42..723",
 		"723",
@@ -131,6 +131,37 @@ func TestLocationsLocate(t *testing.T) {
 			assert.Equal(loc.Len(), len(eseq.Bytes())),
 			assert.Equal(loc.Locate(seq), eseq),
 			assert.Equal(idx, eidx),
+		)
+	}
+
+	assert.Apply(t, cases...)
+}
+
+func TestLocationsMap(t *testing.T) {
+	values := []struct {
+		Locstr string
+		Expect []int
+	}{
+		{"1", ints(0)},
+		{"1..2", ints(0, 1)},
+		{"1.2", ints(0, 1)},
+		{"1^2", ints(0, 1)},
+		{"complement(1..2)", ints(0, 1)},
+		{"join(1..2,42..43)", ints(0, 1, 41, 42)},
+		{"order(1..2,42..43)", ints(0, 1, 41, 42)},
+	}
+
+	cases := make([]assert.F, len(values))
+	for i, value := range values {
+		loc := forceLocation(value.Locstr)
+		idx := make([]int, loc.Len())
+		for i := range idx {
+			idx[i] = loc.Map(i)
+		}
+		cases[i] = assert.All(
+			assert.Equal(idx, value.Expect),
+			assert.Panic(func() { loc.Map(-1) }),
+			assert.Panic(func() { loc.Map(loc.Len() + 1) }),
 		)
 	}
 
@@ -335,6 +366,14 @@ func TestLocationIO(t *testing.T) {
 	for i, parser := range parsers {
 		cases[i] = testLocationStrings(parser)
 	}
+
+	for _, pair := range locationStrings {
+		_, err := gt1.AsLocation(pair.Value)
+		cases = append(cases, assert.NoError(err))
+	}
+
+	_, err := gt1.AsLocation("")
+	cases = append(cases, assert.IsError(err))
 
 	assert.Apply(t, cases...)
 }

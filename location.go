@@ -36,23 +36,13 @@ func LocationLess(a, b Location) bool {
 	if b.Map(0) < a.Map(0) {
 		return false
 	}
-	if a.Map(-1) < b.Map(-1) {
+	if a.Map(a.Len()-1) < b.Map(b.Len()-1) {
 		return true
 	}
-	if b.Map(-1) < a.Map(-1) {
+	if b.Map(b.Len()-1) < a.Map(a.Len()-1) {
 		return false
 	}
 	return false
-}
-
-func fixIndex(index, length int) int {
-	if index < 0 {
-		index += length
-	}
-	if index >= length {
-		panic(fmt.Errorf("index [%d] is outside of loc with length %d", index, length))
-	}
-	return index
 }
 
 // PointLocation represents a single point.
@@ -93,8 +83,13 @@ func (loc *PointLocation) Shift(offset, amount int) bool {
 
 // Map the given local index to a global index.
 func (loc PointLocation) Map(index int) int {
-	index = fixIndex(index, loc.Len())
-	return loc.Position + index
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
+	}
+	if index >= loc.Len() {
+		panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
+	}
+	return loc.Position
 }
 
 func shiftRange(a, b, i, n int) (int, int, bool) {
@@ -178,7 +173,12 @@ func (loc *RangeLocation) Shift(offset, amount int) (ok bool) {
 
 // Map the given local index to a global index.
 func (loc RangeLocation) Map(index int) int {
-	index = fixIndex(index, loc.Len())
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
+	}
+	if index >= loc.Len() {
+		panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
+	}
 	return loc.Start + index
 }
 
@@ -217,7 +217,12 @@ func (loc *AmbiguousLocation) Shift(offset, amount int) (ok bool) {
 
 // Map the given local index to a global index.
 func (loc AmbiguousLocation) Map(index int) int {
-	index = fixIndex(index, loc.Len())
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
+	}
+	if index >= loc.Len() {
+		panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
+	}
 	return loc.Start + index
 }
 
@@ -256,7 +261,12 @@ func (loc *BetweenLocation) Shift(offset, amount int) (ok bool) {
 
 // Map the given local index to a global index.
 func (loc BetweenLocation) Map(index int) int {
-	index = fixIndex(index, loc.Len())
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
+	}
+	if index >= loc.Len() {
+		panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
+	}
 	return loc.Start + index
 }
 
@@ -349,14 +359,16 @@ func (loc *JoinLocation) Shift(pos, n int) bool {
 
 // Map the given local index to a global index.
 func (loc JoinLocation) Map(index int) int {
-	index = fixIndex(index, loc.Len())
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
+	}
 	for _, l := range loc.Locations {
 		if index < l.Len() {
 			return l.Map(index)
 		}
 		index -= l.Len()
 	}
-	panic("the program should never reach this state...")
+	panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
 }
 
 // OrderLocation represents a group of locations.
@@ -412,14 +424,16 @@ func (loc *OrderLocation) Shift(pos, n int) bool {
 
 // Map the given local index to a global index.
 func (loc OrderLocation) Map(index int) int {
-	index = fixIndex(index, loc.Len())
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
+	}
 	for _, l := range loc.Locations {
 		if index < l.Len() {
 			return l.Map(index)
 		}
 		index -= l.Len()
 	}
-	panic("the program should never reach this state...")
+	panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
 }
 
 var LocationParser pars.Parser
