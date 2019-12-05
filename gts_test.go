@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ktnyt/pars"
+	"gopkg.in/ktnyt/pars.v2"
 )
 
 func ReadGolden(t *testing.T) string {

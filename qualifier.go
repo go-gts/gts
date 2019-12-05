@@ -5,8 +5,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ktnyt/ascii"
-	"github.com/ktnyt/pars"
+	"gopkg.in/ktnyt/ascii.v1"
+	"gopkg.in/ktnyt/pars.v2"
 )
 
 // Qualifier represents a single qualifier name-value pair.

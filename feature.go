@@ -4,8 +4,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/ktnyt/ascii"
-	"github.com/ktnyt/pars"
+	"gopkg.in/ktnyt/ascii.v1"
+	"gopkg.in/ktnyt/pars.v2"
 )
 
 // Feature represents a single feaute within a feature table.

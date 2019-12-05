@@ -4,9 +4,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ktnyt/assert"
-	"github.com/ktnyt/gts"
-	"github.com/ktnyt/pars"
+	"gopkg.in/ktnyt/assert.v1"
+	"gopkg.in/ktnyt/gts.v0"
+	"gopkg.in/ktnyt/pars.v2"
 )
 
 func testQualifierIOValid(s string) assert.F {

@@ -3,8 +3,8 @@ package gts_test
 import (
 	"testing"
 
-	"github.com/ktnyt/assert"
-	"github.com/ktnyt/gts"
+	"gopkg.in/ktnyt/assert.v1"
+	"gopkg.in/ktnyt/gts.v0"
 )
 
 func TestComplement(t *testing.T) {
