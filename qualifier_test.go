@@ -1,57 +1,48 @@
-package gts_test
+package gts
 
 import (
 	"strings"
 	"testing"
 
-	"gopkg.in/ktnyt/assert.v1"
-	"gopkg.in/ktnyt/gts.v0"
-	"gopkg.in/ktnyt/pars.v2"
+	pars "gopkg.in/ktnyt/pars.v2"
 )
 
-func testQualifierIOValid(s string) assert.F {
-	prefix := strings.Repeat(" ", 21)
-
-	state := pars.FromString(s)
-	result := pars.Result{}
-	parser := pars.Exact(gts.QualifierParser(prefix))
-
-	err := parser(state, &result)
-	q, ok := result.Value.(gts.Qualifier)
-
-	return assert.All(
-		assert.NoError(err),
-		assert.True(ok),
-		assert.Equal(q.Format(prefix), s),
-	)
-}
-
-func testQualifierIOInvalid(s string) assert.F {
-	prefix := strings.Repeat(" ", 21)
-	state := pars.FromString(s)
-	parser := pars.Exact(gts.QualifierParser(prefix))
-	return assert.IsError(parser(state, pars.Void))
-}
-
 func TestQualifierIO(t *testing.T) {
+	prefix := strings.Repeat(" ", 21)
+
 	s := ReadGolden(t)
 	ss := RecordSplit(s)
 
-	n := len(ss) - 2
-	validStrings, invalidStrings := ss[:n], ss[n:]
-
-	validCases := make([]assert.F, len(validStrings))
-	for i, s := range validStrings {
-		validCases[i] = testQualifierIOValid(s)
+	for _, in := range ss {
+		state := pars.FromString(in)
+		parser := pars.Exact(QualifierParser(prefix))
+		result, err := parser.Parse(state)
+		if err != nil {
+			t.Errorf("while parsing`\n%s\n`: %v", in, err)
+			return
+		}
+		switch q := result.Value.(type) {
+		case Qualifier:
+			out := q.Format(prefix)
+			if out != in {
+				t.Errorf("q.Format(%q) = %q, want %q", prefix, out, in)
+			}
+		default:
+			t.Errorf("result.Value.(type) = %T, want %T", q, Qualifier{})
+		}
 	}
 
-	invalidCases := make([]assert.F, len(invalidStrings))
-	for i, s := range invalidStrings {
-		invalidCases[i] = testQualifierIOInvalid(s)
+	for _, in := range []string{"/sex=female", "/pseudo=\"true\""} {
+		state := pars.FromString(in)
+		parser := pars.Exact(QualifierParser(""))
+		_, err := parser.Parse(state)
+		if err == nil {
+			t.Errorf("while parsing`\n%s\n`: expected error", in)
+		}
 	}
 
-	assert.Apply(t,
-		assert.C("valid", validCases...),
-		assert.C("invalid", invalidCases...),
-	)
+	PanicTest(t, func(t *testing.T) {
+		t.Helper()
+		Qualifier{"foo", "bar"}.Format("")
+	})
 }

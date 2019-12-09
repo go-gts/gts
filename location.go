@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/ktnyt/pars.v2"
+	pars "gopkg.in/ktnyt/pars.v2"
 )
 
 // Location represents a feature location as defined by the INSDC.
@@ -129,7 +129,7 @@ type RangeLocation struct {
 
 // NewRangeLocation creates a new RangeLocation.
 func NewRangeLocation(start, end int) Location {
-	return &RangeLocation{Start: start, End: end}
+	return NewPartialRangeLocation(start, end, false, false)
 }
 
 // NewPartialRangeLocation creates a new partial RangeLocation.

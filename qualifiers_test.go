@@ -1,23 +1,18 @@
-package gts_test
+package gts
 
 import (
 	"testing"
-
-	"gopkg.in/ktnyt/assert.v1"
-	"gopkg.in/ktnyt/gts.v0"
 )
 
 func TestQualifiers(t *testing.T) {
-	qs := gts.Qualifiers{}
+	qs := Qualifiers{}
 
-	assert.Apply(t,
-		assert.True(gts.Qualifiers(nil).Get("foo") == nil),
-		assert.True(qs.Get("foo") == nil),
-		assert.Eval(func() { qs.Set("foo", "bar") }),
-		assert.Equal(qs.Get("foo"), []string{"bar"}),
-		assert.Eval(func() { qs.Add("foo", "baz") }),
-		assert.Equal(qs.Get("foo"), []string{"bar", "baz"}),
-		assert.Eval(func() { qs.Del("foo") }),
-		assert.True(qs.Get("foo") == nil),
-	)
+	equals(t, Qualifiers(nil).Get("foo") == nil, true)
+	equals(t, qs.Get("foo") == nil, true)
+	qs.Set("foo", "bar")
+	equals(t, qs.Get("foo"), []string{"bar"})
+	qs.Add("foo", "baz")
+	equals(t, qs.Get("foo"), []string{"bar", "baz"})
+	qs.Del("foo")
+	equals(t, qs.Get("foo") == nil, true)
 }

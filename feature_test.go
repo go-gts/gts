@@ -1,34 +1,41 @@
-package gts_test
+package gts
 
 import (
 	"testing"
 
-	"gopkg.in/ktnyt/assert.v1"
-	"gopkg.in/ktnyt/gts.v0"
-	"gopkg.in/ktnyt/pars.v2"
+	pars "gopkg.in/ktnyt/pars.v2"
 )
-
-func testFeatureIOStrings(s string) assert.F {
-	state := pars.FromString(s)
-	result := pars.Result{}
-	parser := pars.Exact(gts.FeatureParser(""))
-
-	err := parser(state, &result)
-	feature, ok := result.Value.(gts.Feature)
-
-	return assert.All(
-		assert.NoError(err),
-		assert.True(ok),
-		assert.Equal(feature.Format("     ", 21), s),
-	)
-}
 
 func TestFeatureIO(t *testing.T) {
 	s := ReadGolden(t)
 	ss := RecordSplit(s)
-	cases := make([]assert.F, len(ss))
-	for i, s := range ss {
-		cases[i] = testFeatureIOStrings(s)
+
+	for _, in := range ss {
+		state := pars.FromString(in)
+		parser := pars.Exact(FeatureParser(""))
+		result, err := parser.Parse(state)
+		if err != nil {
+			t.Errorf("while parsing`\n%s\n`: %v", in, err)
+			return
+		}
+		switch f := result.Value.(type) {
+		case Feature:
+			out := f.Format("     ", 21)
+			if out != in {
+				t.Errorf("f.Format(%q, 21) = %q, want %q", "     ", out, in)
+			}
+		default:
+			t.Errorf("result.Value.(type) = %T, want %T", f, Feature{})
+		}
 	}
-	assert.Apply(t, cases...)
+
+	malformedKeyline := "     source          \n"
+
+	for _, in := range []string{malformedKeyline} {
+		state := pars.FromString(in)
+		parser := pars.Exact(FeatureParser(""))
+		if _, err := parser.Parse(state); err == nil {
+			t.Errorf("while parsing`\n%s\n`: expected error", in)
+		}
+	}
 }

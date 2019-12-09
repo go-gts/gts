@@ -4,15 +4,15 @@ import (
 	"sort"
 	"strings"
 
-	"gopkg.in/ktnyt/ascii.v1"
-	"gopkg.in/ktnyt/pars.v2"
+	ascii "gopkg.in/ktnyt/ascii.v1"
+	pars "gopkg.in/ktnyt/pars.v2"
 )
 
 // Feature represents a single feaute within a feature table.
 type Feature struct {
 	Key        string
 	Loc        Location
-	Qualifiers map[string][]string
+	Qualifiers Qualifiers
 	order      map[string]int
 }
 
@@ -74,36 +74,45 @@ func (f Feature) Format(prefix string, depth int) string {
 	return builder.String()
 }
 
-func featureKeyLineParser(prefix string) pars.Parser {
-	spaces := pars.Word(ascii.Is(' '))
-	word := pars.Word(ascii.IsSnake)
-	return pars.Seq(spaces, word, spaces, LocationParser, pars.EOL)
+type keyline struct {
+	key string
+	pad int
+	loc Location
 }
 
 // FeatureParser will attempt to match a single feature.
 func FeatureParser(prefix string) pars.Parser {
-	keylineParser := featureKeyLineParser(prefix)
+	keylineParser := pars.Seq(
+		prefix, pars.Spaces,
+		pars.Word(ascii.IsSnake), pars.Spaces,
+		LocationParser, pars.EOL,
+	).Map(func(result *pars.Result) error {
+		children := result.Children
+		pad := 0
+		pad += len(children[1].Token)
+		key := string(children[2].Token)
+		pad += len(key)
+		pad += len(children[3].Token)
+		loc := children[4].Value.(Location)
+		result.SetValue(keyline{key, pad, loc})
+		return nil
+	})
 
 	return func(state *pars.State, result *pars.Result) error {
 		state.Request(1)
 		if err := keylineParser(state, result); err != nil {
 			return err
 		}
-		padding := len(result.Children[0].Token) + len(result.Children[2].Token)
-		key := string(result.Children[1].Token)
-		loc := result.Children[3].Value.(Location)
-		indent := strings.Repeat(" ", padding+len(key))
+		tmp := result.Value.(keyline)
+		key := tmp.key
+		pad := tmp.pad
+		loc := tmp.loc
 
-		qualifierParser := pars.Many(
-			pars.Seq(
-				QualifierParser(prefix+indent),
-				pars.EOL,
-			).Child(0),
-		)
+		qualifierParser := QualifierParser(prefix + strings.Repeat(" ", pad))
+		qualifiersParser := pars.Many(pars.Seq(qualifierParser, pars.EOL).Child(0))
 
-		if err := qualifierParser(state, result); err != nil {
-			return err
-		}
+		// Does not return error by definition.
+		qualifiersParser(state, result)
 
 		qualifiers := Qualifiers{}
 		order := make(map[string]int)

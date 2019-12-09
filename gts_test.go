@@ -1,11 +1,12 @@
-package gts_test
+package gts
 
 import (
 	"io/ioutil"
 	"path/filepath"
+	"reflect"
 	"testing"
 
-	"gopkg.in/ktnyt/pars.v2"
+	pars "gopkg.in/ktnyt/pars.v2"
 )
 
 func ReadGolden(t *testing.T) string {
@@ -32,4 +33,24 @@ func RecordSplit(s string) []string {
 		ss[i] = string(child.Token)
 	}
 	return ss
+}
+
+func PanicTest(t *testing.T, f func(t *testing.T)) {
+	defer func() {
+		if recover() == nil {
+			t.Errorf("function did not panic")
+		}
+	}()
+	t.Helper()
+	f(t)
+}
+
+func same(a, b interface{}) bool {
+	return reflect.DeepEqual(a, b)
+}
+
+func equals(t *testing.T, a, b interface{}) {
+	if !same(a, b) {
+		t.Errorf("expected: %v\n  actual%v", a, b)
+	}
 }

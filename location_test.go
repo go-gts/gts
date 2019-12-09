@@ -1,23 +1,10 @@
-package gts_test
+package gts
 
 import (
-	"fmt"
 	"testing"
-
-	"gopkg.in/ktnyt/assert.v1"
-	"gopkg.in/ktnyt/gts.v0"
-	"gopkg.in/ktnyt/pars.v2"
 )
 
 func ints(is ...int) []int { return is }
-
-func forceLocation(s string) gts.Location {
-	loc, err := gts.AsLocation(s)
-	if err != nil {
-		panic(err)
-	}
-	return loc
-}
 
 func TestLocationLess(t *testing.T) {
 	values := []string{
@@ -27,353 +14,299 @@ func TestLocationLess(t *testing.T) {
 		"42..723",
 		"723",
 	}
-	cases := make([]assert.F, len(values))
 
 	for i := range values {
-		tmp := make([]assert.F, len(values))
 		for j := range values {
-			a, b := forceLocation(values[i]), forceLocation(values[j])
-			tmp[j] = assert.All(
-				assert.Equal(gts.LocationLess(a, b), i < j),
-				assert.Equal(gts.LocationLess(b, a), j < i),
-			)
+			a, err := AsLocation(values[i])
+			if err != nil {
+				t.Errorf("AsLocation(%q): %v", values[i], err)
+				return
+			}
+			b, err := AsLocation(values[j])
+			if err != nil {
+				t.Errorf("AsLocation(%q): %v", values[j], err)
+				return
+			}
+			if LocationLess(a, b) != (i < j) {
+				t.Errorf("%s >= %s, want %s < %s", a, b, a, b)
+			}
+			if LocationLess(b, a) != (j < i) {
+				t.Errorf("%s <= %s, want %s > %s", a, b, a, b)
+			}
 		}
-		cases[i] = assert.All(tmp...)
 	}
-
-	assert.Apply(t, cases...)
 }
 
-func TestLocationsLocate(t *testing.T) {
-	seq := gts.Seq("atgcatgc")
+var locateTests = []struct {
+	in  string
+	out Sequence
+}{
+	{"1", Seq("a")},
+	{"2", Seq("t")},
+	{"3", Seq("g")},
+	{"4", Seq("c")},
 
-	values := []struct {
-		Loc  gts.Location
-		ESeq gts.Sequence
-		EIdx []int
-	}{
-		{gts.NewPointLocation(0), gts.Seq("a"), ints(0)},
-		{gts.NewPointLocation(1), gts.Seq("t"), ints(1)},
-		{gts.NewPointLocation(2), gts.Seq("g"), ints(2)},
-		{gts.NewPointLocation(3), gts.Seq("c"), ints(3)},
+	{"1..4", Seq("atgc")},
+	{"2..5", Seq("tgca")},
+	{"3..6", Seq("gcat")},
 
-		{gts.NewRangeLocation(0, 4), gts.Seq("atgc"), ints(0, 1, 2, 3)},
-		{gts.NewRangeLocation(2, 6), gts.Seq("gcat"), ints(2, 3, 4, 5)},
-		{gts.NewRangeLocation(4, 8), gts.Seq("atgc"), ints(4, 5, 6, 7)},
+	{"1.4", Seq("atgc")},
+	{"2.5", Seq("tgca")},
+	{"3.6", Seq("gcat")},
 
-		{gts.NewAmbiguousLocation(0, 4), gts.Seq("atgc"), ints(0, 1, 2, 3)},
-		{gts.NewAmbiguousLocation(2, 6), gts.Seq("gcat"), ints(2, 3, 4, 5)},
-		{gts.NewAmbiguousLocation(4, 8), gts.Seq("atgc"), ints(4, 5, 6, 7)},
+	{"1^4", Seq("atgc")},
+	{"2^5", Seq("tgca")},
+	{"3^6", Seq("gcat")},
 
-		{gts.NewBetweenLocation(0, 4), gts.Seq("atgc"), ints(0, 1, 2, 3)},
-		{gts.NewBetweenLocation(2, 6), gts.Seq("gcat"), ints(2, 3, 4, 5)},
-		{gts.NewBetweenLocation(4, 8), gts.Seq("atgc"), ints(4, 5, 6, 7)},
+	{"complement(1..4)", Complement(Seq("atgc"))},
+	{"complement(2..5)", Complement(Seq("tgca"))},
+	{"complement(3..6)", Complement(Seq("gcat"))},
 
-		{
-			gts.NewComplementLocation(gts.NewRangeLocation(0, 4)),
-			gts.Complement(gts.Seq("atgc")), ints(0, 1, 2, 3),
-		},
-		{
-			gts.NewComplementLocation(gts.NewRangeLocation(2, 6)),
-			gts.Complement(gts.Seq("gcat")), ints(2, 3, 4, 5),
-		},
-		{
-			gts.NewComplementLocation(gts.NewRangeLocation(4, 8)),
-			gts.Complement(gts.Seq("atgc")), ints(4, 5, 6, 7),
-		},
+	{"join(1..2,4..5,7..8)", Seq("atcagc")},
+	{"join(1..3,6..8)", Seq("atgtgc")},
 
-		{
-			gts.NewJoinLocation([]gts.Location{
-				gts.NewRangeLocation(0, 2),
-				gts.NewRangeLocation(3, 5),
-				gts.NewRangeLocation(6, 8),
-			}),
-			gts.Seq("atcagc"),
-			ints(0, 1, 3, 4, 6, 7),
-		},
-		{
-			gts.NewJoinLocation([]gts.Location{
-				gts.NewRangeLocation(0, 3),
-				gts.NewRangeLocation(5, 8),
-			}),
-			gts.Seq("atgtgc"),
-			ints(0, 1, 2, 5, 6, 7),
-		},
-
-		{
-			gts.NewOrderLocation([]gts.Location{
-				gts.NewRangeLocation(0, 2),
-				gts.NewRangeLocation(3, 5),
-				gts.NewRangeLocation(6, 8),
-			}),
-			gts.Seq("atcagc"),
-			ints(0, 1, 3, 4, 6, 7),
-		},
-		{
-			gts.NewOrderLocation([]gts.Location{
-				gts.NewRangeLocation(0, 3),
-				gts.NewRangeLocation(5, 8),
-			}),
-			gts.Seq("atgtgc"),
-			ints(0, 1, 2, 5, 6, 7),
-		},
-	}
-
-	cases := make([]assert.F, len(values))
-	for i, value := range values {
-		loc, eseq, eidx := value.Loc, value.ESeq, value.EIdx
-		idx := make([]int, loc.Len())
-		for i := range idx {
-			idx[i] = loc.Map(i)
-		}
-
-		cases[i] = assert.All(
-			assert.Equal(loc.Len(), len(eseq.Bytes())),
-			assert.Equal(loc.Locate(seq), eseq),
-			assert.Equal(idx, eidx),
-		)
-	}
-
-	assert.Apply(t, cases...)
+	{"order(1..2,4..5,7..8)", Seq("atcagc")},
+	{"order(1..3,6..8)", Seq("atgtgc")},
 }
 
-func TestLocationsMap(t *testing.T) {
-	values := []struct {
-		Locstr string
-		Expect []int
-	}{
-		{"1", ints(0)},
-		{"1..2", ints(0, 1)},
-		{"1.2", ints(0, 1)},
-		{"1^2", ints(0, 1)},
-		{"complement(1..2)", ints(0, 1)},
-		{"join(1..2,42..43)", ints(0, 1, 41, 42)},
-		{"order(1..2,42..43)", ints(0, 1, 41, 42)},
-	}
-
-	cases := make([]assert.F, len(values))
-	for i, value := range values {
-		loc := forceLocation(value.Locstr)
-		idx := make([]int, loc.Len())
-		for i := range idx {
-			idx[i] = loc.Map(i)
+func TestLocate(t *testing.T) {
+	in := Seq("atgcatgc")
+	for _, tt := range locateTests {
+		loc, err := AsLocation(tt.in)
+		if err != nil {
+			t.Errorf("AsLocation(%q): %v", tt.in, err)
+			return
 		}
-		cases[i] = assert.All(
-			assert.Equal(idx, value.Expect),
-			assert.Panic(func() { loc.Map(-1) }),
-			assert.Panic(func() { loc.Map(loc.Len() + 1) }),
-		)
+		out := loc.Locate(in)
+		if !same(out, tt.out) {
+			t.Errorf("loc.Locate(%q) = %q, want %q", in, out, tt.out)
+		}
 	}
-
-	assert.Apply(t, cases...)
 }
 
-func testLocationShift(s0, s1, s2 string, valid bool) assert.F {
-	name := fmt.Sprintf("Location(%s)", s0)
+var mapTests = []struct {
+	in  string
+	out []int
+}{
+	{"1", ints(0)},
+	{"2", ints(1)},
+	{"3", ints(2)},
+	{"4", ints(3)},
 
-	zero := func() assert.F {
-		loc, exp := forceLocation(s0), forceLocation(s0)
-		return assert.All(
-			assert.True(loc.Shift(1, 0)),
-			assert.Equal(loc.String(), exp.String()),
-		)
+	{"1..4", ints(0, 1, 2, 3)},
+	{"3..6", ints(2, 3, 4, 5)},
+	{"5..8", ints(4, 5, 6, 7)},
+
+	{"1.4", ints(0, 1, 2, 3)},
+	{"3.6", ints(2, 3, 4, 5)},
+	{"5.8", ints(4, 5, 6, 7)},
+
+	{"1^4", ints(0, 1, 2, 3)},
+	{"3^6", ints(2, 3, 4, 5)},
+	{"5^8", ints(4, 5, 6, 7)},
+
+	{"complement(1..4)", ints(0, 1, 2, 3)},
+	{"complement(3..6)", ints(2, 3, 4, 5)},
+	{"complement(5..8)", ints(4, 5, 6, 7)},
+
+	{"join(1..2,4..5,7..8)", ints(0, 1, 3, 4, 6, 7)},
+	{"join(1..3,6..8)", ints(0, 1, 2, 5, 6, 7)},
+
+	{"order(1..2,4..5,7..8)", ints(0, 1, 3, 4, 6, 7)},
+	{"order(1..3,6..8)", ints(0, 1, 2, 5, 6, 7)},
+}
+
+func TestMap(t *testing.T) {
+	for _, tt := range mapTests {
+		loc, err := AsLocation(tt.in)
+		if err != nil {
+			t.Errorf("AsLocation(%q): %v", tt.in, err)
+			continue
+		}
+		if loc.Len() != len(tt.out) {
+			t.Errorf("loc.Len() = %d, want %d", loc.Len(), len(tt.out))
+		}
+		for i := range tt.out {
+			if loc.Map(i) != tt.out[i] {
+				t.Errorf("loc.Map(%d) = %d, want %d", i, loc.Map(i), tt.out[i])
+			}
+		}
+		PanicTest(t, func(t *testing.T) {
+			t.Helper()
+			loc.Map(-1)
+		})
+		PanicTest(t, func(t *testing.T) {
+			t.Helper()
+			loc.Map(loc.Len() + 1)
+		})
 	}
+}
 
-	up := func() assert.F {
-		loc, exp := forceLocation(s0), forceLocation(s1)
-		return assert.All(
-			assert.True(loc.Shift(1, 1)),
-			assert.Equal(loc.String(), exp.String()),
-		)
-	}
+var shiftTests = []struct {
+	in, up, down string
+	ok           bool
+}{
+	{"1", "1", "1", true},
+	{"2", "3", "2", false},
+	{"3", "4", "2", true},
 
-	down := func() assert.F {
-		loc, exp := forceLocation(s0), forceLocation(s2)
-		return assert.All(
-			assert.Equal(loc.Shift(1, -1), valid),
-			assert.Equal(loc.String(), exp.String()),
-		)
-	}
+	{"1..2", "1..3", "1..2", false},
+	{"1..3", "1..4", "1..2", true},
+	{"2..3", "3..4", "2..3", false},
+	{"2..4", "3..5", "2..3", true},
+	{"3..4", "4..5", "2..3", true},
 
-	return assert.C(name,
-		assert.C("shift zero", zero()),
-		assert.C("shift up", up()),
-		assert.C("shift down", down()),
-	)
+	{"1.2", "1.3", "1.2", false},
+	{"1.3", "1.4", "1.2", true},
+	{"2.3", "3.4", "2.3", false},
+	{"2.4", "3.5", "2.3", true},
+	{"3.4", "4.5", "2.3", true},
+
+	{"1^2", "1^3", "1^2", false},
+	{"1^3", "1^4", "1^2", true},
+	{"2^3", "3^4", "2^3", false},
+	{"2^4", "3^5", "2^3", true},
+	{"3^4", "4^5", "2^3", true},
+
+	{"complement(1..2)", "complement(1..3)", "complement(1..2)", false},
+	{"complement(1..3)", "complement(1..4)", "complement(1..2)", true},
+	{"complement(2..3)", "complement(3..4)", "complement(2..3)", false},
+	{"complement(2..4)", "complement(3..5)", "complement(2..3)", true},
+	{"complement(3..4)", "complement(4..5)", "complement(2..3)", true},
+
+	{"join(1..2,2..3)", "join(1..3,3..4)", "join(1..2,2..3)", false},
+	{"join(1..3,3..4)", "join(1..4,4..5)", "join(1..2,2..3)", true},
+
+	{"order(1..2,2..3)", "order(1..3,3..4)", "order(1..2,2..3)", false},
+	{"order(1..3,3..4)", "order(1..4,4..5)", "order(1..2,2..3)", true},
 }
 
 func TestLocationsShift(t *testing.T) {
-	values := []struct {
-		s0, s1, s2 string
-		valid      bool
-	}{
-		{"1", "1", "1", true},
-		{"2", "3", "2", false},
-		{"3", "4", "2", true},
+	for _, tt := range shiftTests {
+		loc, err := AsLocation(tt.in)
+		if err != nil {
+			t.Errorf("AsLocation(%q): %v", tt.in, err)
+			return
+		}
+		if !loc.Shift(1, 0) {
+			t.Error("loc.Shift(1, 0) = false, want true")
+		}
 
-		{"1..2", "1..3", "1..2", false},
-		{"1..3", "1..4", "1..2", true},
-		{"2..3", "3..4", "2..3", false},
-		{"2..4", "3..5", "2..3", true},
-		{"3..4", "4..5", "2..3", true},
+		up, err := AsLocation(tt.up)
+		if err != nil {
+			t.Errorf("AsLocation(%q): %v", tt.up, err)
+			return
+		}
+		if !loc.Shift(1, 1) {
+			t.Error("loc.Shift(1, 1) = false, want true")
+		}
+		if !same(loc, up) {
+			t.Errorf("%#v != %#v", loc, up)
+		}
 
-		{"1.2", "1.3", "1.2", false},
-		{"1.3", "1.4", "1.2", true},
-		{"2.3", "3.4", "2.3", false},
-		{"2.4", "3.5", "2.3", true},
-		{"3.4", "4.5", "2.3", true},
+		if !loc.Shift(1, -1) {
+			t.Error("loc.Shift(1, -1) = false, want true")
+		}
 
-		{"1^2", "1^3", "1^2", false},
-		{"1^3", "1^4", "1^2", true},
-		{"2^3", "3^4", "2^3", false},
-		{"2^4", "3^5", "2^3", true},
-		{"3^4", "4^5", "2^3", true},
-
-		{"complement(1..2)", "complement(1..3)", "complement(1..2)", false},
-		{"complement(1..3)", "complement(1..4)", "complement(1..2)", true},
-		{"complement(2..3)", "complement(3..4)", "complement(2..3)", false},
-		{"complement(2..4)", "complement(3..5)", "complement(2..3)", true},
-		{"complement(3..4)", "complement(4..5)", "complement(2..3)", true},
-
-		{"join(1..2,2..3)", "join(1..3,3..4)", "join(1..2,2..3)", false},
-		{"join(1..3,3..4)", "join(1..4,4..5)", "join(1..2,2..3)", true},
-
-		{"order(1..2,2..3)", "order(1..3,3..4)", "order(1..2,2..3)", false},
-		{"order(1..3,3..4)", "order(1..4,4..5)", "order(1..2,2..3)", true},
-	}
-
-	cases := make([]assert.F, len(values))
-	for i, value := range values {
-		s0, s1, s2, valid := value.s0, value.s1, value.s2, value.valid
-		cases[i] = testLocationShift(s0, s1, s2, valid)
-	}
-
-	assert.Apply(t, cases...)
-}
-
-var locationStrings = []struct {
-	Name  string
-	Value string
-}{
-	{"PointLocationParser", "42"},
-
-	{"RangeLocationParser", "1..42"},
-	{"RangeLocationParser", "<1..42"},
-	{"RangeLocationParser", "1..>42"},
-	{"RangeLocationParser", "<1..>42"},
-
-	{"AmbiguousLocationParser", "1.42"},
-
-	{"BetweenLocationParser", "1^42"},
-
-	{"ComplementLocationParser", "complement(1..42)"},
-	{"ComplementLocationParser", "complement(<1..42)"},
-	{"ComplementLocationParser", "complement(1..>42)"},
-	{"ComplementLocationParser", "complement(<1..>42)"},
-	{"ComplementLocationParser", "complement(join(1..42,346..723))"},
-	{"ComplementLocationParser", "complement(join(<1..42,346..723))"},
-	{"ComplementLocationParser", "complement(join(1..>42,346..723))"},
-	{"ComplementLocationParser", "complement(join(<1..>42,346..723))"},
-	{"ComplementLocationParser", "complement(join(1..42,<346..723))"},
-	{"ComplementLocationParser", "complement(join(1..42,346..>723))"},
-	{"ComplementLocationParser", "complement(join(1..42,<346..>723))"},
-	{"ComplementLocationParser", "complement(join(<1..42,<346..723))"},
-	{"ComplementLocationParser", "complement(join(1..>42,346..>723))"},
-	{"ComplementLocationParser", "complement(join(<1..>42,<346..>723))"},
-	{"ComplementLocationParser", "complement(join(1..42,complement(346..723)))"},
-	{"ComplementLocationParser", "complement(join(complement(1..42),346..723))"},
-	{"ComplementLocationParser", "complement(join(complement(1..42),complement(346..723)))"},
-
-	{"JoinLocationParser", "join(1..42,346..723)"},
-	{"JoinLocationParser", "join(<1..42,346..723)"},
-	{"JoinLocationParser", "join(1..>42,346..723)"},
-	{"JoinLocationParser", "join(<1..>42,346..723)"},
-	{"JoinLocationParser", "join(1..42,<346..723)"},
-	{"JoinLocationParser", "join(1..42,346..>723)"},
-	{"JoinLocationParser", "join(1..42,<346..>723)"},
-	{"JoinLocationParser", "join(<1..42,<346..723)"},
-	{"JoinLocationParser", "join(1..>42,346..>723)"},
-	{"JoinLocationParser", "join(<1..>42,<346..>723)"},
-	{"JoinLocationParser", "join(1..42,complement(346..723))"},
-	{"JoinLocationParser", "join(complement(1..42),346..723)"},
-	{"JoinLocationParser", "join(complement(1..42),complement(346..723))"},
-
-	{"OrderLocationParser", "order(1..42,346..723)"},
-	{"OrderLocationParser", "order(<1..42,346..723)"},
-	{"OrderLocationParser", "order(1..>42,346..723)"},
-	{"OrderLocationParser", "order(<1..>42,346..723)"},
-	{"OrderLocationParser", "order(1..42,<346..723)"},
-	{"OrderLocationParser", "order(1..42,346..>723)"},
-	{"OrderLocationParser", "order(1..42,<346..>723)"},
-	{"OrderLocationParser", "order(<1..42,<346..723)"},
-	{"OrderLocationParser", "order(1..>42,346..>723)"},
-	{"OrderLocationParser", "order(<1..>42,<346..>723)"},
-	{"OrderLocationParser", "order(1..42,complement(346..723))"},
-	{"OrderLocationParser", "order(complement(1..42),346..723)"},
-	{"OrderLocationParser", "order(complement(1..42),complement(346..723))"},
-}
-
-var locationNameMap = map[string]pars.Parser{
-	"PointLocationParser":      gts.PointLocationParser,
-	"RangeLocationParser":      gts.RangeLocationParser,
-	"AmbiguousLocationParser":  gts.AmbiguousLocationParser,
-	"BetweenLocationParser":    gts.BetweenLocationParser,
-	"OrderLocationParser":      gts.OrderLocationParser,
-	"JoinLocationParser":       gts.JoinLocationParser,
-	"ComplementLocationParser": gts.ComplementLocationParser,
-}
-
-func testLocationStrings(name string) assert.F {
-	validCases, invalidCases := []assert.F{}, []assert.F{}
-
-	p := pars.Exact(locationNameMap[name])
-
-	for _, pair := range locationStrings {
-		e := pair.Value
-		s := pars.FromString(e)
-
-		if name == pair.Name {
-			r := pars.Result{}
-
-			validCases = append(validCases, assert.All(
-				assert.NoError(p(s, &r)),
-				assert.Equal(r.Value.(gts.Location).String(), e),
-			))
-		} else {
-			invalidCases = append(invalidCases, assert.IsError(p(s, pars.Void)))
+		down, err := AsLocation(tt.down)
+		if err != nil {
+			t.Errorf("AsLocation(%q): %v", tt.down, err)
+			return
+		}
+		if ok := loc.Shift(1, -1); ok != tt.ok {
+			t.Errorf("loc.Shift(1, -1) = %t, want %t", ok, tt.ok)
+		}
+		if !same(loc, down) {
+			t.Errorf("%#v != %#v", loc, down)
 		}
 	}
+}
 
-	return assert.C(name,
-		assert.C("valid", validCases...),
-		assert.C("invalid", invalidCases...),
-	)
+var locationTests = []string{
+	// point
+	"42",
+
+	// range
+	"1..42",
+	"<1..42",
+	"1..>42",
+	"<1..>42",
+
+	// ambiguous
+	"1.42",
+
+	// between
+	"1^42",
+
+	// complement
+	"complement(1..42)",
+	"complement(<1..42)",
+	"complement(1..>42)",
+	"complement(<1..>42)",
+	"complement(join(1..42,346..723))",
+	"complement(join(<1..42,346..723))",
+	"complement(join(1..>42,346..723))",
+	"complement(join(<1..>42,346..723))",
+	"complement(join(1..42,<346..723))",
+	"complement(join(1..42,346..>723))",
+	"complement(join(1..42,<346..>723))",
+	"complement(join(<1..42,<346..723))",
+	"complement(join(1..>42,346..>723))",
+	"complement(join(<1..>42,<346..>723))",
+	"complement(join(1..42,complement(346..723)))",
+	"complement(join(complement(1..42),346..723))",
+	"complement(join(complement(1..42),complement(346..723)))",
+
+	// join
+	"join(1..42,346..723)",
+	"join(<1..42,346..723)",
+	"join(1..>42,346..723)",
+	"join(<1..>42,346..723)",
+	"join(1..42,<346..723)",
+	"join(1..42,346..>723)",
+	"join(1..42,<346..>723)",
+	"join(<1..42,<346..723)",
+	"join(1..>42,346..>723)",
+	"join(<1..>42,<346..>723)",
+	"join(1..42,complement(346..723))",
+	"join(complement(1..42),346..723)",
+	"join(complement(1..42),complement(346..723))",
+
+	// order
+	"order(1..42,346..723)",
+	"order(<1..42,346..723)",
+	"order(1..>42,346..723)",
+	"order(<1..>42,346..723)",
+	"order(1..42,<346..723)",
+	"order(1..42,346..>723)",
+	"order(1..42,<346..>723)",
+	"order(<1..42,<346..723)",
+	"order(1..>42,346..>723)",
+	"order(<1..>42,<346..>723)",
+	"order(1..42,complement(346..723))",
+	"order(complement(1..42),346..723)",
+	"order(complement(1..42),complement(346..723))",
 }
 
 func TestLocationIO(t *testing.T) {
-	parsers := []string{
-		"ComplementLocationParser",
-		"PointLocationParser",
-		"RangeLocationParser",
-		"AmbiguousLocationParser",
-		"BetweenLocationParser",
-		"OrderLocationParser",
-		"JoinLocationParser",
+	for _, in := range locationTests {
+		loc, err := AsLocation(in)
+		if err != nil {
+			t.Errorf("AsLocation(%q): %v", in, err)
+		}
+		out := loc.String()
+		if out != in {
+			t.Errorf("loc.String() = %q, want %q", out, in)
+		}
 	}
 
-	cases := make([]assert.F, len(parsers))
-
-	for i, parser := range parsers {
-		cases[i] = testLocationStrings(parser)
+	loc0 := NewRangeLocation(0, 1)
+	loc1 := NewPartialRangeLocation(0, 1, false, false)
+	if !same(loc0, loc1) {
+		t.Errorf("%#v != %#v", loc0, loc1)
 	}
 
-	for _, pair := range locationStrings {
-		_, err := gts.AsLocation(pair.Value)
-		cases = append(cases, assert.NoError(err))
+	if _, err := AsLocation(""); err == nil {
+		t.Errorf("AsLocation(\"\") expected error")
 	}
-
-	_, err := gts.AsLocation("")
-	cases = append(cases, assert.IsError(err))
-
-	assert.Apply(t, cases...)
 }

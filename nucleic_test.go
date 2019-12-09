@@ -1,14 +1,14 @@
-package gts_test
+package gts
 
 import (
 	"testing"
-
-	"gopkg.in/ktnyt/assert.v1"
-	"gopkg.in/ktnyt/gts.v0"
 )
 
 func TestComplement(t *testing.T) {
-	original := gts.Seq("atgcATGCnN")
-	complement := gts.Seq("tacgTACGnN")
-	assert.Apply(t, assert.Equal(gts.Complement(original), complement))
+	in := Seq("atgcATGCnN")
+	out := Complement(in)
+	e := Seq("tacgTACGnN")
+	if !Equal(out, e) {
+		t.Errorf("Complement(%q) = %q, want %q", in, out, e)
+	}
 }

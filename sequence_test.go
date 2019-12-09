@@ -1,10 +1,7 @@
-package gts_test
+package gts
 
 import (
 	"testing"
-
-	"gopkg.in/ktnyt/assert.v1"
-	"gopkg.in/ktnyt/gts.v0"
 )
 
 type Stringer string
@@ -16,74 +13,73 @@ func TestSeq(t *testing.T) {
 	p := []byte(s)
 	r := []rune(s)
 
-	seqs := gts.Seq(s)
-	seqp := gts.Seq(p)
-	seqr := gts.Seq(r)
-	seqi := gts.Seq(Stringer(s))
-	seq := gts.Seq(seqs)
+	seqs := Seq(s)
+	seqp := Seq(p)
+	seqr := Seq(r)
+	seqi := Seq(Stringer(s))
+	seq := Seq(seqs)
 
-	assert.Apply(t,
-		assert.Equal(seqs, seq),
-		assert.Equal(seqp, seq),
-		assert.Equal(seqr, seq),
-		assert.Equal(seqi, seq),
+	equals(t, seqs, seq)
+	equals(t, seqp, seq)
+	equals(t, seqr, seq)
+	equals(t, seqi, seq)
 
-		assert.True(gts.Equal(seqs, seq)),
-		assert.True(gts.Equal(seqp, seq)),
-		assert.True(gts.Equal(seqr, seq)),
-		assert.True(gts.Equal(seqi, seq)),
+	equals(t, Equal(seqs, seq), true)
+	equals(t, Equal(seqp, seq), true)
+	equals(t, Equal(seqr, seq), true)
+	equals(t, Equal(seqi, seq), true)
 
-		assert.Panic(func() { gts.Seq(0) }),
-	)
+	PanicTest(t, func(t *testing.T) {
+		t.Helper()
+		Seq(0)
+	})
 }
 
 func TestSlice(t *testing.T) {
-	seq := gts.Seq("atatgcgc")
-	e := gts.Seq("atgc")
-	s := gts.Slice(seq, 2, 6)
+	seq := Seq("atatgcgc")
+	e := Seq("atgc")
+	s := Slice(seq, 2, 6)
 
-	assert.Apply(t, assert.Equal(s, e))
+	equals(t, s, e)
 }
 
 func TestFragment(t *testing.T) {
-	seq := gts.Seq("atgcatgc")
+	seq := Seq("atgcatgc")
 
-	e44 := gts.Seq("atgc")
-	f44 := gts.Fragment(seq, 4, 4)
+	e44 := Seq("atgc")
+	f44 := Fragment(seq, 4, 4)
 
-	e24 := gts.Seq("at")
-	f24 := gts.Fragment(seq, 2, 4)
+	e24 := Seq("at")
+	f24 := Fragment(seq, 2, 4)
 
-	e42 := []gts.Sequence{gts.Seq("atgc"), gts.Seq("gcat")}
-	f42 := gts.Fragment(seq, 4, 2)
+	e42 := []Sequence{Seq("atgc"), Seq("gcat")}
+	f42 := Fragment(seq, 4, 2)
 
-	assert.Apply(t,
-		assert.Equal(f44[0], e44),
-		assert.Equal(f44[1], e44),
+	equals(t, f44[0], e44)
+	equals(t, f44[1], e44)
 
-		assert.Equal(f24[0], e24),
-		assert.Equal(f24[1], e24),
+	equals(t, f24[0], e24)
+	equals(t, f24[1], e24)
 
-		assert.Equal(f42[0], e42[0]),
-		assert.Equal(f42[1], e42[1]),
-	)
+	equals(t, f42[0], e42[0])
+	equals(t, f42[1], e42[1])
 }
 
 func TestComposition(t *testing.T) {
-	seq := gts.Seq("atgcatgc")
-	c := gts.Composition(seq)
+	seq := Seq("atgcatgc")
+	c := Composition(seq)
 	e := map[byte]int{'a': 2, 't': 2, 'g': 2, 'c': 2}
 
-	assert.Apply(t, assert.Equal(c, e))
+	equals(t, c, e)
 }
 
 func TestSkew(t *testing.T) {
-	seq := gts.Seq("atgcatgc")
+	seq := Seq("atgcatgc")
 
 	values := []struct {
-		NSet string
-		PSet string
-		Skew float64
+		nSet string
+		pSet string
+		skew float64
 	}{
 		{"g", "c", 0.0},
 		{"a", "t", 0.0},
@@ -91,11 +87,11 @@ func TestSkew(t *testing.T) {
 		{"", "g", 1.0},
 	}
 
-	cases := make([]assert.F, len(values))
-	for i, value := range values {
-		nSet, pSet, skew := value.NSet, value.PSet, value.Skew
-		cases[i] = assert.Equal(gts.Skew(seq, nSet, pSet), skew)
+	for _, value := range values {
+		nSet, pSet, skew := value.nSet, value.pSet, value.skew
+		out := Skew(seq, nSet, pSet)
+		if out != skew {
+			t.Errorf("Skew(%q, %q, %q) = %f, want %f", seq, nSet, pSet, out, skew)
+		}
 	}
-
-	assert.Apply(t, cases...)
 }
