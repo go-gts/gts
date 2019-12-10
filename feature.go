@@ -1,6 +1,7 @@
 package gts
 
 import (
+	"io"
 	"sort"
 	"strings"
 
@@ -11,34 +12,48 @@ import (
 // Feature represents a single feaute within a feature table.
 type Feature struct {
 	Key        string
-	Loc        Location
+	Location   Location
 	Qualifiers Qualifiers
 	order      map[string]int
 }
 
-// Format will format the feature. If the feature was parsed from some input,
+// Format creates a FeatureFormatter object for the qualifier with the given
+// prefix and depth. If the Feature object was created by parsing some input,
 // the qualifier values will be in the same order as in the input source. The
 // exception to this rule is the `translation` qualifier which will always be
 // written last. Qualifiers given during runtime will be sorted in ascending
 // alphabetical order and written after the qualifiers present in the source.
-func (f Feature) Format(prefix string, depth int) string {
-	builder := strings.Builder{}
-	builder.WriteString(prefix)
-	builder.WriteString(f.Key)
+func (f Feature) Format(prefix string, depth int) FeatureFormatter {
+	return FeatureFormatter{f, prefix, depth}
+}
 
-	padding := strings.Repeat(" ", depth-builder.Len())
-	prefix = prefix + strings.Repeat(" ", depth-len(prefix))
+// FeatureFormatter will format a Feature object with the given prefix and
+// depth.
+type FeatureFormatter struct {
+	Feature Feature
+	Prefix  string
+	Depth   int
+}
+
+// String satisfies the fmt.Stringer interface.
+func (ff FeatureFormatter) String() string {
+	builder := strings.Builder{}
+	builder.WriteString(ff.Prefix)
+	builder.WriteString(ff.Feature.Key)
+
+	padding := strings.Repeat(" ", ff.Depth-builder.Len())
+	prefix := ff.Prefix + strings.Repeat(" ", ff.Depth-len(ff.Prefix))
 
 	builder.WriteString(padding)
-	builder.WriteString(f.Loc.String())
+	builder.WriteString(ff.Feature.Location.String())
 
-	ordered := make([]string, len(f.order))
+	ordered := make([]string, len(ff.Feature.order))
 	remains := []string{}
 
 	hasTranslate := false
 
-	for name := range f.Qualifiers {
-		index, ok := f.order[name]
+	for name := range ff.Feature.Qualifiers {
+		index, ok := ff.Feature.order[name]
 		switch {
 		case ok:
 			ordered[index] = name
@@ -64,14 +79,19 @@ func (f Feature) Format(prefix string, depth int) string {
 	}
 
 	for _, name := range names {
-		for _, value := range f.Qualifiers[name] {
+		for _, value := range ff.Feature.Qualifiers[name] {
 			q := Qualifier{name, value}
 			builder.WriteByte('\n')
-			builder.WriteString(q.Format(prefix))
+			builder.WriteString(q.Format(prefix).String())
 		}
 	}
 
 	return builder.String()
+}
+
+// WriteTo satisfies the io.WriteTo interface.
+func (ff FeatureFormatter) WriteTo(w io.Writer) (int, error) {
+	return w.Write([]byte(ff.String()))
 }
 
 type keyline struct {

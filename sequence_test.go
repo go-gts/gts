@@ -29,10 +29,7 @@ func TestSeq(t *testing.T) {
 	equals(t, Equal(seqr, seq), true)
 	equals(t, Equal(seqi, seq), true)
 
-	PanicTest(t, func(t *testing.T) {
-		t.Helper()
-		Seq(0)
-	})
+	PanicTest(t, func() { Seq(0) })
 }
 
 func TestSlice(t *testing.T) {

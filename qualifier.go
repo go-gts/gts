@@ -2,11 +2,12 @@ package gts
 
 import (
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 
-	"gopkg.in/ktnyt/ascii.v1"
-	"gopkg.in/ktnyt/pars.v2"
+	ascii "gopkg.in/ktnyt/ascii.v1"
+	pars "gopkg.in/ktnyt/pars.v2"
 )
 
 // Qualifier represents a single qualifier name-value pair.
@@ -29,9 +30,27 @@ func (q Qualifier) String() string {
 	}
 }
 
-// Format will format the qualifier.
-func (q Qualifier) Format(prefix string) string {
-	return prefix + strings.ReplaceAll(q.String(), "\n", "\n"+prefix)
+// Format creates a QualifierFormatter object for the qualifier with the given
+// prefix.
+func (q Qualifier) Format(prefix string) QualifierFormatter {
+	return QualifierFormatter{q, prefix}
+}
+
+// QualifierFormatter will format a Qualifier object with the given prefix.
+type QualifierFormatter struct {
+	Qualifier Qualifier
+	Prefix    string
+}
+
+// String satisfies the fmt.Stringer interface.
+func (qf QualifierFormatter) String() string {
+	s := qf.Qualifier.String()
+	return qf.Prefix + strings.ReplaceAll(s, "\n", "\n"+qf.Prefix)
+}
+
+// WriteTo satisfies the io.WriterTo interface.
+func (qf QualifierFormatter) WriteTo(w io.Writer) (int, error) {
+	return w.Write([]byte(qf.String()))
 }
 
 // Names of qualifiers.

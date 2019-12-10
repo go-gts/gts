@@ -23,7 +23,12 @@ func TestQualifierIO(t *testing.T) {
 		}
 		switch q := result.Value.(type) {
 		case Qualifier:
-			out := q.Format(prefix)
+			b := strings.Builder{}
+			n, err := q.Format(prefix).WriteTo(&b)
+			if err != nil {
+				t.Errorf("qf.WriteTo(w) = %d, %v, want %d, nil", n, err, n)
+			}
+			out := b.String()
 			if out != in {
 				t.Errorf("q.Format(%q) = %q, want %q", prefix, out, in)
 			}
@@ -41,8 +46,5 @@ func TestQualifierIO(t *testing.T) {
 		}
 	}
 
-	PanicTest(t, func(t *testing.T) {
-		t.Helper()
-		Qualifier{"foo", "bar"}.Format("")
-	})
+	PanicTest(t, func() { Qualifier{"foo", "bar"}.Format("").String() })
 }

@@ -1,6 +1,7 @@
 package gts
 
 import (
+	"strings"
 	"testing"
 
 	pars "gopkg.in/ktnyt/pars.v2"
@@ -20,7 +21,12 @@ func TestFeatureIO(t *testing.T) {
 		}
 		switch f := result.Value.(type) {
 		case Feature:
-			out := f.Format("     ", 21)
+			b := strings.Builder{}
+			n, err := f.Format("     ", 21).WriteTo(&b)
+			if err != nil {
+				t.Errorf("qf.WriteTo(w) = %d, %v, want %d, nil", n, err, n)
+			}
+			out := b.String()
 			if out != in {
 				t.Errorf("f.Format(%q, 21) = %q, want %q", "     ", out, in)
 			}

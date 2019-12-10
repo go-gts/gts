@@ -131,14 +131,8 @@ func TestMap(t *testing.T) {
 				t.Errorf("loc.Map(%d) = %d, want %d", i, loc.Map(i), tt.out[i])
 			}
 		}
-		PanicTest(t, func(t *testing.T) {
-			t.Helper()
-			loc.Map(-1)
-		})
-		PanicTest(t, func(t *testing.T) {
-			t.Helper()
-			loc.Map(loc.Len() + 1)
-		})
+		PanicTest(t, func() { loc.Map(-1) })
+		PanicTest(t, func() { loc.Map(loc.Len() + 1) })
 	}
 }
 

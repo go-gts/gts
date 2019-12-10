@@ -35,14 +35,13 @@ func RecordSplit(s string) []string {
 	return ss
 }
 
-func PanicTest(t *testing.T, f func(t *testing.T)) {
+func PanicTest(t *testing.T, f func()) {
 	defer func() {
 		if recover() == nil {
 			t.Errorf("function did not panic")
 		}
 	}()
-	t.Helper()
-	f(t)
+	f()
 }
 
 func same(a, b interface{}) bool {
