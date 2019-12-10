@@ -36,7 +36,7 @@ func TestFeatureTableIO(t *testing.T) {
 		sort.Sort(ft)
 		equals(t, cp, ft)
 
-		f := NewFeature("source", NewRangeLocation(39, 42), Qualifiers{})
+		f := NewFeature("source", NewRangeLocation(39, 42), Values{})
 		cp.Add(f)
 		ft.Insert(len(ft.Features)/2, f)
 		differs(t, cp, ft)

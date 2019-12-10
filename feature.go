@@ -13,12 +13,12 @@ import (
 type Feature struct {
 	Key        string
 	Location   Location
-	Qualifiers Qualifiers
+	Qualifiers Values
 	order      map[string]int
 }
 
 // NewFeature creates a new feature.
-func NewFeature(key string, loc Location, qfs Qualifiers) Feature {
+func NewFeature(key string, loc Location, qfs Values) Feature {
 	return Feature{key, loc, qfs, nil}
 }
 
@@ -149,7 +149,7 @@ func FeatureParser(prefix string) pars.Parser {
 		// Does not return error by definition.
 		qualifiersParser(state, result)
 
-		qualifiers := Qualifiers{}
+		qualifiers := Values{}
 		order := make(map[string]int)
 
 		for _, child := range result.Children {
