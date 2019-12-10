@@ -50,6 +50,12 @@ func same(a, b interface{}) bool {
 
 func equals(t *testing.T, a, b interface{}) {
 	if !same(a, b) {
-		t.Errorf("expected: %v\n  actual%v", a, b)
+		t.Errorf("expected: %v\n  actual%v\nto be equal", a, b)
+	}
+}
+
+func differs(t *testing.T, a, b interface{}) {
+	if same(a, b) {
+		t.Errorf("expected: %v\n  actual%v\nto be different", a, b)
 	}
 }

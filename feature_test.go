@@ -30,6 +30,16 @@ func TestFeatureIO(t *testing.T) {
 			if out != in {
 				t.Errorf("f.Format(%q, 21) = %q, want %q", "     ", out, in)
 			}
+			switch f.Key {
+			case "CDS":
+				s := f.Qualifiers.Get("translation")[0]
+				seq := Seq(strings.ReplaceAll(s, "\n", ""))
+				out := f.Translation()
+				equals(t, out, seq)
+			default:
+				out := f.Translation()
+				equals(t, out, Sequence(nil))
+			}
 		default:
 			t.Errorf("result.Value.(type) = %T, want %T", f, Feature{})
 		}

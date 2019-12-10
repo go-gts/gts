@@ -32,6 +32,14 @@ func TestFeatureTableIO(t *testing.T) {
 		for _, f := range ft.Features {
 			cp.Add(f)
 		}
+		differs(t, cp, ft)
+		sort.Sort(ft)
+		equals(t, cp, ft)
+
+		f := NewFeature("source", NewRangeLocation(39, 42), Qualifiers{})
+		cp.Add(f)
+		ft.Insert(len(ft.Features)/2, f)
+		differs(t, cp, ft)
 		sort.Sort(ft)
 		equals(t, cp, ft)
 	default:

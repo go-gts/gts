@@ -17,6 +17,21 @@ type Feature struct {
 	order      map[string]int
 }
 
+// NewFeature creates a new feature.
+func NewFeature(key string, loc Location, qfs Qualifiers) Feature {
+	return Feature{key, loc, qfs, nil}
+}
+
+// Translation will return the translation of the feature if available. it will
+// return nil otherwise.
+func (f Feature) Translation() Sequence {
+	if values := f.Qualifiers.Get("translation"); len(values) != 0 {
+		s := values[0]
+		return Seq(strings.ReplaceAll(s, "\n", ""))
+	}
+	return nil
+}
+
 // Format creates a FeatureFormatter object for the qualifier with the given
 // prefix and depth. If the Feature object was created by parsing some input,
 // the qualifier values will be in the same order as in the input source. The
