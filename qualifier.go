@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	ascii "gopkg.in/ktnyt/ascii.v1"
-	pars "gopkg.in/ktnyt/pars.v2"
+	pars "gopkg.in/ktnyt/pars.v2.4"
 )
 
 // Qualifier represents a single qualifier name-value pair.

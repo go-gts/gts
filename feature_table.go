@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	pars "gopkg.in/ktnyt/pars.v2"
+	pars "gopkg.in/ktnyt/pars.v2.4"
 )
 
 // FeatureTable represents an INSDC feature table. The features are sorted by

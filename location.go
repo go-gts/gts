@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	pars "gopkg.in/ktnyt/pars.v2"
+	pars "gopkg.in/ktnyt/pars.v2.4"
 )
 
 // Location represents a feature location as defined by the INSDC.
