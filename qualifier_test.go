@@ -55,7 +55,7 @@ func TestQualifierListIO(t *testing.T) {
 	in := ReadGolden(t)
 	state := pars.FromString(in)
 	singleParser := pars.Seq(QualifierParser(prefix), pars.EOL)
-	parser := pars.Exact(pars.Count(singleParser, 8))
+	parser := pars.Exact(pars.Many(singleParser))
 	_, err := parser.Parse(state)
 	if err != nil {
 		t.Errorf("while parsing`\n%s\n`: %v", in, err)
