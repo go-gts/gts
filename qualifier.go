@@ -205,7 +205,7 @@ func QualifierParser(prefix string) pars.Parser {
 
 	quotedParser := quotedQualifierParser(prefix)
 	literalParser := pars.Seq('=', wordParser).Child(1)
-	toggleParser := pars.Any('\n', pars.End).Bind("")
+	toggleParser := pars.Dry(pars.Any('\n', pars.End)).Bind("")
 
 	valueParsers := []pars.Parser{quotedParser, literalParser, toggleParser}
 

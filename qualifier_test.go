@@ -48,3 +48,17 @@ func TestQualifierIO(t *testing.T) {
 
 	PanicTest(t, func() { Qualifier{"foo", "bar"}.Format("").String() })
 }
+
+func TestQualifierListIO(t *testing.T) {
+	prefix := strings.Repeat(" ", 21)
+
+	in := ReadGolden(t)
+	state := pars.FromString(in)
+	singleParser := pars.Seq(QualifierParser(prefix), pars.EOL)
+	parser := pars.Exact(pars.Count(singleParser, 8))
+	_, err := parser.Parse(state)
+	if err != nil {
+		t.Errorf("while parsing`\n%s\n`: %v", in, err)
+		return
+	}
+}
