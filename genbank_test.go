@@ -12,7 +12,12 @@ func TestGenBankIO(t *testing.T) {
 	parser := pars.AsParser(GenBankParser)
 	result, err := parser.Parse(state)
 	if err != nil {
-		pars.Line(state, &result)
 		t.Errorf("parser returned %v\nBuffer:\n%q", err, string(result.Token))
+	}
+
+	switch rec := result.Value.(type) {
+	case Record:
+	default:
+		t.Errorf("result.Value.(type) = %T, want %T", rec, Record(GenBank{}))
 	}
 }

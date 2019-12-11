@@ -10,8 +10,9 @@ import (
 	pars "gopkg.in/ktnyt/pars.v2"
 )
 
-// GenBank represents a GenBank sequence record.
-type GenBank struct {
+// GenBankFields represents the fields of a GenBank record other than the
+// features and sequence.
+type GenBankFields struct {
 	LocusName string
 	Molecule  string
 	Topology  string
@@ -26,8 +27,23 @@ type GenBank struct {
 	Source     Organism
 	References []Reference
 	Comment    string
-	Origin     []byte
 }
+
+// GenBank represents a GenBank sequence record.
+type GenBank struct {
+	Fields   GenBankFields
+	features FeatureTable
+	origin   []byte
+}
+
+// Bytes satisfies the gts.Sequence interface.
+func (gb GenBank) Bytes() []byte { return gb.origin }
+
+// Metadata returns the metadata of the GenBank record.
+func (gb GenBank) Metadata() interface{} { return gb.Fields }
+
+// Features returns the feature table of the GenBank record.
+func (gb GenBank) Features() FeatureTable { return gb.features }
 
 var genbankLocusParser = pars.Seq(
 	"LOCUS", pars.Spaces,
@@ -52,6 +68,7 @@ func genbankFieldBodyParser(depth int) pars.Parser {
 	}
 }
 
+// GenBankParser will attempt to parse a single GenBank record.
 func GenBankParser(state *pars.State, result *pars.Result) error {
 	if err := genbankLocusParser(state, result); err != nil {
 		return err
@@ -67,13 +84,15 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 	division := string(result.Children[5].Token)
 	date := result.Children[6].Value.(time.Time)
 
-	gb := GenBank{
+	fields := GenBankFields{
 		LocusName: locus,
 		Molecule:  molecule,
 		Topology:  topology,
 		Division:  division,
 		Date:      date,
 	}
+
+	gb := &GenBank{Fields: fields}
 
 	fieldNameParser := pars.Word(ascii.IsUpper).Error(errors.New("expected field name"))
 	fieldBodyParser := genbankFieldBodyParser(depth)
@@ -98,15 +117,15 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 		case "DEFINITION":
 			parser := fieldBodyParser.Map(pars.Join([]byte("\n")))
 			parser(state, result)
-			gb.Definition = string(result.Token)
+			gb.Fields.Definition = string(result.Token)
 
 		case "ACCESSION":
 			pars.Line(state, result)
-			gb.Accession = string(result.Token)
+			gb.Fields.Accession = string(result.Token)
 
 		case "VERSION":
 			pars.Line(state, result)
-			gb.Version = string(result.Token)
+			gb.Fields.Version = string(result.Token)
 
 		case "DBLINK":
 			headParser := pars.Seq(pars.Until(':'), ':', pars.Line).Children(0, 2)
@@ -115,20 +134,20 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 			}
 			db := string(result.Children[0].Token)
 			id := string(result.Children[1].Token)
-			gb.DBLink.Set(db, id)
+			gb.Fields.DBLink.Set(db, id)
 
 			tailParser := pars.Many(pars.Seq(indent, headParser).Child(1))
 			tailParser(state, result)
 			for _, child := range result.Children {
 				db = string(child.Children[0].Token)
 				id = string(child.Children[1].Token)
-				gb.DBLink.Set(db, id)
+				gb.Fields.DBLink.Set(db, id)
 			}
 
 		case "KEYWORDS":
 			parser := fieldBodyParser.Map(pars.Join([]byte(" ")))
 			parser(state, result)
-			gb.Keywords = FlatFileSplit(string(result.Token))
+			gb.Fields.Keywords = FlatFileSplit(string(result.Token))
 
 		case "SOURCE":
 			sourceParser := fieldBodyParser.Map(pars.Join([]byte("\n")))
@@ -155,7 +174,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				organism.Taxon = FlatFileSplit(string(result.Token))
 			}
 
-			gb.Source = organism
+			gb.Fields.Source = organism
 
 		case "REFERENCE":
 			parser := fieldBodyParser.Map(pars.Join([]byte(" ")))
@@ -238,12 +257,12 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				}
 			}
 
-			gb.References = append(gb.References, reference)
+			gb.Fields.References = append(gb.Fields.References, reference)
 
 		case "COMMENT":
 			parser := fieldBodyParser.Map(pars.Join([]byte("\n")))
 			parser(state, result)
-			gb.Comment = string(result.Token)
+			gb.Fields.Comment = string(result.Token)
 
 		case "FEATURES":
 			pars.Line(state, result)
@@ -251,6 +270,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 			if err := parser(state, result); err != nil {
 				return err
 			}
+			gb.features = result.Value.(FeatureTable)
 
 		case "ORIGIN":
 			pars.Line(state, result)
@@ -274,7 +294,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				}
 			}
 
-			gb.Origin = origin
+			gb.origin = origin
 
 		default:
 			what := fmt.Sprintf("unexpected field name `%s`", name)
