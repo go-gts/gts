@@ -134,7 +134,6 @@ func FeatureParser(prefix string) pars.Parser {
 	})
 
 	return func(state *pars.State, result *pars.Result) error {
-		state.Request(1)
 		if err := keylineParser(state, result); err != nil {
 			return err
 		}
