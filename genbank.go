@@ -7,7 +7,7 @@ import (
 	"time"
 
 	ascii "gopkg.in/ktnyt/ascii.v1"
-	pars "gopkg.in/ktnyt/pars.v2.4"
+	pars "gopkg.in/ktnyt/pars.v2"
 )
 
 // GenBankFields represents the fields of a GenBank record other than the

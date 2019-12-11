@@ -3,7 +3,7 @@ package gts
 import (
 	"testing"
 
-	pars "gopkg.in/ktnyt/pars.v2.4"
+	pars "gopkg.in/ktnyt/pars.v2"
 )
 
 func TestGenBankIO(t *testing.T) {

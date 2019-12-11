@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	pars "gopkg.in/ktnyt/pars.v2.4"
+	pars "gopkg.in/ktnyt/pars.v2"
 )
 
 func ReadGolden(t *testing.T) string {
