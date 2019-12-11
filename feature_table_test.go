@@ -29,7 +29,7 @@ func TestFeatureTableIO(t *testing.T) {
 		equals(t, out, in)
 
 		cp := FeatureTable{}
-		for _, f := range ft.Features {
+		for _, f := range ft {
 			cp.Add(f)
 		}
 		differs(t, cp, ft)
@@ -38,7 +38,7 @@ func TestFeatureTableIO(t *testing.T) {
 
 		f := NewFeature("source", NewRangeLocation(39, 42), Values{})
 		cp.Add(f)
-		ft.Insert(len(ft.Features)/2, f)
+		ft.Insert(len(ft)/2, f)
 		differs(t, cp, ft)
 		sort.Sort(ft)
 		equals(t, cp, ft)
