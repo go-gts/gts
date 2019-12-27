@@ -44,18 +44,18 @@ func PanicTest(t *testing.T, f func()) {
 	f()
 }
 
-func same(a, b interface{}) bool {
-	return reflect.DeepEqual(a, b)
-}
+func same(a, b interface{}) bool { return reflect.DeepEqual(a, b) }
 
 func equals(t *testing.T, a, b interface{}) {
+	t.Helper()
 	if !same(a, b) {
-		t.Errorf("expected: %v\n  actual%v\nto be equal", a, b)
+		t.Errorf("\nexpected: %v\n  actual: %v\nto be equal", a, b)
 	}
 }
 
 func differs(t *testing.T, a, b interface{}) {
+	t.Helper()
 	if same(a, b) {
-		t.Errorf("expected: %v\n  actual%v\nto be different", a, b)
+		t.Errorf("\nexpected: %v\n  actual: %v\nto be different", a, b)
 	}
 }

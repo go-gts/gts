@@ -1,6 +1,7 @@
 package gts
 
 import (
+	"sort"
 	"strings"
 	"testing"
 
@@ -53,5 +54,44 @@ func TestFeatureIO(t *testing.T) {
 		if _, err := parser.Parse(state); err == nil {
 			t.Errorf("while parsing`\n%s\n`: expected error", in)
 		}
+	}
+}
+
+func TestFeatureListIO(t *testing.T) {
+	in := ReadGolden(t)
+
+	parser := pars.Exact(FeatureListParser(""))
+	state := pars.FromString(in)
+	result, err := parser.Parse(state)
+	if err != nil {
+		t.Errorf("while parsing`\n%s\n`: %v", in, err)
+	}
+
+	switch ft := result.Value.(type) {
+	case FeatureList:
+		b := strings.Builder{}
+		n, err := ft.Format("     ", 21).WriteTo(&b)
+		if err != nil {
+			t.Errorf("qf.WriteTo(w) = %d, %v, want %d, nil", n, err, n)
+		}
+		out := b.String()
+		equals(t, out, in)
+
+		cp := FeatureList{}
+		for _, f := range ft {
+			cp.Add(f)
+		}
+		differs(t, cp, ft)
+		sort.Sort(ByLocation(ft))
+		equals(t, cp, ft)
+
+		f := NewFeature("source", NewRangeLocation(39, 42), Values{})
+		cp.Add(f)
+		ft.Insert(len(ft)/2, f)
+		differs(t, cp, ft)
+		sort.Sort(ByLocation(ft))
+		equals(t, cp, ft)
+	default:
+		t.Errorf("result.Value.(type) = %T, want %T", ft, FeatureList{})
 	}
 }

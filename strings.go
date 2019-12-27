@@ -10,3 +10,8 @@ func FlatFileSplit(s string) []string {
 	}
 	return []string{}
 }
+
+// AddPrefix adds the given prefix after each newline.
+func AddPrefix(s, prefix string) string {
+	return strings.ReplaceAll(s, "\n", "\n"+prefix)
+}

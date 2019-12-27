@@ -3,11 +3,14 @@ package gts
 import (
 	"errors"
 	"fmt"
+	"io"
+	"strconv"
 	"strings"
 	"time"
 
 	ascii "gopkg.in/ktnyt/ascii.v1"
 	pars "gopkg.in/ktnyt/pars.v2"
+	wrap "gopkg.in/ktnyt/wrap.v1"
 )
 
 // GenBankFields represents the fields of a GenBank record other than the
@@ -32,18 +35,41 @@ type GenBankFields struct {
 // GenBank represents a GenBank sequence record.
 type GenBank struct {
 	Fields   GenBankFields
-	features FeatureTable
-	origin   []byte
+	Features FeatureList
+	Origin   SequenceServer
 }
-
-// Bytes satisfies the gts.Sequence interface.
-func (gb GenBank) Bytes() []byte { return gb.origin }
 
 // Metadata returns the metadata of the GenBank record.
 func (gb GenBank) Metadata() interface{} { return gb.Fields }
 
-// Features returns the feature table of the GenBank record.
-func (gb GenBank) Features() FeatureTable { return gb.features }
+// Select the features in the list matching the selector criteria.
+func (gb GenBank) Select(sel FeatureSelector) []Feature {
+	return gb.Features.Select(sel)
+}
+
+// Add a feature to the GenBank record.
+func (gb GenBank) Add(f Feature) {
+	f.proxy = gb.Origin.Proxy()
+	gb.Features.Add(f)
+}
+
+// Bytes satisfies the gts.Sequence interface.
+func (gb GenBank) Bytes() []byte { return gb.Origin.Bytes() }
+
+// Insert a sequence at the specified position.
+func (gb GenBank) Insert(pos int, seq Sequence) error {
+	return gb.Origin.Insert(pos, seq)
+}
+
+// Delete given number of bases from the specified position.
+func (gb GenBank) Delete(pos, cnt int) error {
+	return gb.Origin.Delete(pos, cnt)
+}
+
+// Replace the bases from the specified position with the given sequence.
+func (gb GenBank) Replace(pos int, seq Sequence) error {
+	return gb.Origin.Replace(pos, seq)
+}
 
 var genbankLocusParser = pars.Seq(
 	"LOCUS", pars.Spaces,
@@ -51,7 +77,7 @@ var genbankLocusParser = pars.Seq(
 	pars.Int, " bp", pars.Spaces,
 	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
 	pars.Any("linear", "circular"), pars.Spaces,
-	pars.Count(pars.Byte(), 3), pars.Spaces,
+	pars.Count(pars.Byte(), 3).Map(pars.Cat), pars.Spaces,
 	pars.AsParser(pars.Line).Map(pars.Time("02-Jan-2006")),
 ).Children(1, 2, 4, 7, 9, 11, 13)
 
@@ -66,6 +92,137 @@ func genbankFieldBodyParser(depth int) pars.Parser {
 		result.SetChildren(children)
 		return nil
 	}
+}
+
+// GenBankFormatter will attempt to format a record in GenBank flatfile format.
+type GenBankFormatter struct {
+	Rec Record
+}
+
+func (gf GenBankFormatter) String() string {
+	builder := strings.Builder{}
+	indent := "            "
+
+	switch metadata := gf.Rec.Metadata().(type) {
+	case GenBankFields:
+		length := strconv.Itoa(len(gf.Rec.Bytes()))
+		pad1 := strings.Repeat(" ", 28-(len(metadata.LocusName)+len(length)))
+		pad2 := strings.Repeat(" ", 8-len(metadata.Molecule))
+		pad3 := strings.Repeat(" ", 9-len(metadata.Topology))
+		date := strings.ToUpper(metadata.Date.Format("02-Jan-2006"))
+		locus := "LOCUS       " + metadata.LocusName + pad1 + length + " bp    " +
+			metadata.Molecule + pad2 + metadata.Topology + pad3 + metadata.Division +
+			" " + date
+
+		builder.WriteString(locus)
+
+		definition := AddPrefix(metadata.Definition, indent)
+		builder.WriteString("\nDEFINITION  " + definition)
+		builder.WriteString("\nACCESSION   " + metadata.Accession)
+		builder.WriteString("\nVERSION     " + metadata.Version)
+
+		for i, pair := range metadata.DBLink {
+			switch i {
+			case 0:
+				builder.WriteString("\nDBLINK      ")
+			default:
+				builder.WriteString("\n" + indent)
+			}
+			builder.WriteString(fmt.Sprintf("%s: %s", pair.Key, pair.Value))
+		}
+
+		keywords := wrap.Space(strings.Join(metadata.Keywords, "; ")+".", 67)
+		keywords = AddPrefix(keywords, indent)
+		builder.WriteString("\nKEYWORDS    " + keywords)
+
+		source := wrap.Space(metadata.Source.Species, 67)
+		source = AddPrefix(source, indent)
+		builder.WriteString("\nSOURCE      " + source)
+
+		organism := wrap.Space(metadata.Source.Name, 67)
+		organism = AddPrefix(organism, indent)
+		builder.WriteString("\n  ORGANISM  " + organism)
+
+		taxon := wrap.Space(strings.Join(metadata.Source.Taxon, "; ")+".", 67)
+		taxon = AddPrefix(taxon, indent)
+		builder.WriteString("\n" + indent + taxon)
+
+		for _, ref := range metadata.References {
+			builder.WriteString(fmt.Sprintf("\nREFERENCE   %-2d ", ref.Number))
+			switch len(ref.Ranges) {
+			case 0:
+				builder.WriteString("(sites)")
+			default:
+				ranges := []string{}
+				s := "bases"
+				if metadata.Molecule == "aa" {
+					s = "residues"
+				}
+				for _, rng := range ref.Ranges {
+					ranges = append(ranges, fmt.Sprintf("%s %d to %d", s, rng.Start, rng.End))
+				}
+				builder.WriteString(fmt.Sprintf("(%s)", strings.Join(ranges, "; ")))
+			}
+			if ref.Authors != "" {
+				builder.WriteString("\n  AUTHORS   " + AddPrefix(ref.Authors, indent))
+			}
+			if ref.Group != "" {
+				builder.WriteString("\n  CONSRTM   " + AddPrefix(ref.Group, indent))
+			}
+			if ref.Title != "" {
+				builder.WriteString("\n  TITLE     " + AddPrefix(ref.Title, indent))
+			}
+			if ref.Journal != "" {
+				builder.WriteString("\n  JOURNAL   " + AddPrefix(ref.Journal, indent))
+			}
+			if ref.Xref != nil {
+				if v, ok := ref.Xref["PUBMED"]; ok {
+					builder.WriteString("\n   PUBMED   " + v)
+				}
+			}
+			if ref.Comment != "" {
+				builder.WriteString("\n  REMARK    " + AddPrefix(ref.Comment, indent))
+			}
+		}
+
+		if metadata.Comment != "" {
+			builder.WriteString("\nCOMMENT     " + AddPrefix(metadata.Comment, indent))
+		}
+
+		builder.WriteString("\nFEATURES             Location/Qualifiers\n")
+
+		ff := FeatureList(gf.Rec.Select(Any))
+		ff.Format("     ", 21).WriteTo(&builder)
+
+		builder.WriteString("\nORIGIN      ")
+
+		p := gf.Rec.Bytes()
+		for i := 0; i < len(p); i += 60 {
+			builder.WriteString(fmt.Sprintf("\n%9d ", i+1))
+			for j := 0; j < 60 && i+j < len(p); j += 10 {
+				k := i + j + 10
+				if k > len(p) {
+					k = len(p)
+				}
+				if j != 0 {
+					builder.WriteByte(' ')
+				}
+				builder.Write(p[i+j : k])
+			}
+		}
+
+		builder.WriteString("\n//\n")
+
+	default:
+		panic(fmt.Errorf("gts does not know how to format `%T` in GenBank flatfile form", metadata))
+	}
+
+	return builder.String()
+}
+
+func (gf GenBankFormatter) WriteTo(w io.Writer) (int64, error) {
+	n, err := w.Write([]byte(gf.String()))
+	return int64(n), err
 }
 
 // GenBankParser will attempt to parse a single GenBank record.
@@ -133,14 +290,14 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				return err
 			}
 			db := string(result.Children[0].Token)
-			id := string(result.Children[1].Token)
+			id := string(result.Children[1].Token[1:])
 			gb.Fields.DBLink.Set(db, id)
 
 			tailParser := pars.Many(pars.Seq(indent, headParser).Child(1))
 			tailParser(state, result)
 			for _, child := range result.Children {
 				db = string(child.Children[0].Token)
-				id = string(child.Children[1].Token)
+				id = string(child.Children[1].Token[1:])
 				gb.Fields.DBLink.Set(db, id)
 			}
 
@@ -184,7 +341,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				pars.Int, pars.Spaces, '(',
 				pars.Any(
 					pars.Seq(
-						"bases ",
+						pars.Any("bases ", "residues "),
 						pars.Delim(pars.Seq(pars.Int, " to ", pars.Int).Children(0, 2), "; "),
 					).Child(1),
 					"sites",
@@ -266,11 +423,11 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 
 		case "FEATURES":
 			pars.Line(state, result)
-			parser := FeatureTableParser("")
+			parser := FeatureListParser("")
 			if err := parser(state, result); err != nil {
 				return err
 			}
-			gb.features = result.Value.(FeatureTable)
+			gb.Features = result.Value.(FeatureList)
 
 		case "ORIGIN":
 			pars.Line(state, result)
@@ -294,7 +451,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				}
 			}
 
-			gb.origin = origin
+			gb.Origin = NewSequenceServer(BasicSequence(origin))
 
 		default:
 			what := fmt.Sprintf("unexpected field name `%s`", name)
