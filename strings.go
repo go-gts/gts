@@ -2,7 +2,7 @@ package gts
 
 import "strings"
 
-// FlatFileSplit will split the string with the flatfile convention.
+// FlatFileSplit splits the string with the flatfile convention.
 func FlatFileSplit(s string) []string {
 	s = strings.TrimSuffix(s, ".")
 	if len(s) > 0 {

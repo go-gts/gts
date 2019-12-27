@@ -168,7 +168,7 @@ func Slice(seq Sequence, start, end int) BasicSequence {
 	return BasicSequence(seq.Bytes()[start:end])
 }
 
-// Fragment will return a slice of Sequences containing all subsequences of the
+// Fragment returns a slice of Sequences containing all subsequences of the
 // given Sequence from position 0 separated by `slide` bytes and with length of
 // `window`.
 func Fragment(seq Sequence, window, slide int) []Sequence {
@@ -276,7 +276,7 @@ func NewSequenceServer(seq Sequence) SequenceServer {
 	return NewSequenceServer((*BasicSequence)(&p))
 }
 
-// Spin will prepare internal channels for recieving messages from the proxies
+// Spin prepares internal channels for recieving messages from the proxies
 // associated to this SequenceServer.
 func (ss *SequenceServer) Spin() {
 	if !ss.spun {
@@ -296,7 +296,7 @@ func (ss *SequenceServer) Spin() {
 	}
 }
 
-// Close will deactivate the SequenceServer.
+// Close deactivates the SequenceServer.
 func (ss *SequenceServer) Close() { ss.reqch <- false }
 
 // Proxy creates a proxy to the SequenceServer.

@@ -40,7 +40,7 @@ func (f Feature) Delete(pos, cnt int) { f.Delete(pos, cnt) }
 // Replace the bases from the specified position with the given sequence.
 func (f Feature) Replace(pos int, seq Sequence) { f.Replace(pos, seq) }
 
-// Translation will return the translation of the feature if available. it will
+// Translation returns the translation of the feature if available. it will
 // return nil otherwise.
 func (f Feature) Translation() Sequence {
 	if values := f.Qualifiers.Get("translation"); len(values) != 0 {
@@ -60,8 +60,7 @@ func (f Feature) Format(prefix string, depth int) FeatureFormatter {
 	return FeatureFormatter{f, prefix, depth}
 }
 
-// FeatureFormatter will format a Feature object with the given prefix and
-// depth.
+// FeatureFormatter formats a Feature object with the given prefix and depth.
 type FeatureFormatter struct {
 	Feature Feature
 	Prefix  string
@@ -133,7 +132,7 @@ type keyline struct {
 	loc Location
 }
 
-// FeatureParser will attempt to match a single feature.
+// FeatureParser attempts to match a single feature.
 func FeatureParser(prefix string) pars.Parser {
 	keylineParser := pars.Seq(
 		prefix, pars.Spaces,
@@ -268,8 +267,8 @@ func (ff *FeatureList) Add(f Feature) {
 	}
 }
 
-// FeatureListFormatter will format a FeatureList object with the given
-// prefix and depth.
+// FeatureListFormatter formats a FeatureList object with the given prefix and
+// depth.
 type FeatureListFormatter struct {
 	FeatureList FeatureList
 	Prefix      string
@@ -279,9 +278,11 @@ type FeatureListFormatter struct {
 // String satisfies the fmt.Stringer interface.
 func (ff FeatureListFormatter) String() string {
 	b := strings.Builder{}
-	for _, f := range ff.FeatureList {
+	for i, f := range ff.FeatureList {
+		if i != 0 {
+			b.WriteByte('\n')
+		}
 		f.Format(ff.Prefix, ff.Depth).WriteTo(&b)
-		b.WriteByte('\n')
 	}
 	return b.String()
 }
@@ -292,7 +293,7 @@ func (ff FeatureListFormatter) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// FeatureListParser will attempt to match an INSDC feature table.
+// FeatureListParser attempts to match an INSDC feature table.
 func FeatureListParser(prefix string) pars.Parser {
 	return pars.Many(FeatureParser(prefix)).Map(func(result *pars.Result) error {
 		features := make([]Feature, len(result.Children))

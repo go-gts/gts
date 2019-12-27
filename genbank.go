@@ -94,7 +94,7 @@ func genbankFieldBodyParser(depth int) pars.Parser {
 	}
 }
 
-// GenBankFormatter will attempt to format a record in GenBank flatfile format.
+// GenBankFormatter attempts to format a record in GenBank flatfile format.
 type GenBankFormatter struct {
 	Rec Record
 }
@@ -225,11 +225,13 @@ func (gf GenBankFormatter) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// GenBankParser will attempt to parse a single GenBank record.
+// GenBankParser attempts to parse a single GenBank record.
 func GenBankParser(state *pars.State, result *pars.Result) error {
 	if err := genbankLocusParser(state, result); err != nil {
 		return err
 	}
+
+	pars.Cut(state, result)
 
 	depth := len(result.Children[0].Token) + 5
 	indent := pars.String(strings.Repeat(" ", depth))

@@ -526,7 +526,7 @@ var OrderLocationParser = pars.Seq(
 
 var errNotLocation = errors.New("string is not a Location")
 
-// AsLocation will attempt to interpret the given string as a Location.
+// AsLocation attempts to interpret the given string as a Location.
 func AsLocation(s string) (Location, error) {
 	state := pars.FromString(s)
 	result := pars.Result{}

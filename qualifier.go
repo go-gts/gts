@@ -36,7 +36,7 @@ func (q Qualifier) Format(prefix string) QualifierFormatter {
 	return QualifierFormatter{q, prefix}
 }
 
-// QualifierFormatter will format a Qualifier object with the given prefix.
+// QualifierFormatter formats a Qualifier object with the given prefix.
 type QualifierFormatter struct {
 	Qualifier Qualifier
 	Prefix    string
@@ -97,21 +97,21 @@ func init() {
 	sort.Strings(ToggleQualifierNames)
 }
 
-// RegisterQuotedQualifier will register the given qualifier names as being a
+// RegisterQuotedQualifier registers the given qualifier names as being a
 // quoted qualifer (i.e. /name="value").
 func RegisterQuotedQualifier(names ...string) {
 	QuotedQualifierNames = append(QuotedQualifierNames, names...)
 	sort.Strings(QuotedQualifierNames)
 }
 
-// RegisterLiteralQualifier will register the given qualifier names as being a
+// RegisterLiteralQualifier registers the given qualifier names as being a
 // literal qualifier (i.e. /name=value).
 func RegisterLiteralQualifier(names ...string) {
 	LiteralQualifierNames = append(LiteralQualifierNames, names...)
 	sort.Strings(LiteralQualifierNames)
 }
 
-// RegisterToggleQualifier will register the given qualifier names as being a
+// RegisterToggleQualifier registers the given qualifier names as being a
 // toggle qualifier (i.e. /name).
 func RegisterToggleQualifier(names ...string) {
 	ToggleQualifierNames = append(ToggleQualifierNames, names...)
@@ -160,7 +160,7 @@ const (
 	UnknownQualifier
 )
 
-// GetQualifierType will return the qualifier type of the given qualifier name.
+// GetQualifierType returns the qualifier type of the given qualifier name.
 func GetQualifierType(name string) QualifierType {
 	switch {
 	case IsQuotedQualifier(name):
@@ -198,7 +198,7 @@ func quotedQualifierParser(prefix string) pars.Parser {
 	return parser.Map(mapping)
 }
 
-// QualfierParser will attempt to match a single qualifier name-value pair.
+// QualfierParser attempts to match a single qualifier name-value pair.
 func QualifierParser(prefix string) pars.Parser {
 	nameParser := qualifierNameParser(prefix)
 	wordParser := pars.Word(ascii.Not(ascii.IsSpace)).ToString()
