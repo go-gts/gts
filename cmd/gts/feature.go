@@ -4,7 +4,9 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ktnyt/gts"
 	flags "gopkg.in/ktnyt/flags.v1"
@@ -16,6 +18,7 @@ func init() {
 	prog.Add("clear", "remove all features (excluding sources)", FeatureClear)
 	prog.Add("select", "select features by feature keys", FeatureSelect)
 	prog.Add("merge", "merge features from other file(s)", FeatureMerge)
+	prog.Add("extract", "extract qualifier value(s) from the input record", FeatureExtract)
 	flags.Add("feature", "feature manipulation commands", prog.Compile())
 }
 
@@ -130,6 +133,9 @@ func FeatureMerge(ctx *flags.Context) error {
 		return err
 	}
 
+	defer infile.Close()
+	defer outfile.Close()
+
 	scanner := gts.NewRecordScanner(bufio.NewReader(infile))
 	if !scanner.Scan() {
 		if err := scanner.Err(); err != nil {
@@ -139,7 +145,7 @@ func FeatureMerge(ctx *flags.Context) error {
 	}
 
 	in := scanner.Record()
-	ff := gts.FeatureList(in.Select(gts.Any))
+	ff := gts.FeatureList(in.Select())
 
 	files := append([]*os.File{mainFile}, (*extraFiles)...)
 	for _, f := range files {
@@ -160,6 +166,73 @@ func FeatureMerge(ctx *flags.Context) error {
 
 	if _, err := buffer.WriteTo(outfile); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func FeatureExtract(ctx *flags.Context) error {
+	pos, opt := flags.Args()
+
+	infile := pos.Input("input record file")
+	outfile := pos.Output("output text file")
+	mainName := pos.String("name", "qualifier name to select")
+
+	extraNames := opt.StringSlice(0, "and", nil, "additional qualifier name(s) to select")
+	delim := opt.String('d', "delimiter", "\t", "string to insert between output qualifiers")
+	sep := opt.String('s', "separator", ",", "string to insert between values with same qualifier keys")
+	featureKey := opt.Switch('f', "feature-key", "extract the feature key")
+	location := opt.Switch('l', "location", "extract the location")
+
+	if err := ctx.Parse(pos, opt); err != nil {
+		return err
+	}
+
+	defer infile.Close()
+	defer outfile.Close()
+
+	scanner := gts.NewRecordScanner(bufio.NewReader(infile))
+	if !scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+		return errors.New("expected a record entry")
+	}
+
+	header := []string{*mainName}
+	if *featureKey {
+		header = append(header, "feature")
+	}
+	if *location {
+		header = append(header, "location")
+	}
+	header = append(header, (*extraNames)...)
+	fmt.Fprintf(outfile, "%s\n", strings.Join(header, *delim))
+
+	in := scanner.Record()
+	for _, f := range in.Select() {
+		primary := f.Qualifiers.Get(*mainName)
+		if len(primary) > 0 {
+			values := []string{strings.Join(primary, *sep)}
+			if *featureKey {
+				values = append(values, f.Key)
+			}
+			if *location {
+				values = append(values, f.Location.String())
+			}
+
+			ok := true
+			for _, name := range *extraNames {
+				value := f.Qualifiers.Get(name)
+				if len(value) == 0 {
+					ok = false
+				}
+				values = append(values, strings.Join(value, *sep))
+			}
+			if ok {
+				fmt.Fprintf(outfile, "%s\n", strings.Join(values, *delim))
+			}
+		}
 	}
 
 	return nil

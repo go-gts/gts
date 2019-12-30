@@ -52,7 +52,7 @@ func Not(s FeatureSelector) FeatureSelector {
 
 // FeatureTable represents a feature table.
 type FeatureTable interface {
-	Select(sel FeatureSelector) []Feature
+	Select(ss ...FeatureSelector) []Feature
 	Add(f Feature)
 }
 
@@ -106,7 +106,7 @@ func jsonDecoder(r io.Reader) decoder { return json.NewDecoder(r) }
 var FeatureTableParser = pars.Any(
 	RecordParser.Map(func(result *pars.Result) error {
 		rec := result.Value.(Record)
-		ft := rec.Select(Any)
+		ft := rec.Select()
 		result.SetValue(ft)
 		return nil
 	}),

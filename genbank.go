@@ -43,8 +43,8 @@ type GenBank struct {
 func (gb GenBank) Metadata() interface{} { return gb.Fields }
 
 // Select the features in the list matching the selector criteria.
-func (gb GenBank) Select(sel FeatureSelector) []Feature {
-	return gb.Features.Select(sel)
+func (gb GenBank) Select(ss ...FeatureSelector) []Feature {
+	return gb.Features.Select(ss...)
 }
 
 // Add a feature to the GenBank record.

@@ -161,7 +161,8 @@ func (ff FeatureList) Format(prefix string, depth int) FeatureListFormatter {
 }
 
 // Select the features in the list matching the selector criteria.
-func (ff FeatureList) Select(sel FeatureSelector) []Feature {
+func (ff FeatureList) Select(ss ...FeatureSelector) []Feature {
+	sel := And(ss...)
 	idx, n := make([]int, len(ff)), 0
 	for i, f := range ff {
 		if sel(f) {
