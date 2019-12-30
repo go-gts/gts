@@ -190,7 +190,7 @@ func quotedQualifierParser(prefix string) pars.Parser {
 // QualfierParser attempts to match a single qualifier name-value pair.
 func QualifierParser(prefix string) pars.Parser {
 	nameParser := qualifierNameParser(prefix)
-	wordParser := pars.Word(ascii.Not(ascii.IsSpace)).ToString()
+	wordParser := pars.Until(pars.Any("\n"+prefix+"/", pars.End)).ToString()
 
 	quotedParser := quotedQualifierParser(prefix)
 	literalParser := pars.Seq('=', wordParser).Child(1)

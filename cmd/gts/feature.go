@@ -38,6 +38,9 @@ func FeatureClear(ctx *flags.Context) error {
 	scanner := gts.NewRecordScanner(bufio.NewReader(infile))
 
 	if !scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			return err
+		}
 		return errors.New("expected at least one record entry")
 	}
 
