@@ -8,8 +8,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ktnyt/gts"
 	flags "gopkg.in/ktnyt/flags.v1"
+	gts "gopkg.in/ktnyt/gts.v0"
 	pars "gopkg.in/ktnyt/pars.v2"
 )
 
