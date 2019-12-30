@@ -126,66 +126,6 @@ func (ff FeatureFormatter) WriteTo(w io.Writer) (int, error) {
 	return w.Write([]byte(ff.String()))
 }
 
-type keyline struct {
-	key string
-	pad int
-	loc Location
-}
-
-// FeatureParser attempts to match a single feature.
-func FeatureParser(prefix string) pars.Parser {
-	keylineParser := pars.Seq(
-		prefix, pars.Spaces,
-		pars.Word(ascii.IsSnake), pars.Spaces,
-		LocationParser, pars.EOL,
-	).Map(func(result *pars.Result) error {
-		children := result.Children
-		pad := 0
-		pad += len(children[1].Token)
-		key := string(children[2].Token)
-		pad += len(key)
-		pad += len(children[3].Token)
-		loc := children[4].Value.(Location)
-		result.SetValue(keyline{key, pad, loc})
-		return nil
-	})
-
-	return func(state *pars.State, result *pars.Result) error {
-		if err := keylineParser(state, result); err != nil {
-			return err
-		}
-		tmp := result.Value.(keyline)
-		key := tmp.key
-		pad := tmp.pad
-		loc := tmp.loc
-
-		qualifierParser := QualifierParser(prefix + strings.Repeat(" ", pad))
-		qualifiersParser := pars.Many(pars.Seq(qualifierParser, pars.EOL).Child(0))
-
-		// Does not return error by definition.
-		qualifiersParser(state, result)
-
-		qualifiers := Values{}
-		order := make(map[string]int)
-
-		for _, child := range result.Children {
-			q := child.Value.(Qualifier)
-			qualifiers.Add(q.Name, q.Value)
-			if _, ok := order[q.Name]; q.Name != "translation" && !ok {
-				order[q.Name] = len(order)
-			}
-		}
-
-		result.SetValue(Feature{
-			Key:        key,
-			Location:   loc,
-			Qualifiers: qualifiers,
-			order:      order,
-		})
-		return nil
-	}
-}
-
 // ByLocation implements sort.Interface for []Feature by location.
 type ByLocation []Feature
 
@@ -293,14 +233,110 @@ func (ff FeatureListFormatter) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
+type keyline struct {
+	pre int
+	key string
+	pst int
+	loc Location
+}
+
+func featureKeylineParser(prefix string, depth int) pars.Parser {
+	parser := pars.Seq(prefix, pars.Word(ascii.IsSnake)).Child(1)
+	return func(state *pars.State, result *pars.Result) error {
+		if err := parser(state, result); err != nil {
+			return err
+		}
+		key := string(result.Token)
+		remain := pars.Seq(
+			pars.Count(byte(' '), depth-len(prefix+key)),
+			LocationParser, pars.EOL,
+		).Child(1)
+		if err := remain(state, result); err != nil {
+			return err
+		}
+		loc := result.Value.(Location)
+		result.SetValue(keyline{0, key, 0, loc})
+		return nil
+	}
+}
+
 // FeatureListParser attempts to match an INSDC feature table.
 func FeatureListParser(prefix string) pars.Parser {
-	return pars.Many(FeatureParser(prefix)).Map(func(result *pars.Result) error {
-		features := make([]Feature, len(result.Children))
-		for i, child := range result.Children {
-			features[i] = child.Value.(Feature)
-		}
-		result.SetValue(FeatureList(features))
+	firstParser := pars.Seq(
+		prefix, pars.Spaces,
+		pars.Word(ascii.IsSnake), pars.Spaces,
+		LocationParser, pars.EOL,
+	).Map(func(result *pars.Result) error {
+		children := result.Children
+		pre := len(children[1].Token)
+		key := string(children[2].Token)
+		pst := len(children[3].Token)
+		loc := children[4].Value.(Location)
+		result.SetValue(keyline{pre, key, pst, loc})
 		return nil
 	})
+
+	return func(state *pars.State, result *pars.Result) error {
+		if err := firstParser(state, result); err != nil {
+			return err
+		}
+		tmp := result.Value.(keyline)
+		pre, key, pst, loc := tmp.pre, tmp.key, tmp.pst, tmp.loc
+		depth := pre + len(key) + pst
+
+		keylineParser := featureKeylineParser(prefix+strings.Repeat(" ", pre), depth)
+
+		qualifierParser := QualifierParser(prefix + strings.Repeat(" ", depth))
+		qualifiersParser := pars.Many(pars.Seq(qualifierParser, pars.EOL).Child(0))
+
+		// Does not return error by definition.
+		qualifiersParser(state, result)
+
+		qfs := Values{}
+		order := make(map[string]int)
+
+		for _, child := range result.Children {
+			q := child.Value.(Qualifier)
+			qfs.Add(q.Name, q.Value)
+			if _, ok := order[q.Name]; q.Name != "translation" && !ok {
+				order[q.Name] = len(order)
+			}
+		}
+
+		ff := []Feature{{
+			Key:        key,
+			Location:   loc,
+			Qualifiers: qfs,
+			order:      order,
+		}}
+
+		for keylineParser(state, result) == nil {
+			tmp := result.Value.(keyline)
+			key, loc := tmp.key, tmp.loc
+
+			// Does not return error by definition.
+			qualifiersParser(state, result)
+
+			qfs := Values{}
+			order := make(map[string]int)
+
+			for _, child := range result.Children {
+				q := child.Value.(Qualifier)
+				qfs.Add(q.Name, q.Value)
+				if _, ok := order[q.Name]; q.Name != "translation" && !ok {
+					order[q.Name] = len(order)
+				}
+			}
+
+			ff = append(ff, Feature{
+				Key:        key,
+				Location:   loc,
+				Qualifiers: qfs,
+				order:      order,
+			})
+		}
+
+		result.SetValue(ff)
+		return nil
+	}
 }

@@ -14,18 +14,19 @@ func TestFeatureIO(t *testing.T) {
 
 	for _, in := range ss {
 		state := pars.FromString(in)
-		parser := pars.Exact(FeatureParser(""))
+		parser := pars.Exact(FeatureListParser(""))
 		result, err := parser.Parse(state)
 		if err != nil {
 			t.Errorf("while parsing`\n%s\n`: %v", in, err)
 			return
 		}
-		switch f := result.Value.(type) {
-		case Feature:
+		switch ff := result.Value.(type) {
+		case []Feature:
+			f := ff[0]
 			b := strings.Builder{}
 			n, err := f.Format("     ", 21).WriteTo(&b)
 			if err != nil {
-				t.Errorf("qf.WriteTo(w) = %d, %v, want %d, nil", n, err, n)
+				t.Errorf("f.WriteTo(w) = %d, %v, want %d, nil", n, err, n)
 			}
 			out := b.String()
 			if out != in {
@@ -42,7 +43,7 @@ func TestFeatureIO(t *testing.T) {
 				equals(t, out, Sequence(nil))
 			}
 		default:
-			t.Errorf("result.Value.(type) = %T, want %T", f, Feature{})
+			t.Errorf("result.Value.(type) = %T, want %T", ff, Feature{})
 		}
 	}
 
@@ -50,7 +51,7 @@ func TestFeatureIO(t *testing.T) {
 
 	for _, in := range []string{malformedKeyline} {
 		state := pars.FromString(in)
-		parser := pars.Exact(FeatureParser(""))
+		parser := pars.Exact(FeatureListParser(""))
 		if _, err := parser.Parse(state); err == nil {
 			t.Errorf("while parsing`\n%s\n`: expected error", in)
 		}
@@ -67,14 +68,15 @@ func TestFeatureListIO(t *testing.T) {
 		t.Errorf("while parsing`\n%s\n`: %v", in, err)
 	}
 
-	switch ft := result.Value.(type) {
-	case FeatureList:
+	switch ff := result.Value.(type) {
+	case []Feature:
+		ft := FeatureList(ff)
 		b := strings.Builder{}
 		n, err := ft.Format("     ", 21).WriteTo(&b)
 		if err != nil {
 			t.Errorf("qf.WriteTo(w) = %d, %v, want %d, nil", n, err, n)
 		}
-		out := b.String()
+		out := b.String() + "\n"
 		equals(t, out, in)
 
 		cp := FeatureList{}
@@ -92,6 +94,6 @@ func TestFeatureListIO(t *testing.T) {
 		sort.Sort(ByLocation(ft))
 		equals(t, cp, ft)
 	default:
-		t.Errorf("result.Value.(type) = %T, want %T", ft, FeatureList{})
+		t.Errorf("result.Value.(type) = %T, want %T", ff, []Feature{})
 	}
 }

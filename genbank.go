@@ -429,7 +429,8 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 			if err := parser(state, result); err != nil {
 				return err
 			}
-			gb.Features = result.Value.(FeatureList)
+			ff := result.Value.([]Feature)
+			gb.Features = FeatureList(ff)
 
 		case "ORIGIN":
 			pars.Line(state, result)

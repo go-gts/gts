@@ -178,24 +178,13 @@ func qualifierNameParser(prefix string) pars.Parser {
 	return pars.Seq(prefix+"/", pars.Word(ascii.IsSnake)).Child(1)
 }
 
-func quotedQualifierMap(prefix string) pars.Map {
-	parser := pars.Delim(pars.Line, prefix)
-	return func(result *pars.Result) error {
-		state := pars.FromBytes(result.Token)
-		parser(state, result)
-		ss := make([]string, len(result.Children))
-		for i, child := range result.Children {
-			ss[i] = string(child.Token)
-		}
-		result.SetValue(strings.Join(ss, "\n"))
-		return nil
-	}
-}
-
 func quotedQualifierParser(prefix string) pars.Parser {
 	parser := pars.Seq('=', pars.Quoted('"')).Child(1)
-	mapping := quotedQualifierMap(prefix)
-	return parser.Map(mapping)
+	return parser.Map(func(result *pars.Result) error {
+		ss := strings.Split(string(result.Token), "\n"+prefix)
+		result.SetValue(strings.Join(ss, "\n"))
+		return nil
+	})
 }
 
 // QualfierParser attempts to match a single qualifier name-value pair.
