@@ -1,6 +1,8 @@
 package gts
 
 import (
+	"bytes"
+	"fmt"
 	"io"
 	"sort"
 	"strings"
@@ -242,20 +244,37 @@ type keyline struct {
 }
 
 func featureKeylineParser(prefix string, depth int) pars.Parser {
-	parser := pars.Seq(prefix, pars.Word(ascii.IsSnake)).Child(1)
+	word := pars.Word(ascii.IsSnake)
+	p := []byte(prefix)
 	return func(state *pars.State, result *pars.Result) error {
-		if err := parser(state, result); err != nil {
+		if err := state.Request(len(p)); err != nil {
+			return err
+		}
+		if !bytes.Equal(state.Buffer(), p) {
+			return pars.NewError(fmt.Sprintf("expected %q", prefix), state.Position())
+		}
+		state.Advance()
+		if err := word(state, result); err != nil {
 			return err
 		}
 		key := string(result.Token)
-		remain := pars.Seq(
-			pars.Count(byte(' '), depth-len(prefix+key)),
-			LocationParser, pars.EOL,
-		).Child(1)
-		if err := remain(state, result); err != nil {
+		for i := 0; i < depth-len(prefix+key); i++ {
+			c, err := pars.Next(state)
+			if err != nil {
+				return err
+			}
+			if c != ' ' {
+				return pars.NewError("wanted indent", state.Position())
+			}
+			state.Advance()
+		}
+		if err := LocationParser(state, result); err != nil {
 			return err
 		}
 		loc := result.Value.(Location)
+		if err := pars.EOL(state, result); err != nil {
+			return err
+		}
 		result.SetValue(keyline{0, key, 0, loc})
 		return nil
 	}
