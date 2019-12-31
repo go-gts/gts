@@ -1,6 +1,7 @@
 package gts
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -434,20 +435,41 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 
 		case "ORIGIN":
 			pars.Line(state, result)
-			seqlineParser := pars.Seq(pars.Spaces, pars.Int, ' ', pars.Line)
 
 			origin := make([]byte, length)
-
 			i := 0
 			for i < length {
-				if err := seqlineParser(state, result); err != nil {
+				n := []byte(strconv.Itoa(i + 1))
+				m := 9 - len(n)
+				for j := 0; j < m; j++ {
+					c, err := pars.Next(state)
+					if err != nil {
+						return err
+					}
+					if c != ' ' {
+						return pars.NewError("wanted indent", state.Position())
+					}
+					state.Advance()
+				}
+				if err := state.Request(len(n)); err != nil {
 					return err
 				}
-				n := result.Children[1].Value.(int)
-				if i+1 != n {
-					return pars.NewError("number of bases does not match", state.Position())
+				if !bytes.Equal(state.Buffer(), n) {
+					return pars.NewError(fmt.Sprintf("wanted `%d`", i+1), state.Position())
 				}
-				p := result.Children[3].Token
+				state.Advance()
+				c, err := pars.Next(state)
+				if err != nil {
+					return err
+				}
+				if c != ' ' {
+					return pars.NewError("wanted space", state.Position())
+				}
+				state.Advance()
+				if err := pars.Line(state, result); err != nil {
+					return err
+				}
+				p := result.Token
 				for j := 0; j < len(p); j += 11 {
 					copy(origin[i:], p[j:])
 					i += 10
