@@ -224,8 +224,7 @@ func quotedQualifierParser(prefix string) pars.Parser {
 
 func literalQualifierParser(prefix string) pars.Parser {
 	literal := pars.Until(pars.Any("\n"+prefix+"/", pars.End))
-	new := []byte{'\n'}
-	old := append(new, []byte(prefix)...)
+	p := append([]byte{'\n'}, []byte(prefix)...)
 	return func(state *pars.State, result *pars.Result) error {
 		state.Push()
 		c, err := pars.Next(state)
@@ -243,7 +242,13 @@ func literalQualifierParser(prefix string) pars.Parser {
 			return err
 		}
 		state.Drop()
-		token := bytes.ReplaceAll(result.Token, old, new)
+		token := result.Token
+		i := bytes.Index(token, p)
+		for i >= 0 {
+			n := copy(token[i+1:], token[i+len(p):])
+			token = token[:i+1+n]
+			i = bytes.Index(token, p)
+		}
 		result.SetToken(token)
 		return nil
 	}
