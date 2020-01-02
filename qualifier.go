@@ -192,6 +192,7 @@ func qualifierNameParser(prefix string) pars.Parser {
 
 func quotedQualifierParser(prefix string) pars.Parser {
 	quoted := pars.Quoted('"')
+	p := append([]byte{'\n'}, []byte(prefix)...)
 	return func(state *pars.State, result *pars.Result) error {
 		state.Push()
 		c, err := pars.Next(state)
@@ -209,14 +210,22 @@ func quotedQualifierParser(prefix string) pars.Parser {
 			return err
 		}
 		state.Drop()
-		s := string(result.Token)
-		result.SetValue(strings.ReplaceAll(s, "\n"+prefix, "\n"))
+		token := result.Token
+		i := bytes.Index(token, p)
+		for i >= 0 {
+			n := copy(token[i+1:], token[i+len(p):])
+			token = token[:i+1+n]
+			i = bytes.Index(token, p)
+		}
+		result.SetToken(token)
 		return nil
 	}
 }
 
 func literalQualifierParser(prefix string) pars.Parser {
 	literal := pars.Until(pars.Any("\n"+prefix+"/", pars.End))
+	new := []byte{'\n'}
+	old := append(new, []byte(prefix)...)
 	return func(state *pars.State, result *pars.Result) error {
 		state.Push()
 		c, err := pars.Next(state)
@@ -234,8 +243,8 @@ func literalQualifierParser(prefix string) pars.Parser {
 			return err
 		}
 		state.Drop()
-		s := string(result.Token)
-		result.SetValue(strings.ReplaceAll(s, "\n"+prefix, "\n"))
+		token := bytes.ReplaceAll(result.Token, old, new)
+		result.SetToken(token)
 		return nil
 	}
 }
@@ -246,7 +255,7 @@ func QualifierParser(prefix string) pars.Parser {
 
 	quotedParser := quotedQualifierParser(prefix)
 	literalParser := literalQualifierParser(prefix)
-	toggleParser := pars.Dry(pars.EOL).Bind("")
+	toggleParser := pars.Dry(pars.EOL)
 
 	valueParsers := []pars.Parser{quotedParser, literalParser, toggleParser}
 
@@ -274,7 +283,7 @@ func QualifierParser(prefix string) pars.Parser {
 			}
 		}
 
-		value := result.Value.(string)
+		value := string(result.Token)
 		result.SetValue(Qualifier{name, value})
 		return nil
 	}
