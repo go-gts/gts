@@ -49,7 +49,7 @@ func LocationLess(a, b Location) bool {
 type PointLocation struct{ Position int }
 
 // NewPointLocation creates a new PointLocation.
-func NewPointLocation(pos int) Location {
+func NewPointLocation(pos int) *PointLocation {
 	return &PointLocation{Position: pos}
 }
 
@@ -128,12 +128,12 @@ type RangeLocation struct {
 }
 
 // NewRangeLocation creates a new RangeLocation.
-func NewRangeLocation(start, end int) Location {
+func NewRangeLocation(start, end int) *RangeLocation {
 	return NewPartialRangeLocation(start, end, false, false)
 }
 
 // NewPartialRangeLocation creates a new partial RangeLocation.
-func NewPartialRangeLocation(start, end int, p5, p3 bool) Location {
+func NewPartialRangeLocation(start, end int, p5, p3 bool) *RangeLocation {
 	return &RangeLocation{
 		Start:    start,
 		End:      end,
@@ -189,7 +189,7 @@ type AmbiguousLocation struct {
 }
 
 // NewAmbiguousLocation creates a new ambiguous location.
-func NewAmbiguousLocation(start, end int) Location {
+func NewAmbiguousLocation(start, end int) *AmbiguousLocation {
 	return &AmbiguousLocation{Start: start, End: end}
 }
 
@@ -233,7 +233,7 @@ type BetweenLocation struct {
 }
 
 // NewBetweenLocation creates a new BetweenLocation.
-func NewBetweenLocation(start, end int) Location {
+func NewBetweenLocation(start, end int) *BetweenLocation {
 	return &BetweenLocation{Start: start, End: end}
 }
 
@@ -276,7 +276,7 @@ type ComplementLocation struct {
 }
 
 // NewComplementLocation creates a new ComplementLocation.
-func NewComplementLocation(loc Location) Location {
+func NewComplementLocation(loc Location) *ComplementLocation {
 	return &ComplementLocation{Location: loc}
 }
 
@@ -312,7 +312,7 @@ type JoinLocation struct {
 }
 
 // NewJoinLocation creates a new JoinLocation.
-func NewJoinLocation(locs []Location) Location {
+func NewJoinLocation(locs []Location) *JoinLocation {
 	return &JoinLocation{Locations: locs}
 }
 
@@ -377,7 +377,7 @@ type OrderLocation struct {
 }
 
 // NewOrderLocation creates a new OrderLocation.
-func NewOrderLocation(locs []Location) Location {
+func NewOrderLocation(locs []Location) *OrderLocation {
 	return &OrderLocation{Locations: locs}
 }
 
