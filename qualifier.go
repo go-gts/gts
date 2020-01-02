@@ -1,6 +1,7 @@
 package gts
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"sort"
@@ -175,26 +176,77 @@ func GetQualifierType(name string) QualifierType {
 }
 
 func qualifierNameParser(prefix string) pars.Parser {
-	return pars.Seq(prefix+"/", pars.Word(ascii.IsSnake)).Child(1)
+	p := []byte(prefix + "/")
+	word := pars.Word(ascii.IsSnake)
+	return func(state *pars.State, result *pars.Result) error {
+		if err := state.Request(len(p)); err != nil {
+			return err
+		}
+		if !bytes.Equal(state.Buffer(), p) {
+			return pars.NewError(fmt.Sprintf("expected %q", prefix+"/"), state.Position())
+		}
+		state.Advance()
+		return word(state, result)
+	}
 }
 
 func quotedQualifierParser(prefix string) pars.Parser {
-	parser := pars.Seq('=', pars.Quoted('"')).Child(1)
-	return parser.Map(func(result *pars.Result) error {
-		ss := strings.Split(string(result.Token), "\n"+prefix)
-		result.SetValue(strings.Join(ss, "\n"))
+	quoted := pars.Quoted('"')
+	return func(state *pars.State, result *pars.Result) error {
+		state.Push()
+		c, err := pars.Next(state)
+		if err != nil {
+			state.Pop()
+			return err
+		}
+		if c != '=' {
+			state.Pop()
+			return pars.NewError("expected `=`", state.Position())
+		}
+		state.Advance()
+		if err := quoted(state, result); err != nil {
+			state.Pop()
+			return err
+		}
+		state.Drop()
+		s := string(result.Token)
+		result.SetValue(strings.ReplaceAll(s, "\n"+prefix, "\n"))
 		return nil
-	})
+	}
+}
+
+func literalQualifierParser(prefix string) pars.Parser {
+	literal := pars.Until(pars.Any("\n"+prefix+"/", pars.End))
+	return func(state *pars.State, result *pars.Result) error {
+		state.Push()
+		c, err := pars.Next(state)
+		if err != nil {
+			state.Pop()
+			return err
+		}
+		if c != '=' {
+			state.Pop()
+			return pars.NewError("expected `=`", state.Position())
+		}
+		state.Advance()
+		if err := literal(state, result); err != nil {
+			state.Pop()
+			return err
+		}
+		state.Drop()
+		s := string(result.Token)
+		result.SetValue(strings.ReplaceAll(s, "\n"+prefix, "\n"))
+		return nil
+	}
 }
 
 // QualfierParser attempts to match a single qualifier name-value pair.
 func QualifierParser(prefix string) pars.Parser {
 	nameParser := qualifierNameParser(prefix)
-	wordParser := pars.Until(pars.Any("\n"+prefix+"/", pars.End)).ToString()
 
 	quotedParser := quotedQualifierParser(prefix)
-	literalParser := pars.Seq('=', wordParser).Child(1)
-	toggleParser := pars.Dry(pars.Any('\n', pars.End)).Bind("")
+	literalParser := literalQualifierParser(prefix)
+	toggleParser := pars.Dry(pars.EOL).Bind("")
 
 	valueParsers := []pars.Parser{quotedParser, literalParser, toggleParser}
 
@@ -213,16 +265,16 @@ func QualifierParser(prefix string) pars.Parser {
 				RegisterLiteralQualifier(name)
 			case toggleParser(state, result) == nil:
 				RegisterToggleQualifier(name)
+			default:
+				return pars.NewError("unable to parse qualifier", state.Position())
 			}
 		default:
-			valueParser := valueParsers[qtype]
-			if err := valueParser(state, result); err != nil {
+			if err := valueParsers[qtype](state, result); err != nil {
 				return err
 			}
 		}
 
 		value := result.Value.(string)
-
 		result.SetValue(Qualifier{name, value})
 		return nil
 	}
