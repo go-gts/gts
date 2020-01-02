@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	ascii "gopkg.in/ktnyt/ascii.v1"
 	pars "gopkg.in/ktnyt/pars.v2"
 )
 
@@ -591,8 +592,45 @@ func ComplementLocationParser(state *pars.State, result *pars.Result) error {
 	return nil
 }
 
-var locationDelimiter = pars.Seq(',', pars.Many(pars.Space))
-var multipleLocationParser = pars.Delim(&LocationParser, locationDelimiter)
+func locationDelimiter(state *pars.State, result *pars.Result) bool {
+	state.Push()
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return false
+	}
+	if c != ',' {
+		state.Pop()
+		return false
+	}
+	state.Advance()
+	c, err = pars.Next(state)
+	for ascii.IsSpace(c) && err == nil {
+		state.Advance()
+		c, err = pars.Next(state)
+	}
+	state.Drop()
+	return true
+}
+
+func multipleLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := LocationParser(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	locs := []Location{result.Value.(Location)}
+	for locationDelimiter(state, result) {
+		if err := LocationParser(state, result); err != nil {
+			state.Pop()
+			return err
+		}
+		locs = append(locs, result.Value.(Location))
+	}
+	result.SetValue(locs)
+	state.Drop()
+	return nil
+}
 
 // JoinLocationParser attempts to parse a JoinLocation.
 func JoinLocationParser(state *pars.State, result *pars.Result) error {
@@ -619,11 +657,7 @@ func JoinLocationParser(state *pars.State, result *pars.Result) error {
 		return pars.NewError("expected `)`", state.Position())
 	}
 	state.Advance()
-	locs := make([]Location, len(result.Children))
-	for i, child := range result.Children {
-		locs[i] = child.Value.(Location)
-	}
-	result.SetValue(NewJoinLocation(locs))
+	result.SetValue(NewJoinLocation(result.Value.([]Location)))
 	state.Drop()
 	return nil
 }
@@ -653,11 +687,7 @@ func OrderLocationParser(state *pars.State, result *pars.Result) error {
 		return pars.NewError("expected `)`", state.Position())
 	}
 	state.Advance()
-	locs := make([]Location, len(result.Children))
-	for i, child := range result.Children {
-		locs[i] = child.Value.(Location)
-	}
-	result.SetValue(NewOrderLocation(locs))
+	result.SetValue(NewOrderLocation(result.Value.([]Location)))
 	state.Drop()
 	return nil
 }
