@@ -1,6 +1,7 @@
 package gts
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"strconv"
@@ -439,7 +440,16 @@ func (loc OrderLocation) Map(index int) int {
 var LocationParser pars.Parser
 
 // PointLocationParser attempts to parse a PointLocation.
-var PointLocationParser = pars.Parser(pars.Int).Map(func(result *pars.Result) error {
+func PointLocationParser(state *pars.State, result *pars.Result) error {
+	if err := pars.Int(state, result); err != nil {
+		return err
+	}
+	n := result.Value.(int) - 1
+	result.SetValue(NewPointLocation(n))
+	return nil
+}
+
+var pointLocationParser = pars.Parser(pars.Int).Map(func(result *pars.Result) error {
 	n := result.Value.(int)
 	loc := NewPointLocation(n - 1)
 	result.SetValue(loc)
@@ -447,82 +457,210 @@ var PointLocationParser = pars.Parser(pars.Int).Map(func(result *pars.Result) er
 })
 
 // RangeLocationParser attempts to parse a RangeLocation.
-var RangeLocationParser = pars.Seq(
-	pars.Maybe('<'), pars.Int, "..", pars.Maybe('>'), pars.Int,
-	pars.Maybe('>'), // Possibly required for some legacy entries.
-).Map(func(result *pars.Result) error {
-	loc := NewPartialRangeLocation(
-		result.Children[1].Value.(int)-1,
-		result.Children[4].Value.(int),
-		result.Children[0].Value != nil,
-		result.Children[3].Value != nil || result.Children[5].Value != nil,
-	)
-	result.SetValue(loc)
+func RangeLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	partial5 := false
+	if c == '<' {
+		partial5 = true
+		state.Advance()
+	}
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	start := result.Value.(int) - 1
+	if err := state.Request(2); err != nil {
+		state.Pop()
+		return err
+	}
+	if !bytes.Equal(state.Buffer(), []byte("..")) {
+		state.Pop()
+		return pars.NewError("expected `..`", state.Position())
+	}
+	state.Advance()
+	c, err = pars.Next(state)
+	partial3 := false
+	if c == '>' {
+		partial3 = true
+		state.Advance()
+	}
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	end := result.Value.(int)
+	c, err = pars.Next(state)
+	if err != nil && c == '>' {
+		partial3 = true
+		state.Advance()
+	}
+	result.SetValue(NewPartialRangeLocation(start, end, partial5, partial3))
+	state.Drop()
 	return nil
-})
+}
 
 // AmbiguousLocationParser attempts to parse a AmbiguousLocation.
-var AmbiguousLocationParser = pars.Seq(
-	pars.Int, '.', pars.Int,
-).Map(func(result *pars.Result) error {
-	loc := NewAmbiguousLocation(
-		result.Children[0].Value.(int)-1,
-		result.Children[2].Value.(int),
-	)
-	result.SetValue(loc)
+func AmbiguousLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	start := result.Value.(int) - 1
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != '.' {
+		state.Pop()
+		return pars.NewError("expected `.`", state.Position())
+	}
+	state.Advance()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	end := result.Value.(int)
+	result.SetValue(NewAmbiguousLocation(start, end))
+	state.Drop()
 	return nil
-})
+}
 
 // BetweenLocationParser attempts to parse a BetweenLocation.
-var BetweenLocationParser = pars.Seq(
-	pars.Int, '^', pars.Int,
-).Map(func(result *pars.Result) error {
-	loc := NewBetweenLocation(
-		result.Children[0].Value.(int)-1,
-		result.Children[2].Value.(int),
-	)
-	result.SetValue(loc)
+func BetweenLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	start := result.Value.(int) - 1
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != '^' {
+		state.Pop()
+		return pars.NewError("expected `.`", state.Position())
+	}
+	state.Advance()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	end := result.Value.(int)
+	result.SetValue(NewBetweenLocation(start, end))
+	state.Drop()
 	return nil
-})
+}
 
 // ComplementLocationParser attempts to parse a ComplementLocation.
-var ComplementLocationParser = pars.Seq(
-	"complement(", &LocationParser, ')',
-).Map(pars.Child(1)).Map(func(result *pars.Result) error {
-	loc := NewComplementLocation(result.Value.(Location))
-	result.SetValue(loc)
+func ComplementLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := state.Request(11); err != nil {
+		state.Pop()
+		return err
+	}
+	if !bytes.Equal(state.Buffer(), []byte("complement(")) {
+		state.Pop()
+		return pars.NewError("expected `complement(`", state.Position())
+	}
+	state.Advance()
+	if err := LocationParser(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != ')' {
+		state.Pop()
+		return pars.NewError("expected `)`", state.Position())
+	}
+	state.Advance()
+	result.SetValue(NewComplementLocation(result.Value.(Location)))
+	state.Drop()
 	return nil
-})
+}
 
 var locationDelimiter = pars.Seq(',', pars.Many(pars.Space))
+var multipleLocationParser = pars.Delim(&LocationParser, locationDelimiter)
 
 // JoinLocationParser attempts to parse a JoinLocation.
-var JoinLocationParser = pars.Seq(
-	"join(", pars.Delim(&LocationParser, locationDelimiter), ')',
-).Map(func(result *pars.Result) error {
-	children := result.Children[1].Children
-	locs := make([]Location, len(children))
-	for i, child := range children {
+func JoinLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := state.Request(5); err != nil {
+		state.Pop()
+		return err
+	}
+	if !bytes.Equal(state.Buffer(), []byte("join(")) {
+		state.Pop()
+		return pars.NewError("expected `join(`", state.Position())
+	}
+	state.Advance()
+	if err := multipleLocationParser(state, result); err != nil {
+		return err
+	}
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != ')' {
+		state.Pop()
+		return pars.NewError("expected `)`", state.Position())
+	}
+	state.Advance()
+	locs := make([]Location, len(result.Children))
+	for i, child := range result.Children {
 		locs[i] = child.Value.(Location)
 	}
-	loc := NewJoinLocation(locs)
-	result.SetValue(loc)
+	result.SetValue(NewJoinLocation(locs))
+	state.Drop()
 	return nil
-})
+}
 
 // OrderLocationParser attempts to parse a OrderLocation.
-var OrderLocationParser = pars.Seq(
-	"order(", pars.Delim(&LocationParser, locationDelimiter), ')',
-).Map(func(result *pars.Result) error {
-	children := result.Children[1].Children
-	locs := make([]Location, len(children))
-	for i, child := range children {
+func OrderLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := state.Request(6); err != nil {
+		state.Pop()
+		return err
+	}
+	if !bytes.Equal(state.Buffer(), []byte("order(")) {
+		state.Pop()
+		return pars.NewError("expected `order(`", state.Position())
+	}
+	state.Advance()
+	if err := multipleLocationParser(state, result); err != nil {
+		return err
+	}
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != ')' {
+		state.Pop()
+		return pars.NewError("expected `)`", state.Position())
+	}
+	state.Advance()
+	locs := make([]Location, len(result.Children))
+	for i, child := range result.Children {
 		locs[i] = child.Value.(Location)
 	}
-	loc := NewOrderLocation(locs)
-	result.SetValue(loc)
+	result.SetValue(NewOrderLocation(locs))
+	state.Drop()
 	return nil
-})
+}
 
 var errNotLocation = errors.New("string is not a Location")
 
