@@ -43,9 +43,9 @@ type GenBank struct {
 // Metadata returns the metadata of the GenBank record.
 func (gb GenBank) Metadata() interface{} { return gb.Fields }
 
-// Select the features in the list matching the selector criteria.
-func (gb GenBank) Select(ss ...FeatureSelector) []Feature {
-	return gb.Features.Select(ss...)
+// Filter the features in the list matching the selector criteria.
+func (gb GenBank) Filter(ss ...FeatureFilter) []Feature {
+	return gb.Features.Filter(ss...)
 }
 
 // Add a feature to the GenBank record.
@@ -192,7 +192,7 @@ func (gf GenBankFormatter) String() string {
 
 		builder.WriteString("\nFEATURES             Location/Qualifiers\n")
 
-		ff := FeatureList(gf.Rec.Select(Any))
+		ff := FeatureList(gf.Rec.Filter(Any))
 		ff.Format("     ", 21).WriteTo(&builder)
 
 		builder.WriteString("\nORIGIN      ")

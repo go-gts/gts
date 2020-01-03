@@ -10,19 +10,19 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-// FeatureSelector represents a filter for selecting features.
-type FeatureSelector func(f Feature) bool
+// FeatureFilter represents a filter for selecting features.
+type FeatureFilter func(f Feature) bool
 
 // Any returns true for any feature matched.
 func Any(f Feature) bool { return true }
 
 // Key returns true if the key of a feature matches the given key.
-func Key(key string) FeatureSelector {
+func Key(key string) FeatureFilter {
 	return func(f Feature) bool { return f.Key == key }
 }
 
 // And returns true if all selectors return true.
-func And(ss ...FeatureSelector) FeatureSelector {
+func And(ss ...FeatureFilter) FeatureFilter {
 	return func(f Feature) bool {
 		for _, s := range ss {
 			if !s(f) {
@@ -34,7 +34,7 @@ func And(ss ...FeatureSelector) FeatureSelector {
 }
 
 // Or returns true if any of the selectors return true.
-func Or(ss ...FeatureSelector) FeatureSelector {
+func Or(ss ...FeatureFilter) FeatureFilter {
 	return func(f Feature) bool {
 		for _, s := range ss {
 			if s(f) {
@@ -46,13 +46,13 @@ func Or(ss ...FeatureSelector) FeatureSelector {
 }
 
 // Not returns true if the given selector returns false.
-func Not(s FeatureSelector) FeatureSelector {
+func Not(s FeatureFilter) FeatureFilter {
 	return func(f Feature) bool { return !s(f) }
 }
 
 // FeatureTable represents a feature table.
 type FeatureTable interface {
-	Select(ss ...FeatureSelector) []Feature
+	Filter(ss ...FeatureFilter) []Feature
 	Add(f Feature)
 }
 
@@ -106,7 +106,7 @@ func jsonDecoder(r io.Reader) decoder { return json.NewDecoder(r) }
 var FeatureTableParser = pars.Any(
 	RecordParser.Map(func(result *pars.Result) error {
 		rec := result.Value.(Record)
-		ft := rec.Select()
+		ft := rec.Filter()
 		result.SetValue(ft)
 		return nil
 	}),

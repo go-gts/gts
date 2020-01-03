@@ -162,8 +162,8 @@ func (ff FeatureList) Format(prefix string, depth int) FeatureListFormatter {
 	return FeatureListFormatter{ff, prefix, depth}
 }
 
-// Select the features in the list matching the selector criteria.
-func (ff FeatureList) Select(ss ...FeatureSelector) []Feature {
+// Filter the features in the list matching the selector criteria.
+func (ff FeatureList) Filter(ss ...FeatureFilter) []Feature {
 	sel := And(ss...)
 	idx, n := make([]int, len(ff)), 0
 	for i, f := range ff {
