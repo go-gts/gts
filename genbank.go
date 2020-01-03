@@ -59,12 +59,24 @@ func (gb GenBank) Bytes() []byte { return gb.Origin.Bytes() }
 
 // Insert a sequence at the specified position.
 func (gb GenBank) Insert(pos int, seq Sequence) error {
-	return gb.Origin.Insert(pos, seq)
+	if err := gb.Origin.Insert(pos, seq); err != nil {
+		return err
+	}
+	for _, f := range gb.Features {
+		f.Location.Shift(pos, Len(seq))
+	}
+	return nil
 }
 
 // Delete given number of bases from the specified position.
 func (gb GenBank) Delete(pos, cnt int) error {
-	return gb.Origin.Delete(pos, cnt)
+	if err := gb.Origin.Delete(pos, cnt); err != nil {
+		return err
+	}
+	for _, f := range gb.Features {
+		f.Location.Shift(pos, -cnt)
+	}
+	return nil
 }
 
 // Replace the bases from the specified position with the given sequence.
@@ -106,7 +118,7 @@ func (gf GenBankFormatter) String() string {
 
 	switch metadata := gf.Rec.Metadata().(type) {
 	case GenBankFields:
-		length := strconv.Itoa(len(gf.Rec.Bytes()))
+		length := strconv.Itoa(Len(gf.Rec))
 		pad1 := strings.Repeat(" ", 28-(len(metadata.LocusName)+len(length)))
 		pad2 := strings.Repeat(" ", 8-len(metadata.Molecule))
 		pad3 := strings.Repeat(" ", 9-len(metadata.Topology))

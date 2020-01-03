@@ -12,6 +12,9 @@ type Sequence interface {
 	Bytes() []byte
 }
 
+// Len returns the length of a Sequence.
+func Len(seq Sequence) int { return len(seq.Bytes()) }
+
 // MutableSequence is a sequence which can be manipulated in-place.
 type MutableSequence interface {
 	Insert(pos int, seq Sequence) error
@@ -66,7 +69,7 @@ func (s *BasicSequence) Insert(pos int, seq Sequence) error {
 			len(*s), pos,
 		)
 	}
-	if n := len(seq.Bytes()); n > 0 {
+	if n := Len(seq); n > 0 {
 		p := make([]byte, len(*s)+n)
 		copy(p, (*s)[:pos])
 		copy(p[pos:], seq.Bytes())
@@ -104,13 +107,13 @@ func (s *BasicSequence) Replace(pos int, seq Sequence) error {
 			len(*s), pos,
 		)
 	}
-	if len(*s) <= pos+len(seq.Bytes()) {
+	if len(*s) <= pos+Len(seq) {
 		return fmt.Errorf(
 			"unable to replace sequence with length [%d] to position [%d]",
-			len(*s), pos+len(seq.Bytes()),
+			len(*s), pos+Len(seq),
 		)
 	}
-	if n := len(seq.Bytes()); n > 0 {
+	if n := Len(seq); n > 0 {
 		copy((*s)[pos:], seq.Bytes())
 	}
 	return nil

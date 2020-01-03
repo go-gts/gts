@@ -16,11 +16,6 @@ type FeatureFilter func(f Feature) bool
 // Any returns true for any feature matched.
 func Any(f Feature) bool { return true }
 
-// Key returns true if the key of a feature matches the given key.
-func Key(key string) FeatureFilter {
-	return func(f Feature) bool { return f.Key == key }
-}
-
 // And returns true if all selectors return true.
 func And(ss ...FeatureFilter) FeatureFilter {
 	return func(f Feature) bool {
@@ -48,6 +43,11 @@ func Or(ss ...FeatureFilter) FeatureFilter {
 // Not returns true if the given selector returns false.
 func Not(s FeatureFilter) FeatureFilter {
 	return func(f Feature) bool { return !s(f) }
+}
+
+// Key returns true if the key of a feature matches the given key.
+func Key(key string) FeatureFilter {
+	return func(f Feature) bool { return f.Key == key }
 }
 
 // FeatureTable represents a feature table.

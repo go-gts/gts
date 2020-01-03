@@ -34,13 +34,19 @@ func NewFeature(key string, loc Location, qfs Values) Feature {
 func (f Feature) Bytes() []byte { return f.Location.Locate(f.proxy).Bytes() }
 
 // Insert a sequence at the specified position.
-func (f Feature) Insert(pos int, seq Sequence) { f.Insert(pos, seq) }
+func (f Feature) Insert(pos int, seq Sequence) error {
+	return f.Insert(f.Location.Map(pos), seq)
+}
 
 // Delete given number of bases from the specified position.
-func (f Feature) Delete(pos, cnt int) { f.Delete(pos, cnt) }
+func (f Feature) Delete(pos, cnt int) error {
+	return f.Delete(f.Location.Map(pos), cnt)
+}
 
 // Replace the bases from the specified position with the given sequence.
-func (f Feature) Replace(pos int, seq Sequence) { f.Replace(pos, seq) }
+func (f Feature) Replace(pos int, seq Sequence) error {
+	return f.Replace(f.Location.Map(pos), seq)
+}
 
 // Translation returns the translation of the feature if available. it will
 // return nil otherwise.
