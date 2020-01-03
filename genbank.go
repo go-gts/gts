@@ -84,29 +84,6 @@ func (gb GenBank) Replace(pos int, seq Sequence) error {
 	return gb.Origin.Replace(pos, seq)
 }
 
-var genbankLocusParser = pars.Seq(
-	"LOCUS", pars.Spaces,
-	pars.Word(ascii.IsSnake), pars.Spaces,
-	pars.Int, " bp", pars.Spaces,
-	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
-	pars.Any("linear", "circular"), pars.Spaces,
-	pars.Count(pars.Byte(), 3).Map(pars.Cat), pars.Spaces,
-	pars.AsParser(pars.Line).Map(pars.Time("02-Jan-2006")),
-).Children(1, 2, 4, 7, 9, 11, 13)
-
-func genbankFieldBodyParser(depth int) pars.Parser {
-	indent := pars.String(strings.Repeat(" ", depth))
-	return func(state *pars.State, result *pars.Result) error {
-		pars.Line(state, result)
-		tmp := *pars.NewTokenResult(result.Token)
-		parser := pars.Many(pars.Seq(indent, pars.Line).Child(1))
-		parser(state, result)
-		children := append([]pars.Result{tmp}, result.Children...)
-		result.SetChildren(children)
-		return nil
-	}
-}
-
 // GenBankFormatter attempts to format a record in GenBank flatfile format.
 type GenBankFormatter struct {
 	Rec Record
@@ -236,6 +213,29 @@ func (gf GenBankFormatter) String() string {
 func (gf GenBankFormatter) WriteTo(w io.Writer) (int64, error) {
 	n, err := w.Write([]byte(gf.String()))
 	return int64(n), err
+}
+
+var genbankLocusParser = pars.Seq(
+	"LOCUS", pars.Spaces,
+	pars.Word(ascii.IsSnake), pars.Spaces,
+	pars.Int, " bp", pars.Spaces,
+	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
+	pars.Any("linear", "circular"), pars.Spaces,
+	pars.Count(pars.Byte(), 3).Map(pars.Cat), pars.Spaces,
+	pars.AsParser(pars.Line).Map(pars.Time("02-Jan-2006")),
+).Children(1, 2, 4, 7, 9, 11, 13)
+
+func genbankFieldBodyParser(depth int) pars.Parser {
+	indent := pars.String(strings.Repeat(" ", depth))
+	return func(state *pars.State, result *pars.Result) error {
+		pars.Line(state, result)
+		tmp := *pars.NewTokenResult(result.Token)
+		parser := pars.Many(pars.Seq(indent, pars.Line).Child(1))
+		parser(state, result)
+		children := append([]pars.Result{tmp}, result.Children...)
+		result.SetChildren(children)
+		return nil
+	}
 }
 
 // GenBankParser attempts to parse a single GenBank record.
