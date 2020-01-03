@@ -16,7 +16,7 @@ import (
 func init() {
 	prog := flags.NewProgram()
 	prog.Add("clear", "remove all features (excluding sources)", FeatureClear)
-	prog.Add("select", "select features by feature keys", FeatureSelect)
+	prog.Add("select", "select features by feature keys", FeatureFilter)
 	prog.Add("merge", "merge features from other file(s)", FeatureMerge)
 	prog.Add("extract", "extract qualifier value(s) from the input record", FeatureExtract)
 	flags.Add("feature", "feature manipulation commands", prog.Compile())
@@ -46,7 +46,7 @@ func FeatureClear(ctx *flags.Context) error {
 
 	for {
 		in := scanner.Record()
-		ff := in.Select(gts.Key("source"))
+		ff := in.Filter(gts.Key("source"))
 		buffer := &bytes.Buffer{}
 		out := gts.NewRecord(in.Metadata(), ff, in.Bytes())
 		gts.DefaultFormatter(out).WriteTo(buffer)
@@ -67,7 +67,7 @@ func FeatureClear(ctx *flags.Context) error {
 	return nil
 }
 
-func FeatureSelect(ctx *flags.Context) error {
+func FeatureFilter(ctx *flags.Context) error {
 	pos, opt := flags.Args()
 
 	infile := pos.Input("input record file")
@@ -85,7 +85,7 @@ func FeatureSelect(ctx *flags.Context) error {
 	defer outfile.Close()
 
 	keys := append([]string{*mainKey}, (*extraKeys)...)
-	ss := make([]gts.FeatureSelector, len(keys))
+	ss := make([]gts.FeatureFilter, len(keys))
 	for i, key := range keys {
 		ss[i] = gts.Key(key)
 	}
@@ -102,7 +102,7 @@ func FeatureSelect(ctx *flags.Context) error {
 
 	for {
 		in := scanner.Record()
-		ff := in.Select(sel)
+		ff := in.Filter(sel)
 		buffer := &bytes.Buffer{}
 		out := gts.NewRecord(in.Metadata(), ff, in.Bytes())
 		gts.DefaultFormatter(out).WriteTo(buffer)
@@ -148,7 +148,7 @@ func FeatureMerge(ctx *flags.Context) error {
 	}
 
 	in := scanner.Record()
-	ff := gts.FeatureList(in.Select())
+	ff := gts.FeatureList(in.Filter())
 
 	files := append([]*os.File{mainFile}, (*extraFiles)...)
 	for _, f := range files {
@@ -213,7 +213,7 @@ func FeatureExtract(ctx *flags.Context) error {
 	fmt.Fprintf(outfile, "%s\n", strings.Join(header, *delim))
 
 	in := scanner.Record()
-	for _, f := range in.Select() {
+	for _, f := range in.Filter() {
 		primary := f.Qualifiers.Get(*mainName)
 		if len(primary) > 0 {
 			values := []string{strings.Join(primary, *sep)}
