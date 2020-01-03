@@ -1,87 +1,127 @@
-package gt1
+package gts
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
 
-	"github.com/ktnyt/pars"
+	ascii "gopkg.in/ktnyt/ascii.v1"
+	pars "gopkg.in/ktnyt/pars.v2"
 )
 
+// Location represents a feature location as defined by the INSDC.
 type Location interface {
-	// Locate the bytes at the pointed location.
+	// Locate the sequence at the pointing location.
 	Locate(seq Sequence) Sequence
 
-	// Len returns the length of the pointed location.
+	// Len returns the length spanned by the location.
 	Len() int
 
-	// Format the location.
-	Format() string
+	// String satisfies the fmt.Stringer interface.
+	String() string
 
-	// Shift the location if needed.
-	Shift(pos, n int)
+	// Shift the location by the given amount if needed.
+	// Returns false if the shift invalidates the location.
+	Shift(offset, amount int) bool
 
 	// Map the given local index to a global index.
 	Map(index int) int
 }
 
-func LocationSmaller(a, b Location) bool {
+// LocationLess tests if the one location is smaller than the other.
+func LocationLess(a, b Location) bool {
 	if a.Map(0) < b.Map(0) {
 		return true
 	}
 	if b.Map(0) < a.Map(0) {
 		return false
 	}
-	if a.Map(-1) < b.Map(-1) {
+	if a.Map(a.Len()-1) < b.Map(b.Len()-1) {
 		return true
 	}
-	if b.Map(-1) < a.Map(-1) {
+	if b.Map(b.Len()-1) < a.Map(a.Len()-1) {
 		return false
 	}
 	return false
 }
 
-func fixIndex(index, length int) int {
-	if index < 0 {
-		index += length
-	}
-	if index >= length {
-		panic(fmt.Errorf("index [%d] is outside of location with length %d", index, length))
-	}
-	return index
-}
+// PointLocation represents a single point.
+type PointLocation struct{ Position int }
 
-type PointLocation struct {
-	Position int
-}
-
-func NewPointLocation(pos int) Location {
+// NewPointLocation creates a new PointLocation.
+func NewPointLocation(pos int) *PointLocation {
 	return &PointLocation{Position: pos}
 }
 
-func (location PointLocation) Locate(seq Sequence) Sequence {
-	return seq.Slice(location.Position, location.Position+1)
+// Locate the sequence at the pointing location.
+func (loc PointLocation) Locate(seq Sequence) Sequence {
+	return Slice(seq, loc.Position, loc.Position+1)
 }
 
-func (location PointLocation) Len() int {
+// Len returns the length spanned by the location.
+func (loc PointLocation) Len() int {
 	return 1
 }
 
-func (location PointLocation) Format() string {
-	return strconv.Itoa(location.Position + 1)
+// String satisfies the fmt.Stringer interface.
+func (loc PointLocation) String() string {
+	return strconv.Itoa(loc.Position + 1)
 }
 
-func (location *PointLocation) Shift(pos, n int) {
-	if pos <= location.Position {
-		location.Position += n
+// Shift the location position[s] if needed.
+// Returns false if the shift invalidates the location.
+func (loc *PointLocation) Shift(offset, amount int) bool {
+	if amount == 0 || loc.Position < offset {
+		return true
+	}
+	if amount < 0 && loc.Position < offset-amount {
+		return false
+	}
+	loc.Position += amount
+	return true
+}
+
+// Map the given local index to a global index.
+func (loc PointLocation) Map(index int) int {
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
+	}
+	if index >= loc.Len() {
+		panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
+	}
+	return loc.Position
+}
+
+func shiftRange(a, b, i, n int) (int, int, bool) {
+	switch {
+	case n > 0:
+		if i <= a {
+			a += n
+		}
+		if i <= b {
+			b += n
+		}
+		return a, b, true
+	case n < 0:
+		c, d := a, b
+		if i-n <= c {
+			c += n
+		}
+		if i-n <= d {
+			d += n
+		}
+		if c < d-1 {
+			return c, d, true
+		}
+		return a, b, false
+	default:
+		return a, b, true
 	}
 }
 
-func (location PointLocation) Map(index int) int {
-	index = fixIndex(index, location.Len())
-	return location.Position + index
-}
-
+// RangeLocation represents a range of locations.
 type RangeLocation struct {
 	Start    int
 	End      int
@@ -89,11 +129,13 @@ type RangeLocation struct {
 	Partial3 bool
 }
 
-func NewRangeLocation(start, end int) Location {
-	return &RangeLocation{Start: start, End: end}
+// NewRangeLocation creates a new RangeLocation.
+func NewRangeLocation(start, end int) *RangeLocation {
+	return NewPartialRangeLocation(start, end, false, false)
 }
 
-func NewPartialRangeLocation(start, end int, p5, p3 bool) Location {
+// NewPartialRangeLocation creates a new partial RangeLocation.
+func NewPartialRangeLocation(start, end int, p5, p3 bool) *RangeLocation {
 	return &RangeLocation{
 		Start:    start,
 		End:      end,
@@ -102,343 +144,575 @@ func NewPartialRangeLocation(start, end int, p5, p3 bool) Location {
 	}
 }
 
-func (location RangeLocation) Locate(seq Sequence) Sequence {
-	return seq.Slice(location.Start, location.End)
+// Locate the sequence at the pointing location.
+func (loc RangeLocation) Locate(seq Sequence) Sequence {
+	return Slice(seq, loc.Start, loc.End)
 }
 
-func (location RangeLocation) Len() int {
-	return location.End - location.Start
+// Len returns the length spanned by the location.
+func (loc RangeLocation) Len() int {
+	return loc.End - loc.Start
 }
 
-func (location RangeLocation) Format() string {
+// String satisfies the fmt.Stringer interface.
+func (loc RangeLocation) String() string {
 	p5, p3 := "", ""
-	if location.Partial5 {
+	if loc.Partial5 {
 		p5 = "<"
 	}
-	if location.Partial3 {
+	if loc.Partial3 {
 		p3 = ">"
 	}
-	return fmt.Sprintf("%s%d..%s%d", p5, location.Start+1, p3, location.End)
+	return fmt.Sprintf("%s%d..%s%d", p5, loc.Start+1, p3, loc.End)
 }
 
-func (location *RangeLocation) Shift(pos, n int) {
-	if pos <= location.Start {
-		location.Start += n
+// Shift the location position[s] if needed.
+// Returns false if the shift invalidates the location.
+func (loc *RangeLocation) Shift(offset, amount int) (ok bool) {
+	loc.Start, loc.End, ok = shiftRange(loc.Start, loc.End, offset, amount)
+	return
+}
+
+// Map the given local index to a global index.
+func (loc RangeLocation) Map(index int) int {
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
 	}
-	if pos <= location.End {
-		location.End += n
+	if index >= loc.Len() {
+		panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
 	}
+	return loc.Start + index
 }
 
-func (location RangeLocation) Map(index int) int {
-	index = fixIndex(index, location.Len())
-	return location.Start + index
-}
-
+// AmbiguousLocation represents an ambiguous location.
 type AmbiguousLocation struct {
 	Start int
 	End   int
 }
 
-func NewAmbiguousLocation(start, end int) Location {
+// NewAmbiguousLocation creates a new ambiguous location.
+func NewAmbiguousLocation(start, end int) *AmbiguousLocation {
 	return &AmbiguousLocation{Start: start, End: end}
 }
 
-func (location AmbiguousLocation) Locate(seq Sequence) Sequence {
-	return seq.Slice(location.Start, location.End)
+// Locate the sequence at the pointing location.
+func (loc AmbiguousLocation) Locate(seq Sequence) Sequence {
+	return Slice(seq, loc.Start, loc.End)
 }
 
-func (location AmbiguousLocation) Len() int {
-	return location.End - location.Start
+// Len returns the length spanned by the location.
+func (loc AmbiguousLocation) Len() int {
+	return loc.End - loc.Start
 }
 
-func (location AmbiguousLocation) Format() string {
-	return fmt.Sprintf("%d.%d", location.Start+1, location.End)
+// String satisfies the fmt.Stringer interface.
+func (loc AmbiguousLocation) String() string {
+	return fmt.Sprintf("%d.%d", loc.Start+1, loc.End)
 }
 
-func (location *AmbiguousLocation) Shift(pos, n int) {
-	if pos <= location.Start {
-		location.Start += n
+// Shift the location position[s] if needed.
+// Returns false if the shift invalidates the location.
+func (loc *AmbiguousLocation) Shift(offset, amount int) (ok bool) {
+	loc.Start, loc.End, ok = shiftRange(loc.Start, loc.End, offset, amount)
+	return
+}
+
+// Map the given local index to a global index.
+func (loc AmbiguousLocation) Map(index int) int {
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
 	}
-	if pos <= location.End {
-		location.End += n
+	if index >= loc.Len() {
+		panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
 	}
+	return loc.Start + index
 }
 
-func (location AmbiguousLocation) Map(index int) int {
-	index = fixIndex(index, location.Len())
-	return location.Start + index
-}
-
+// BetweenLocation represents a location between two points.
 type BetweenLocation struct {
 	Start int
 	End   int
 }
 
-func NewBetweenLocation(start, end int) Location {
+// NewBetweenLocation creates a new BetweenLocation.
+func NewBetweenLocation(start, end int) *BetweenLocation {
 	return &BetweenLocation{Start: start, End: end}
 }
 
-func (location BetweenLocation) Locate(seq Sequence) Sequence {
-	return seq.Slice(location.Start, location.End)
+// Locate the sequence at the pointing location.
+func (loc BetweenLocation) Locate(seq Sequence) Sequence {
+	return Slice(seq, loc.Start, loc.End)
 }
 
-func (location BetweenLocation) Len() int {
-	return location.End - location.Start
+// Len returns the length spanned by the location.
+func (loc BetweenLocation) Len() int {
+	return loc.End - loc.Start
 }
 
-func (location BetweenLocation) Format() string {
-	return fmt.Sprintf("%d^%d", location.Start+1, location.End)
+// String satisfies the fmt.Stringer interface.
+func (loc BetweenLocation) String() string {
+	return fmt.Sprintf("%d^%d", loc.Start+1, loc.End)
 }
 
-func (location *BetweenLocation) Shift(pos, n int) {
-	if pos <= location.Start {
-		location.Start += n
+// Shift the location position[s] if needed.
+// Returns false if the shift invalidates the location.
+func (loc *BetweenLocation) Shift(offset, amount int) (ok bool) {
+	loc.Start, loc.End, ok = shiftRange(loc.Start, loc.End, offset, amount)
+	return
+}
+
+// Map the given local index to a global index.
+func (loc BetweenLocation) Map(index int) int {
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
 	}
-	if pos <= location.End {
-		location.End += n
+	if index >= loc.Len() {
+		panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
 	}
+	return loc.Start + index
 }
 
-func (location BetweenLocation) Map(index int) int {
-	index = fixIndex(index, location.Len())
-	return location.Start + index
-}
-
+// ComplementLocation represents the complement region of a location.
 type ComplementLocation struct {
 	Location Location
 }
 
-func NewComplementLocation(location Location) Location {
-	return &ComplementLocation{Location: location}
+// NewComplementLocation creates a new ComplementLocation.
+func NewComplementLocation(loc Location) *ComplementLocation {
+	return &ComplementLocation{Location: loc}
 }
 
-func (location ComplementLocation) Locate(seq Sequence) Sequence {
-	return Complement(seq.Subseq(location.Location))
+// Locate the sequence at the pointing location.
+func (loc ComplementLocation) Locate(seq Sequence) Sequence {
+	return Complement(loc.Location.Locate(seq))
 }
 
-func (location ComplementLocation) Len() int {
-	return location.Location.Len()
+// Len returns the length spanned by the location.
+func (loc ComplementLocation) Len() int {
+	return loc.Location.Len()
 }
 
-func (location ComplementLocation) Format() string {
-	return fmt.Sprintf("complement(%s)", location.Location.Format())
+// String satisfies the fmt.Stringer interface.
+func (loc ComplementLocation) String() string {
+	return fmt.Sprintf("complement(%s)", loc.Location.String())
 }
 
-func (location *ComplementLocation) Shift(pos, n int) {
-	location.Location.Shift(pos, n)
+// Shift the location position[s] if needed.
+// Returns false if the shift invalidates the location.
+func (loc *ComplementLocation) Shift(offset, amount int) bool {
+	return loc.Location.Shift(offset, amount)
 }
 
-func (location ComplementLocation) Map(index int) int {
-	return location.Location.Map(index)
+// Map the given local index to a global index.
+func (loc ComplementLocation) Map(index int) int {
+	return loc.Location.Map(index)
 }
 
+// JoinLocation represents multiple joined locations.
 type JoinLocation struct {
 	Locations []Location
 }
 
-func NewJoinLocation(locations []Location) Location {
-	return &JoinLocation{Locations: locations}
+// NewJoinLocation creates a new JoinLocation.
+func NewJoinLocation(locs []Location) *JoinLocation {
+	return &JoinLocation{Locations: locs}
 }
 
-func (location JoinLocation) Locate(seq Sequence) Sequence {
-	r := make([]byte, location.Len())
+// Locate the sequence at the pointing location.
+func (loc JoinLocation) Locate(seq Sequence) Sequence {
+	r := make([]byte, loc.Len())
 	i := 0
-	for _, l := range location.Locations {
+	for _, l := range loc.Locations {
 		copy(r[i:], l.Locate(seq).Bytes())
 		i += l.Len()
 	}
 	return Seq(r)
 }
 
-func (location JoinLocation) Len() int {
+// Len returns the length spanned by the location.
+func (loc JoinLocation) Len() int {
 	length := 0
-	for _, l := range location.Locations {
+	for _, l := range loc.Locations {
 		length += l.Len()
 	}
 	return length
 }
 
-func (location JoinLocation) Format() string {
-	tmp := make([]string, len(location.Locations))
-	for i := range location.Locations {
-		tmp[i] = location.Locations[i].Format()
+// String satisfies the fmt.Stringer interface.
+func (loc JoinLocation) String() string {
+	tmp := make([]string, len(loc.Locations))
+	for i := range loc.Locations {
+		tmp[i] = loc.Locations[i].String()
 	}
 	return fmt.Sprintf("join(%s)", strings.Join(tmp, ","))
 }
 
-func (location *JoinLocation) Shift(pos, n int) {
-	for i := range location.Locations {
-		location.Locations[i].Shift(pos, n)
+// Shift the location position[s] if needed.
+// Returns false if the shift invalidates the location.
+func (loc *JoinLocation) Shift(pos, n int) bool {
+	ok := true
+	for i := range loc.Locations {
+		if !loc.Locations[i].Shift(pos, n) {
+			ok = false
+		}
 	}
+	return ok
 }
 
-func (location JoinLocation) Map(index int) int {
-	index = fixIndex(index, location.Len())
-	for _, l := range location.Locations {
+// Map the given local index to a global index.
+func (loc JoinLocation) Map(index int) int {
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
+	}
+	for _, l := range loc.Locations {
 		if index < l.Len() {
 			return l.Map(index)
 		}
 		index -= l.Len()
 	}
-	panic("the program should never reach this state...")
+	panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
 }
 
+// OrderLocation represents a group of locations.
 type OrderLocation struct {
 	Locations []Location
 }
 
-func NewOrderLocation(locations []Location) Location {
-	return &OrderLocation{Locations: locations}
+// NewOrderLocation creates a new OrderLocation.
+func NewOrderLocation(locs []Location) *OrderLocation {
+	return &OrderLocation{Locations: locs}
 }
 
-func (location OrderLocation) Locate(seq Sequence) Sequence {
-	r := make([]byte, location.Len())
+// Locate the sequence at the pointing location.
+func (loc OrderLocation) Locate(seq Sequence) Sequence {
+	r := make([]byte, loc.Len())
 	i := 0
-	for _, l := range location.Locations {
+	for _, l := range loc.Locations {
 		copy(r[i:], l.Locate(seq).Bytes())
 		i += l.Len()
 	}
 	return Seq(r)
 }
-func (location OrderLocation) Len() int {
+
+// Len returns the length spanned by the location.
+func (loc OrderLocation) Len() int {
 	length := 0
-	for _, l := range location.Locations {
+	for _, l := range loc.Locations {
 		length += l.Len()
 	}
 	return length
 }
 
-func (location OrderLocation) Format() string {
-	tmp := make([]string, len(location.Locations))
-	for i := range location.Locations {
-		tmp[i] = location.Locations[i].Format()
+// String satisfies the fmt.Stringer interface.
+func (loc OrderLocation) String() string {
+	tmp := make([]string, len(loc.Locations))
+	for i := range loc.Locations {
+		tmp[i] = loc.Locations[i].String()
 	}
 	return fmt.Sprintf("order(%s)", strings.Join(tmp, ","))
 }
 
-func (location *OrderLocation) Shift(pos, n int) {
-	for i := range location.Locations {
-		location.Locations[i].Shift(pos, n)
+// Shift the location position[s] if needed.
+// Returns false if the shift invalidates the location.
+func (loc *OrderLocation) Shift(pos, n int) bool {
+	ok := true
+	for i := range loc.Locations {
+		if !loc.Locations[i].Shift(pos, n) {
+			ok = false
+		}
 	}
+	return ok
 }
 
-func (location OrderLocation) Map(index int) int {
-	index = fixIndex(index, location.Len())
-	for _, l := range location.Locations {
+// Map the given local index to a global index.
+func (loc OrderLocation) Map(index int) int {
+	if index < 0 {
+		panic(fmt.Errorf("invalid `%T` index %d (index must be non-negative)", loc, index))
+	}
+	for _, l := range loc.Locations {
 		if index < l.Len() {
 			return l.Map(index)
 		}
 		index -= l.Len()
 	}
-	panic("the program should never reach this state...")
+	panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
 }
 
-var locationParser pars.Parser
+var LocationParser pars.Parser
 
-var pointLocationParser = pars.Integer.Map(func(result *pars.Result) error {
-	n, err := strconv.Atoi(result.Value.(string))
-	if err != nil {
+// PointLocationParser attempts to parse a PointLocation.
+func PointLocationParser(state *pars.State, result *pars.Result) error {
+	if err := pars.Int(state, result); err != nil {
 		return err
 	}
-	result.Value = NewPointLocation(n - 1)
-	result.Children = nil
+	n := result.Value.(int) - 1
+	result.SetValue(NewPointLocation(n))
+	return nil
+}
+
+var pointLocationParser = pars.Parser(pars.Int).Map(func(result *pars.Result) error {
+	n := result.Value.(int)
+	loc := NewPointLocation(n - 1)
+	result.SetValue(loc)
 	return nil
 })
 
-var rangeLocationParser = pars.Seq(
-	pars.Try('<'),
-	pars.Integer.Map(pars.Atoi),
-	"..",
-	pars.Try('>'),
-	pars.Integer.Map(pars.Atoi),
-	pars.Try('>'), // Possibly required for some legacy entries.
-).Map(func(result *pars.Result) error {
-	result.Value = NewPartialRangeLocation(
-		result.Children[1].Value.(int)-1,
-		result.Children[4].Value.(int),
-		result.Children[0].Value != nil,
-		result.Children[3].Value != nil || result.Children[5].Value != nil,
-	)
-	result.Children = nil
-	return nil
-})
-
-var ambiguousLocationParser = pars.Seq(
-	pars.Integer.Map(pars.Atoi), '.', pars.Integer.Map(pars.Atoi),
-).Map(func(result *pars.Result) error {
-	result.Value = NewAmbiguousLocation(
-		result.Children[0].Value.(int)-1,
-		result.Children[2].Value.(int),
-	)
-	result.Children = nil
-	return nil
-})
-
-var betweenLocationParser = pars.Seq(
-	pars.Integer.Map(pars.Atoi), '^', pars.Integer.Map(pars.Atoi),
-).Map(func(result *pars.Result) error {
-	result.Value = NewBetweenLocation(
-		result.Children[0].Value.(int)-1,
-		result.Children[2].Value.(int),
-	)
-	result.Children = nil
-	return nil
-})
-
-var complementLocationParser = pars.Seq(
-	"complement(", &locationParser, ')',
-).Map(pars.Child(1)).Map(func(result *pars.Result) error {
-	result.Value = NewComplementLocation(result.Value.(Location))
-	result.Children = nil
-	return nil
-})
-
-var locationDelimiter = pars.Seq(',', pars.Many(pars.Space))
-
-var joinLocationParser = pars.Seq(
-	"join(", pars.Delim(&locationParser, locationDelimiter), ')',
-).Map(func(result *pars.Result) error {
-	children := result.Children[1].Children
-	locations := make([]Location, len(children))
-	for i, child := range children {
-		locations[i] = child.Value.(Location)
-	}
-	result.Value = NewJoinLocation(locations)
-	result.Children = nil
-	return nil
-})
-
-var orderLocationParser = pars.Seq(
-	"order(", pars.Delim(&locationParser, locationDelimiter), ')',
-).Map(func(result *pars.Result) error {
-	children := result.Children[1].Children
-	locations := make([]Location, len(children))
-	for i, child := range children {
-		locations[i] = child.Value.(Location)
-	}
-	result.Value = NewOrderLocation(locations)
-	result.Children = nil
-	return nil
-})
-
-func AsLocation(s string) Location {
-	state := pars.FromString(s)
-	result, err := pars.Apply(locationParser, state)
+// RangeLocationParser attempts to parse a RangeLocation.
+func RangeLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	c, err := pars.Next(state)
 	if err != nil {
-		panic("could not interpret string as Location")
+		state.Pop()
+		return err
 	}
-	return result.(Location)
+	partial5 := false
+	if c == '<' {
+		partial5 = true
+		state.Advance()
+	}
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	start := result.Value.(int) - 1
+	if err := state.Request(2); err != nil {
+		state.Pop()
+		return err
+	}
+	if !bytes.Equal(state.Buffer(), []byte("..")) {
+		state.Pop()
+		return pars.NewError("expected `..`", state.Position())
+	}
+	state.Advance()
+	c, err = pars.Next(state)
+	partial3 := false
+	if c == '>' {
+		partial3 = true
+		state.Advance()
+	}
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	end := result.Value.(int)
+	c, err = pars.Next(state)
+	if err != nil && c == '>' {
+		partial3 = true
+		state.Advance()
+	}
+	result.SetValue(NewPartialRangeLocation(start, end, partial5, partial3))
+	state.Drop()
+	return nil
+}
+
+// AmbiguousLocationParser attempts to parse a AmbiguousLocation.
+func AmbiguousLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	start := result.Value.(int) - 1
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != '.' {
+		state.Pop()
+		return pars.NewError("expected `.`", state.Position())
+	}
+	state.Advance()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	end := result.Value.(int)
+	result.SetValue(NewAmbiguousLocation(start, end))
+	state.Drop()
+	return nil
+}
+
+// BetweenLocationParser attempts to parse a BetweenLocation.
+func BetweenLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	start := result.Value.(int) - 1
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != '^' {
+		state.Pop()
+		return pars.NewError("expected `.`", state.Position())
+	}
+	state.Advance()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	end := result.Value.(int)
+	result.SetValue(NewBetweenLocation(start, end))
+	state.Drop()
+	return nil
+}
+
+// ComplementLocationParser attempts to parse a ComplementLocation.
+func ComplementLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := state.Request(11); err != nil {
+		state.Pop()
+		return err
+	}
+	if !bytes.Equal(state.Buffer(), []byte("complement(")) {
+		state.Pop()
+		return pars.NewError("expected `complement(`", state.Position())
+	}
+	state.Advance()
+	if err := LocationParser(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != ')' {
+		state.Pop()
+		return pars.NewError("expected `)`", state.Position())
+	}
+	state.Advance()
+	result.SetValue(NewComplementLocation(result.Value.(Location)))
+	state.Drop()
+	return nil
+}
+
+func locationDelimiter(state *pars.State, result *pars.Result) bool {
+	state.Push()
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return false
+	}
+	if c != ',' {
+		state.Pop()
+		return false
+	}
+	state.Advance()
+	c, err = pars.Next(state)
+	for ascii.IsSpace(c) && err == nil {
+		state.Advance()
+		c, err = pars.Next(state)
+	}
+	state.Drop()
+	return true
+}
+
+func multipleLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := LocationParser(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	locs := []Location{result.Value.(Location)}
+	for locationDelimiter(state, result) {
+		if err := LocationParser(state, result); err != nil {
+			state.Pop()
+			return err
+		}
+		locs = append(locs, result.Value.(Location))
+	}
+	result.SetValue(locs)
+	state.Drop()
+	return nil
+}
+
+// JoinLocationParser attempts to parse a JoinLocation.
+func JoinLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := state.Request(5); err != nil {
+		state.Pop()
+		return err
+	}
+	if !bytes.Equal(state.Buffer(), []byte("join(")) {
+		state.Pop()
+		return pars.NewError("expected `join(`", state.Position())
+	}
+	state.Advance()
+	if err := multipleLocationParser(state, result); err != nil {
+		return err
+	}
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != ')' {
+		state.Pop()
+		return pars.NewError("expected `)`", state.Position())
+	}
+	state.Advance()
+	result.SetValue(NewJoinLocation(result.Value.([]Location)))
+	state.Drop()
+	return nil
+}
+
+// OrderLocationParser attempts to parse a OrderLocation.
+func OrderLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := state.Request(6); err != nil {
+		state.Pop()
+		return err
+	}
+	if !bytes.Equal(state.Buffer(), []byte("order(")) {
+		state.Pop()
+		return pars.NewError("expected `order(`", state.Position())
+	}
+	state.Advance()
+	if err := multipleLocationParser(state, result); err != nil {
+		return err
+	}
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != ')' {
+		state.Pop()
+		return pars.NewError("expected `)`", state.Position())
+	}
+	state.Advance()
+	result.SetValue(NewOrderLocation(result.Value.([]Location)))
+	state.Drop()
+	return nil
+}
+
+var errNotLocation = errors.New("string is not a Location")
+
+// AsLocation attempts to interpret the given string as a Location.
+func AsLocation(s string) (Location, error) {
+	state := pars.FromString(s)
+	result := pars.Result{}
+	parser := pars.Exact(LocationParser).Error(errNotLocation)
+	if err := parser(state, &result); err != nil {
+		return nil, err
+	}
+	return result.Value.(Location), nil
 }
 
 func init() {
-	locationParser = pars.Any(
-		rangeLocationParser,
-		orderLocationParser,
-		joinLocationParser,
-		complementLocationParser,
-		ambiguousLocationParser,
-		betweenLocationParser,
-		pointLocationParser,
+	LocationParser = pars.Any(
+		RangeLocationParser,
+		OrderLocationParser,
+		JoinLocationParser,
+		ComplementLocationParser,
+		AmbiguousLocationParser,
+		BetweenLocationParser,
+		PointLocationParser,
 	)
 }

@@ -1,0 +1,59 @@
+     source          1..465
+                     /organism="Homo sapiens"
+                     /mol_type="mRNA"
+                     /db_xref="taxon:9606"
+                     /chromosome="11"
+                     /map="11p15.5"
+     gene            1..465
+                     /gene="INS"
+                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
+                     /note="insulin"
+                     /db_xref="GeneID:3630"
+                     /db_xref="HGNC:HGNC:6081"
+                     /db_xref="MIM:176730"
+     exon            1..42
+                     /gene="INS"
+                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
+                     /inference="alignment:Splign:2.1.0"
+     exon            43..246
+                     /gene="INS"
+                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
+                     /inference="alignment:Splign:2.1.0"
+     CDS             60..392
+                     /gene="INS"
+                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
+                     /note="proinsulin; preproinsulin"
+                     /codon_start=1
+                     /product="insulin preproprotein"
+                     /protein_id="NP_000198.1"
+                     /db_xref="CCDS:CCDS7729.1"
+                     /db_xref="GeneID:3630"
+                     /db_xref="HGNC:HGNC:6081"
+                     /db_xref="MIM:176730"
+                     /translation="MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEALYLVCG
+                     ERGFFYTPKTRREAEDLQVGQVELGGGPGAGSLQPLALEGSLQKRGIVEQCCTSICSL
+                     YQLENYCN"
+     sig_peptide     60..131
+                     /gene="INS"
+                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
+                     /inference="COORDINATES: ab initio prediction:SignalP:4.0"
+     proprotein      132..389
+                     /gene="INS"
+                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
+                     /product="proinsulin"
+     mat_peptide     132..221
+                     /gene="INS"
+                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
+                     /product="insulin B chain"
+     mat_peptide     228..320
+                     /gene="INS"
+                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
+                     /product="C-peptide"
+     mat_peptide     327..389
+                     /gene="INS"
+                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
+                     /product="insulin A chain"
+     exon            247..465
+                     /gene="INS"
+                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
+                     /inference="alignment:Splign:2.1.0"

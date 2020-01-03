@@ -1,498 +1,368 @@
-package gt1
+package gts
 
 import (
-	"encoding/json"
+	"bytes"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
 
-	humanize "github.com/dustin/go-humanize"
-	"github.com/ktnyt/gods"
-	"github.com/ktnyt/pars"
-	yaml "gopkg.in/yaml.v2"
+	ascii "gopkg.in/ktnyt/ascii.v1"
+	pars "gopkg.in/ktnyt/pars.v2"
 )
 
+// Feature represents a single feature within a feature table.
 type Feature struct {
-	key string
-	loc Location
-	qfs *gods.Ordered
+	Key        string
+	Location   Location
+	Qualifiers Values
 
-	insch chan insArg
-	delch chan delArg
-	repch chan repArg
-	locch chan Location
-	seqch chan Sequence
+	order map[string]int
+	proxy SequenceProxy
 }
 
-func NewFeature(key string, loc Location, qfs *gods.Ordered) *Feature {
-	return &Feature{key: key, loc: loc, qfs: qfs}
-}
-
-func (feature Feature) Key() string               { return feature.key }
-func (feature Feature) Location() Location        { return feature.loc }
-func (feature Feature) Qualifiers() *gods.Ordered { return feature.qfs }
-
-func (feature Feature) Seq() Sequence {
-	if feature.locch == nil || feature.seqch == nil {
-		panic("feature is not associated to a record: sequence is unavailable")
-	}
-	feature.locch <- feature.loc
-	return <-feature.seqch
-}
-
-func (feature Feature) Bytes() []byte  { return feature.Seq().Bytes() }
-func (feature Feature) String() string { return feature.Seq().String() }
-func (feature Feature) Len() int       { return feature.Seq().Len() }
-
-func (feature Feature) Slice(start, end int) Sequence {
-	return feature.Seq().Slice(start, end)
-}
-
-func (feature Feature) Subseq(loc Location) Sequence {
-	return feature.Seq().Subseq(loc)
-}
-
-func (feature Feature) Insert(pos int, seq Sequence) {
-	if seq.Len() == 0 {
-		return
-	}
-
-	if feature.insch != nil {
-		panic("feature is not associated to a record: cannot insert sequence")
-	}
-	feature.insch <- insArg{feature.loc.Map(pos), seq}
-}
-
-func (feature Feature) Delete(pos, cnt int) {
-	if cnt == 0 {
-		return
-	}
-
-	if feature.delch != nil {
-		panic("feature is not associated to a record: cannot delete sequence")
-	}
-
-	// Create a list of mapped indices.
-	maps := make([]int, cnt)
-	for i := 0; i < cnt; i++ {
-		maps[i] = feature.loc.Map(pos + i)
-	}
-
-	for i := 1; i < cnt; i++ {
-		// If there is a non-contiguous region, delete it separately.
-		if maps[i-1]+1 != maps[i] {
-			feature.delch <- delArg{maps[0], i}
-			feature.Delete(pos+i, cnt-i)
-			return
-		}
-	}
-
-	feature.delch <- delArg{pos, cnt}
-}
-
-func (feature Feature) Replace(pos int, seq Sequence) {
-	if seq.Len() == 0 {
-		return
-	}
-
-	if feature.repch != nil {
-		panic("feature is not associated to a record: cannot replace sequence")
-	}
-
-	// Create a list of mapped indices.
-	maps := make([]int, seq.Len())
-	for i := 0; i < seq.Len(); i++ {
-		maps[i] = feature.loc.Map(pos + i)
-	}
-
-	for i := 1; i < seq.Len(); i++ {
-		// If there is a non-contiguous region, replace it separately.
-		if maps[i-1]+1 != maps[i] {
-			feature.repch <- repArg{maps[0], seq.Slice(0, i)}
-			feature.Replace(pos+i, seq.Slice(i, -1))
-			return
-		}
-	}
-
-	feature.repch <- repArg{pos, seq}
-}
-
-func CompareFeatures(a, b *Feature) bool {
-	if a.Key() == "source" && b.Key() != "source" {
-		return true
-	}
-	if b.Key() == "source" && a.Key() != "source" {
-		return false
-	}
-	return LocationSmaller(a.Location(), b.Location())
-}
-
-type FeatureTable []*Feature
-
-func NewFeatureTable() *FeatureTable {
-	ft := new([]*Feature)
-	*ft = make([]*Feature, 0)
-	return (*FeatureTable)(ft)
-}
-
-func (ft FeatureTable) Len() int {
-	return len(ft)
-}
-
-func (ft FeatureTable) Get(i int) *Feature {
-	return ft[i]
-}
-
-func (ft *FeatureTable) Add(feature *Feature) {
-	features := *ft
-	comp := func(i int) bool { return CompareFeatures(feature, features[i]) }
-	i := sort.Search(len(*ft), comp)
-	ret := make([]*Feature, len(features)+1)
-	copy(ret[:i], features[:i])
-	copy(ret[i+1:], features[i:])
-	ret[i] = feature
-	*ft = FeatureTable(ret)
-}
-
-func (ft *FeatureTable) Append(feature *Feature) {
-	features := *ft
-	features = append(features, feature)
-	*ft = FeatureTable(features)
-}
-
-func (ft *FeatureTable) Iter() []*Feature {
-	return []*Feature(*ft)
-}
-
-type FeatureFilter func(*Feature) bool
-
-func FeatureFilterOr(filters ...FeatureFilter) FeatureFilter {
-	return func(feature *Feature) bool {
-		for _, filter := range filters {
-			if filter(feature) {
-				return true
-			}
-		}
-		return false
+// NewFeature creates a new feature.
+func NewFeature(key string, loc Location, qfs Values) Feature {
+	return Feature{
+		Key:        key,
+		Location:   loc,
+		Qualifiers: qfs,
 	}
 }
 
-func FeatureFilterAnd(filters ...FeatureFilter) FeatureFilter {
-	return func(feature *Feature) bool {
-		for _, filter := range filters {
-			if !filter(feature) {
-				return false
-			}
-		}
-		return true
+// Bytes satisfies the gts.Sequence interface.
+func (f Feature) Bytes() []byte { return f.Location.Locate(f.proxy).Bytes() }
+
+// Insert a sequence at the specified position.
+func (f Feature) Insert(pos int, seq Sequence) error {
+	return f.Insert(f.Location.Map(pos), seq)
+}
+
+// Delete given number of bases from the specified position.
+func (f Feature) Delete(pos, cnt int) error {
+	return f.Delete(f.Location.Map(pos), cnt)
+}
+
+// Replace the bases from the specified position with the given sequence.
+func (f Feature) Replace(pos int, seq Sequence) error {
+	return f.Replace(f.Location.Map(pos), seq)
+}
+
+// Translation returns the translation of the feature if available. it will
+// return nil otherwise.
+func (f Feature) Translation() Sequence {
+	if values := f.Qualifiers.Get("translation"); len(values) != 0 {
+		s := values[0]
+		return Seq(strings.ReplaceAll(s, "\n", ""))
 	}
-}
-
-func FeatureFilterInvert(filter FeatureFilter) FeatureFilter {
-	return func(feature *Feature) bool {
-		return !filter(feature)
-	}
-}
-
-func baseFilter(feature *Feature) bool {
-	return feature.Key() == "source"
-}
-
-func FeatureKeyFilter(keys []string) FeatureFilter {
-	return func(feature *Feature) bool {
-		if len(keys) == 0 {
-			return true
-		}
-		for i := range keys {
-			if feature.Key() == keys[i] {
-				return true
-			}
-		}
-		return false
-	}
-}
-
-func ClearFeatures(features *FeatureTable) *FeatureTable {
-	return FilterFeatures(features, func(feature *Feature) bool { return false })
-}
-
-func FilterFeatures(features *FeatureTable, filter FeatureFilter) *FeatureTable {
-	f := FeatureFilterOr(baseFilter, filter)
-
-	matches := make([]bool, features.Len())
-	count := 0
-	for i, feature := range features.Iter() {
-		if f(feature) {
-			matches[i] = true
-			count++
-		}
-	}
-
-	ret := make([]*Feature, count)
-	j := 0
-	for i := range features.Iter() {
-		if matches[i] {
-			ret[j] = features.Get(i)
-			j++
-		}
-	}
-
-	return (*FeatureTable)(&ret)
-}
-
-type featureName struct {
-	Indent int
-	Value  string
-	Depth  int
-}
-
-var featureNameParser = pars.Seq(
-	pars.Many(' '),
-	pars.SnakeWord.Map(pars.CatByte),
-	pars.Many(' '),
-).Map(func(result *pars.Result) error {
-	indent := len(result.Children[0].Children)
-	value := result.Children[1].Value.(string)
-	depth := indent + len(value) + len(result.Children[2].Children)
-	result.Value = featureName{Indent: indent, Value: value, Depth: depth}
-	result.Children = nil
 	return nil
-})
+}
 
-func featureBodyParser(key string, indent, depth int) pars.Parser {
-	depthString := "\n" + strings.Repeat(" ", depth)
+// Format creates a FeatureFormatter object for the qualifier with the given
+// prefix and depth. If the Feature object was created by parsing some input,
+// the qualifier values will be in the same order as in the input source. The
+// exception to this rule is the `translation` qualifier which will always be
+// written last. Qualifiers given during runtime will be sorted in ascending
+// alphabetical order and written after the qualifiers present in the source.
+func (f Feature) Format(prefix string, depth int) FeatureFormatter {
+	return FeatureFormatter{f, prefix, depth}
+}
 
+// FeatureFormatter formats a Feature object with the given prefix and depth.
+type FeatureFormatter struct {
+	Feature Feature
+	Prefix  string
+	Depth   int
+}
+
+// String satisfies the fmt.Stringer interface.
+func (ff FeatureFormatter) String() string {
+	builder := strings.Builder{}
+	builder.WriteString(ff.Prefix)
+	builder.WriteString(ff.Feature.Key)
+
+	padding := strings.Repeat(" ", ff.Depth-builder.Len())
+	prefix := ff.Prefix + strings.Repeat(" ", ff.Depth-len(ff.Prefix))
+
+	builder.WriteString(padding)
+	builder.WriteString(ff.Feature.Location.String())
+
+	ordered := make([]string, len(ff.Feature.order))
+	remains := []string{}
+
+	hasTranslate := false
+
+	for name := range ff.Feature.Qualifiers {
+		index, ok := ff.Feature.order[name]
+		switch {
+		case ok:
+			ordered[index] = name
+		case name == "translation":
+			hasTranslate = true
+		default:
+			remains = append(remains, name)
+		}
+	}
+
+	for i, name := range ordered {
+		if name == "" {
+			ordered = append(ordered[:i], ordered[i+1:]...)
+		}
+	}
+
+	sort.Strings(remains)
+
+	names := append(ordered, remains...)
+
+	if hasTranslate {
+		names = append(names, "translation")
+	}
+
+	for _, name := range names {
+		for _, value := range ff.Feature.Qualifiers[name] {
+			q := Qualifier{name, value}
+			builder.WriteByte('\n')
+			builder.WriteString(q.Format(prefix).String())
+		}
+	}
+
+	return builder.String()
+}
+
+// WriteTo satisfies the io.WriteTo interface.
+func (ff FeatureFormatter) WriteTo(w io.Writer) (int, error) {
+	return w.Write([]byte(ff.String()))
+}
+
+// ByLocation implements sort.Interface for []Feature by location.
+type ByLocation []Feature
+
+// Len is the number of elements in the feature table.
+func (ff ByLocation) Len() int { return len(ff) }
+
+// Less reports whether the element with index i should sort before the element
+// with index j.
+func (ff ByLocation) Less(i, j int) bool {
+	a, b := ff[i], ff[j]
+	if a.Key == "source" && b.Key != "source" {
+		return true
+	}
+	if b.Key == "source" && a.Key != "source" {
+		return false
+	}
+	return LocationLess(ff[i].Location, ff[j].Location)
+}
+
+// Swap the elements with indices i and j.
+func (ff ByLocation) Swap(i, j int) {
+	ff[i], ff[j] = ff[j], ff[i]
+}
+
+// FeatureList represents an INSDC feature table. The features are sorted by
+// Location in ascending order.
+type FeatureList []Feature
+
+// Format creates a FeatureFormatter object for the qualifier with the given
+// prefix and depth.
+func (ff FeatureList) Format(prefix string, depth int) FeatureListFormatter {
+	return FeatureListFormatter{ff, prefix, depth}
+}
+
+// Filter the features in the list matching the selector criteria.
+func (ff FeatureList) Filter(ss ...FeatureFilter) []Feature {
+	sel := And(ss...)
+	idx, n := make([]int, len(ff)), 0
+	for i, f := range ff {
+		if sel(f) {
+			idx[n] = i
+			n++
+		}
+	}
+
+	selected := make([]Feature, n)
+	for i, j := range idx[:n] {
+		selected[i] = ff[j]
+	}
+	return selected
+}
+
+// Insert the feature to the feature table at the given position. Note that
+// inserting a feature that disrupts the sortedness of the features will
+// inevitably lead to predictable yet unconventional behavior when the Add
+// method is called later. Use Add instead if this is not desired.
+func (ff *FeatureList) Insert(i int, f Feature) {
+	features := append(*ff, Feature{})
+	copy(features[i+1:], features[i:])
+	features[i] = f
+	*ff = features
+}
+
+// Add the feature to the feature table. The feature will be inserted in the
+// sorted position with the exception of sources.
+func (ff *FeatureList) Add(f Feature) {
+	n := 0
+	for n < len(*ff) && (*ff)[n].Key == "source" {
+		n++
+	}
+
+	switch f.Key {
+	case "source":
+		ff.Insert(n, f)
+	default:
+		i := sort.Search(len((*ff)[n:]), func(i int) bool {
+			return LocationLess(f.Location, (*ff)[n+i].Location)
+		})
+		ff.Insert(n+i, f)
+	}
+}
+
+// FeatureListFormatter formats a FeatureList object with the given prefix and
+// depth.
+type FeatureListFormatter struct {
+	FeatureList FeatureList
+	Prefix      string
+	Depth       int
+}
+
+// String satisfies the fmt.Stringer interface.
+func (ff FeatureListFormatter) String() string {
+	b := strings.Builder{}
+	for i, f := range ff.FeatureList {
+		if i != 0 {
+			b.WriteByte('\n')
+		}
+		f.Format(ff.Prefix, ff.Depth).WriteTo(&b)
+	}
+	return b.String()
+}
+
+// WriteTo satisfies the io.WriterTo interface.
+func (ff FeatureListFormatter) WriteTo(w io.Writer) (int64, error) {
+	n, err := w.Write([]byte(ff.String()))
+	return int64(n), err
+}
+
+type keyline struct {
+	pre int
+	key string
+	pst int
+	loc Location
+}
+
+func featureKeylineParser(prefix string, depth int) pars.Parser {
+	word := pars.Word(ascii.IsSnake)
+	p := []byte(prefix)
 	return func(state *pars.State, result *pars.Result) error {
-		// First line must be a range.
-		if err := locationParser(state, result); err != nil {
+		if err := state.Request(len(p)); err != nil {
+			return err
+		}
+		if !bytes.Equal(state.Buffer(), p) {
+			return pars.NewError(fmt.Sprintf("expected %q", prefix), state.Position())
+		}
+		state.Advance()
+		if err := word(state, result); err != nil {
+			return err
+		}
+		key := string(result.Token)
+		for i := 0; i < depth-len(prefix+key); i++ {
+			c, err := pars.Next(state)
+			if err != nil {
+				return err
+			}
+			if c != ' ' {
+				return pars.NewError("wanted indent", state.Position())
+			}
+			state.Advance()
+		}
+		if err := LocationParser(state, result); err != nil {
 			return err
 		}
 		loc := result.Value.(Location)
-		pars.Try('\n')(state, result)
-
-		qfs := gods.NewOrdered()
-
-		for {
-			// Count the leading spaces.
-			state.Mark()
-
-			count := 0
-
-			if err := state.Want(1); err != nil {
-				state.Jump()
-				return err
-			}
-			for state.Buffer[state.Index] == ' ' {
-				state.Advance(1)
-				count += 1
-				if err := state.Want(1); err != nil {
-					state.Jump()
-					return err
-				}
-			}
-
-			// End of feature so return.
-			if count <= indent {
-				state.Jump()
-				result.Value = NewFeature(key, loc, qfs)
-				result.Children = nil
-				return nil
-			}
-
-			if count != depth {
-				state.Jump()
-				return pars.NewMismatchError("GeBank Feature Field", []byte("matching depth"), state.Position)
-			}
-
-			// Remaining fields must be preceded by a /.
-			if state.Buffer[state.Index] != '/' {
-				state.Jump()
-				return pars.NewMismatchError("Feature Field", []byte{'/'}, state.Position)
-			}
-
-			if err := state.Want(1); err != nil {
-				state.Jump()
-				return err
-			}
-			state.Advance(1)
-
-			// Match the name of the feature field.
-			if err := pars.Until(pars.Any('=', '\n'))(state, result); err != nil {
-				state.Jump()
-				return err
-			}
-			name := result.Value.(string)
-
-			if state.Buffer[state.Index] == '\n' {
-				pars.Try('\n')(state, result)
-				qfs.Add(name, "")
-				state.Unmark()
-				continue
-			}
-
-			// Next byte is guaranteed to be = by Until.
-			state.Advance(1)
-
-			// In most cases the feature property values are quoted.
-			if err := pars.Quoted('"')(state, result); err != nil {
-				// Otherwise just get the rest of the line.
-				if err := pars.Line(state, result); err != nil {
-					state.Jump()
-					return err
-				}
-			}
-			value := result.Value.(string)
-
-			// Completely remove indents for translations.
-			if name == "translation" {
-				value = strings.Replace(value, depthString, "", -1)
-			} else {
-				value = strings.Replace(value, depthString, " ", -1)
-			}
-
-			// Remove the newline.
-			pars.Try('\n')(state, result)
-
-			qfs.Add(name, value)
-
-			state.Unmark()
+		if err := pars.EOL(state, result); err != nil {
+			return err
 		}
-	}
-}
-
-func FeatureTableParser(state *pars.State, result *pars.Result) error {
-	// Discard the Location/Qualifiers line.
-	if err := pars.Line(state, result); err != nil {
-		return pars.NewTraceError("Feature", err)
-	}
-
-	if err := featureNameParser(state, result); err != nil {
-		return pars.NewTraceError("Feature", err)
-	}
-
-	name := result.Value.(featureName)
-
-	features := NewFeatureTable()
-
-	key := name.Value
-	indent := name.Indent
-	depth := name.Depth
-
-	// Process the source feature body.
-	if err := featureBodyParser(key, indent, depth)(state, result); err != nil {
-		return pars.NewTraceError("Feature", err)
-	}
-
-	features.Append(result.Value.(*Feature))
-
-	// Continually process feature properties while indented.
-	for state.Buffer[state.Index] == ' ' {
-		if err := featureNameParser(state, result); err != nil {
-			return pars.NewTraceError("Feature", err)
-		}
-		key = result.Value.(featureName).Value
-
-		if err := featureBodyParser(key, indent, depth)(state, result); err != nil {
-			return pars.NewTraceError("Feature", err)
-		}
-		features.Append(result.Value.(*Feature))
-	}
-
-	result.Value = features
-	result.Children = nil
-	return nil
-}
-
-func recordToFeatureTable(result *pars.Result) error {
-	switch v := result.Value.(type) {
-	case Record:
-		result.Value = v.Features()
-		result.Children = nil
+		result.SetValue(keyline{0, key, 0, loc})
 		return nil
-	default:
-		return fmt.Errorf("cannot convert type `%T` to Record", v)
 	}
 }
 
-type featureIO struct {
-	Key        *string
-	Location   *string
-	Qualifiers [][]string
-}
+// FeatureListParser attempts to match an INSDC feature table.
+func FeatureListParser(prefix string) pars.Parser {
+	firstParser := pars.Seq(
+		prefix, pars.Spaces,
+		pars.Word(ascii.IsSnake), pars.Spaces,
+		LocationParser, pars.EOL,
+	).Map(func(result *pars.Result) error {
+		children := result.Children
+		pre := len(children[1].Token)
+		key := string(children[2].Token)
+		pst := len(children[3].Token)
+		loc := children[4].Value.(Location)
+		result.SetValue(keyline{pre, key, pst, loc})
+		return nil
+	})
 
-func featureTableFromFeatureIOSlice(fios []featureIO) (*FeatureTable, error) {
-	features := NewFeatureTable()
-	for i, fio := range fios {
-		if fio.Key == nil {
-			return nil, fmt.Errorf("%s feature is missing a key", humanize.Ordinal(i+1))
+	return func(state *pars.State, result *pars.Result) error {
+		if err := firstParser(state, result); err != nil {
+			return err
 		}
-		if fio.Location == nil {
-			return nil, fmt.Errorf("%s feature is missing a location", humanize.Ordinal(i+1))
+		tmp := result.Value.(keyline)
+		pre, key, pst, loc := tmp.pre, tmp.key, tmp.pst, tmp.loc
+		depth := pre + len(key) + pst
+
+		keylineParser := featureKeylineParser(prefix+strings.Repeat(" ", pre), depth)
+
+		qualifierParser := QualifierParser(prefix + strings.Repeat(" ", depth))
+		qualifiersParser := pars.Many(pars.Seq(qualifierParser, pars.EOL).Child(0))
+
+		// Does not return error by definition.
+		qualifiersParser(state, result)
+
+		qfs := Values{}
+		order := make(map[string]int)
+
+		for _, child := range result.Children {
+			q := child.Value.(Qualifier)
+			qfs.Add(q.Name, q.Value)
+			if _, ok := order[q.Name]; q.Name != "translation" && !ok {
+				order[q.Name] = len(order)
+			}
 		}
-		qfs := gods.NewOrdered()
-		for _, item := range fio.Qualifiers {
-			qfs.Add(item[0], item[1])
+
+		ff := []Feature{{
+			Key:        key,
+			Location:   loc,
+			Qualifiers: qfs,
+			order:      order,
+		}}
+
+		for keylineParser(state, result) == nil {
+			tmp := result.Value.(keyline)
+			key, loc := tmp.key, tmp.loc
+
+			// Does not return error by definition.
+			qualifiersParser(state, result)
+
+			qfs := Values{}
+			order := make(map[string]int)
+
+			for _, child := range result.Children {
+				q := child.Value.(Qualifier)
+				qfs.Add(q.Name, q.Value)
+				if _, ok := order[q.Name]; q.Name != "translation" && !ok {
+					order[q.Name] = len(order)
+				}
+			}
+
+			ff = append(ff, Feature{
+				Key:        key,
+				Location:   loc,
+				Qualifiers: qfs,
+				order:      order,
+			})
 		}
-		features.Append(NewFeature(*(fio.Key), AsLocation(*(fio.Location)), qfs))
-	}
-	return features, nil
-}
 
-func featureYamlParser(state *pars.State, result *pars.Result) error {
-	pSlice := new([]featureIO)
-	decoder := yaml.NewDecoder(state)
-	state.Mark()
-	if err := decoder.Decode(pSlice); err != nil {
-		state.Jump()
-		return err
+		result.SetValue(ff)
+		return nil
 	}
-	state.Unmark()
-
-	features, err := featureTableFromFeatureIOSlice(*pSlice)
-	if err != nil {
-		return err
-	}
-	result.Value = features
-	result.Children = nil
-	return nil
-}
-
-func featureJsonParser(state *pars.State, result *pars.Result) error {
-	pSlice := new([]featureIO)
-	decoder := json.NewDecoder(state)
-	state.Mark()
-	if err := decoder.Decode(pSlice); err != nil {
-		state.Jump()
-		return err
-	}
-
-	state.Unmark()
-	features, err := featureTableFromFeatureIOSlice(*pSlice)
-	if err != nil {
-		return err
-	}
-	result.Value = features
-	result.Children = nil
-	return nil
-}
-
-var FeatureParser = pars.Any(
-	featureYamlParser,
-	featureJsonParser,
-)
-
-func ReadFeatures(r io.Reader) (*FeatureTable, error) {
-	state := pars.NewState(r)
-	result, err := pars.Apply(FeatureParser, state)
-	if err != nil {
-		switch e := err.(type) {
-		case *pars.TraceError:
-			return nil, e.Unwrap()
-		default:
-			return nil, e
-		}
-		return nil, err
-	}
-	return result.(*FeatureTable), nil
 }
