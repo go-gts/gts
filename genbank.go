@@ -9,9 +9,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/vmihailenco/msgpack"
 	ascii "gopkg.in/ktnyt/ascii.v1"
 	pars "gopkg.in/ktnyt/pars.v2"
 	wrap "gopkg.in/ktnyt/wrap.v1"
+	yaml "gopkg.in/yaml.v3"
 )
 
 // GenBankFields represents the fields of a GenBank record other than the
@@ -33,11 +35,84 @@ type GenBankFields struct {
 	Comment    string
 }
 
+// GenBankIO represents a temporary object for reading and writing a GenBank
+// struct using various serialization libraries.
+type GenBankIO struct {
+	Fields   GenBankFields
+	Features []Feature
+	Origin   []byte
+}
+
+// NewGenBankIO creates a new GenBankIO object.
+func NewGenBankIO(gb GenBank) GenBankIO {
+	return GenBankIO{gb.Fields, []Feature(gb.Features), gb.Origin.Bytes()}
+}
+
 // GenBank represents a GenBank sequence record.
 type GenBank struct {
 	Fields   GenBankFields
 	Features FeatureList
 	Origin   SequenceServer
+}
+
+// EncodeWith satisfies the Encodable interface.
+func (gb GenBank) EncodeWith(enc Encoder) error {
+	return enc.Encode(NewGenBankIO(gb))
+}
+
+// DecodeWith satisifes the Decodable interface.
+func (gb *GenBank) DecodeWith(dec Decoder) error {
+	var gbio GenBankIO
+	if err := dec.Decode(&gbio); err != nil {
+		return err
+	}
+	gb.Fields = gbio.Fields
+	gb.Features = FeatureList(gbio.Features)
+	gb.Origin = NewSequenceServer(BasicSequence(gbio.Origin))
+	for i := range gb.Features {
+		gb.Features[i].proxy = gb.Origin.Proxy()
+	}
+	return nil
+}
+
+// MarshalJSON satisifes the json.Marshaler interface.
+func (gb GenBank) MarshalJSON() ([]byte, error) {
+	return EncodeJSON(gb)
+}
+
+// UnmarshalJSON satisifes the json.Unmarshaler interface.
+func (gb *GenBank) UnmarshalJSON(data []byte) error {
+	return DecodeJSON(data, gb)
+}
+
+// GobEncode satisifes the gob.GobEncoder interface.
+func (gb GenBank) GobEncode() ([]byte, error) {
+	return EncodeGob(gb)
+}
+
+// GobDecode satisifes the gob.GobDecoder interface.
+func (gb *GenBank) GobDecode(data []byte) error {
+	return DecodeGob(data, gb)
+}
+
+// MarshalYAML satisifes the yaml.Marshaler interface.
+func (gb GenBank) MarshalYAML() (interface{}, error) {
+	return NewGenBankIO(gb), nil
+}
+
+// UnmarshalYAML satisifes the yaml.Unmarshaler interface.
+func (gb *GenBank) UnmarshalYAML(value *yaml.Node) error {
+	return gb.DecodeWith(value)
+}
+
+// EncodeMsgpack satisifes the msgpack.CustomEncoder interface.
+func (gb GenBank) EncodeMsgpack(enc *msgpack.Encoder) error {
+	return gb.EncodeWith(enc)
+}
+
+// DecodeMsgpack satisifes the msgpack.CustomDecoder interface.
+func (gb *GenBank) DecodeMsgpack(dec *msgpack.Decoder) error {
+	return gb.DecodeWith(dec)
 }
 
 // Metadata returns the metadata of the GenBank record.
@@ -272,6 +347,9 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 
 	for {
 		if end(state, result) == nil {
+			for i := range gb.Features {
+				gb.Features[i].proxy = gb.Origin.Proxy()
+			}
 			result.SetValue(gb)
 			return nil
 		}
