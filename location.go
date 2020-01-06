@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
-	ascii "gopkg.in/ktnyt/ascii.v1"
-	pars "gopkg.in/ktnyt/pars.v2"
+	ascii "gopkg.in/ascii.v1"
+	pars "gopkg.in/pars.v2"
 )
 
 // Location represents a feature location as defined by the INSDC.

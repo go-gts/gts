@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	flags "gopkg.in/ktnyt/flags.v1"
-	gts "gopkg.in/ktnyt/gts.v0"
-	pars "gopkg.in/ktnyt/pars.v2"
+	flags "gopkg.in/flags.v1"
+	gts "gopkg.in/gts.v0"
+	pars "gopkg.in/pars.v2"
 )
 
 func init() {

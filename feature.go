@@ -7,9 +7,24 @@ import (
 	"sort"
 	"strings"
 
-	ascii "gopkg.in/ktnyt/ascii.v1"
-	pars "gopkg.in/ktnyt/pars.v2"
+	ascii "gopkg.in/ascii.v1"
+	pars "gopkg.in/pars.v2"
+	msgpack "gopkg.in/vmihailenco/msgpack.v4"
+	yaml "gopkg.in/yaml.v3"
 )
+
+// FeatureIO represents a temporary object for reading and writing a Feature
+// struct using various serialization libraries.
+type FeatureIO struct {
+	Key        string
+	Location   string
+	Qualifiers []Qualifier
+}
+
+// NewFeatureIO creates a new FeatureIO object.
+func NewFeatureIO(f Feature) FeatureIO {
+	return FeatureIO{f.Key, f.Location.String(), listQualifiers(f)}
+}
 
 // Feature represents a single feature within a feature table.
 type Feature struct {
@@ -30,8 +45,132 @@ func NewFeature(key string, loc Location, qfs Values) Feature {
 	}
 }
 
+func listQualifiers(f Feature) []Qualifier {
+	ordered := make([]string, len(f.order))
+	remains := []string{}
+
+	hasTranslate := false
+
+	for name := range f.Qualifiers {
+		index, ok := f.order[name]
+		switch {
+		case ok:
+			ordered[index] = name
+		case name == "translation":
+			hasTranslate = true
+		default:
+			remains = append(remains, name)
+		}
+	}
+
+	for i, name := range ordered {
+		if name == "" {
+			ordered = append(ordered[:i], ordered[i+1:]...)
+		}
+	}
+
+	sort.Strings(remains)
+
+	names := append(ordered, remains...)
+
+	if hasTranslate {
+		names = append(names, "translation")
+	}
+
+	qfs := make([]Qualifier, 0, len(names))
+
+	for _, name := range names {
+		for _, value := range f.Qualifiers[name] {
+			qfs = append(qfs, Qualifier{name, value})
+		}
+	}
+
+	return qfs
+}
+
+// EncodeWith satisfies the Encodable interface.
+func (f Feature) EncodeWith(enc Encoder) error {
+	fio := FeatureIO{f.Key, f.Location.String(), listQualifiers(f)}
+	return enc.Encode(fio)
+}
+
+// DecodeWith satisifes the Decodable interface.
+func (f *Feature) DecodeWith(dec Decoder) (err error) {
+	var fio FeatureIO
+	if err = dec.Decode(&fio); err != nil {
+		return
+	}
+
+	if fio.Key == "" {
+		return fmt.Errorf("missing key")
+	}
+	f.Key = fio.Key
+
+	if fio.Location == "" {
+		return fmt.Errorf("missing Location")
+	}
+	s := fio.Location
+
+	f.Location, err = AsLocation(s)
+	if err != nil {
+		return fmt.Errorf("%q is not a Location", s)
+	}
+
+	f.order = make(map[string]int)
+	f.Qualifiers = Values{}
+	for _, q := range fio.Qualifiers {
+		if _, ok := f.order[q.Name]; q.Name != "translation" && !ok {
+			f.order[q.Name] = len(f.order)
+		}
+		f.Qualifiers.Add(q.Name, q.Value)
+	}
+	return nil
+}
+
+// MarshalJSON satisifes the json.Marshaler interface.
+func (f Feature) MarshalJSON() ([]byte, error) {
+	return EncodeJSON(f)
+}
+
+// UnmarshalJSON satisifes the json.Unmarshaler interface.
+func (f *Feature) UnmarshalJSON(data []byte) error {
+	return DecodeJSON(data, f)
+}
+
+// GobEncode satisifes the gob.GobEncoder interface.
+func (f Feature) GobEncode() ([]byte, error) {
+	return EncodeGob(f)
+}
+
+// GobDecode satisifes the gob.GobDecoder interface.
+func (f *Feature) GobDecode(data []byte) error {
+	return DecodeGob(data, f)
+}
+
+// MarshalYAML satisifes the yaml.Marshaler interface.
+func (f Feature) MarshalYAML() (interface{}, error) {
+	return NewFeatureIO(f), nil
+}
+
+// UnmarshalYAML satisifes the yaml.Unmarshaler interface.
+func (f *Feature) UnmarshalYAML(value *yaml.Node) error {
+	return f.DecodeWith(value)
+}
+
+// EncodeMsgpack satisifes the msgpack.CustomEncoder interface.
+func (f Feature) EncodeMsgpack(enc *msgpack.Encoder) error {
+	return f.EncodeWith(enc)
+}
+
+// DecodeMsgpack satisifes the msgpack.CustomDecoder interface.
+func (f *Feature) DecodeMsgpack(dec *msgpack.Decoder) error {
+	return f.DecodeWith(dec)
+}
+
 // Bytes satisfies the gts.Sequence interface.
-func (f Feature) Bytes() []byte { return f.Location.Locate(f.proxy).Bytes() }
+func (f Feature) Bytes() []byte {
+	return f.Location.Locate(f.proxy).Bytes()
+}
 
 // Insert a sequence at the specified position.
 func (f Feature) Insert(pos int, seq Sequence) error {
@@ -87,43 +226,9 @@ func (ff FeatureFormatter) String() string {
 	builder.WriteString(padding)
 	builder.WriteString(ff.Feature.Location.String())
 
-	ordered := make([]string, len(ff.Feature.order))
-	remains := []string{}
-
-	hasTranslate := false
-
-	for name := range ff.Feature.Qualifiers {
-		index, ok := ff.Feature.order[name]
-		switch {
-		case ok:
-			ordered[index] = name
-		case name == "translation":
-			hasTranslate = true
-		default:
-			remains = append(remains, name)
-		}
-	}
-
-	for i, name := range ordered {
-		if name == "" {
-			ordered = append(ordered[:i], ordered[i+1:]...)
-		}
-	}
-
-	sort.Strings(remains)
-
-	names := append(ordered, remains...)
-
-	if hasTranslate {
-		names = append(names, "translation")
-	}
-
-	for _, name := range names {
-		for _, value := range ff.Feature.Qualifiers[name] {
-			q := Qualifier{name, value}
-			builder.WriteByte('\n')
-			builder.WriteString(q.Format(prefix).String())
-		}
+	for _, q := range listQualifiers(ff.Feature) {
+		builder.WriteByte('\n')
+		builder.WriteString(q.Format(prefix).String())
 	}
 
 	return builder.String()
@@ -365,4 +470,42 @@ func FeatureListParser(prefix string) pars.Parser {
 		result.SetValue(ff)
 		return nil
 	}
+}
+
+func featureDecoderParser(ctor DecoderConstructor) pars.Parser {
+	return func(state *pars.State, result *pars.Result) error {
+		dec := ctor(state)
+		ff := new([]Feature)
+		state.Push()
+		if err := dec.Decode(ff); err != nil {
+			state.Pop()
+			return err
+		}
+		state.Drop()
+		result.SetValue(ff)
+		return nil
+	}
+}
+
+// FeatureTableParser attempts to parse a table of features.
+var FeatureTableParser = pars.Any(
+	RecordParser.Map(func(result *pars.Result) error {
+		rec := result.Value.(Record)
+		ft := rec.Filter()
+		result.SetValue(ft)
+		return nil
+	}),
+	featureDecoderParser(NewGobDecoder),
+	featureDecoderParser(NewMsgpackDecoder),
+	featureDecoderParser(NewYAMLDecoder),
+	featureDecoderParser(NewJSONDecoder),
+)
+
+// ReadFeatureTable attempts to read and parse a table of features.
+func ReadFeatureTable(r io.Reader) (FeatureList, error) {
+	result, err := FeatureTableParser.Parse(pars.NewState(r))
+	if err != nil {
+		return nil, err
+	}
+	return result.Value.(FeatureList), nil
 }
