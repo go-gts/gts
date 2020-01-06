@@ -1,8 +1,6 @@
 package gts
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestValues(t *testing.T) {
 	v := Values{}

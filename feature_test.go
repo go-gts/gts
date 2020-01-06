@@ -5,7 +5,7 @@ import (
 	"strings"
 	"testing"
 
-	pars "gopkg.in/ktnyt/pars.v2"
+	pars "gopkg.in/pars.v2"
 )
 
 func TestFeatureIO(t *testing.T) {

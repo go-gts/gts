@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vmihailenco/msgpack"
-	ascii "gopkg.in/ktnyt/ascii.v1"
-	pars "gopkg.in/ktnyt/pars.v2"
-	wrap "gopkg.in/ktnyt/wrap.v1"
+	ascii "gopkg.in/ascii.v1"
+	pars "gopkg.in/pars.v2"
+	msgpack "gopkg.in/vmihailenco/msgpack.v4"
+	wrap "gopkg.in/wrap.v1"
 	yaml "gopkg.in/yaml.v3"
 )
 

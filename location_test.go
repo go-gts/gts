@@ -1,8 +1,6 @@
 package gts
 
-import (
-	"testing"
-)
+import "testing"
 
 func ints(is ...int) []int { return is }
 

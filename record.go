@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 
-	pars "gopkg.in/ktnyt/pars.v2"
+	pars "gopkg.in/pars.v2"
 )
 
 // Record is the interface for sequence records with metadata and features.

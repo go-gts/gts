@@ -1,8 +1,6 @@
 package gts
 
-import (
-	"testing"
-)
+import "testing"
 
 type Stringer string
 

@@ -7,9 +7,9 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/vmihailenco/msgpack"
-	ascii "gopkg.in/ktnyt/ascii.v1"
-	pars "gopkg.in/ktnyt/pars.v2"
+	ascii "gopkg.in/ascii.v1"
+	pars "gopkg.in/pars.v2"
+	msgpack "gopkg.in/vmihailenco/msgpack.v4"
 	yaml "gopkg.in/yaml.v3"
 )
 

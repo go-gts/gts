@@ -1,8 +1,6 @@
 package gts
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestComplement(t *testing.T) {
 	in := Seq("atgcATGCnN")

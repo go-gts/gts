@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/vmihailenco/msgpack"
+	msgpack "gopkg.in/vmihailenco/msgpack.v4"
 	yaml "gopkg.in/yaml.v3"
 )
 
