@@ -15,7 +15,7 @@ type Record interface {
 	MutableSequence
 }
 
-// NewRecord creates a new record/
+// NewRecord creates a new record.
 func NewRecord(meta interface{}, ff []Feature, p []byte) Record {
 	seq := Seq(p)
 	switch v := meta.(type) {
