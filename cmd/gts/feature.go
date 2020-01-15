@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -35,7 +34,7 @@ func FeatureClear(ctx *flags.Context) error {
 	defer infile.Close()
 	defer outfile.Close()
 
-	scanner := gts.NewRecordScanner(bufio.NewReader(infile))
+	scanner := gts.NewRecordFileScanner(infile)
 
 	if !scanner.Scan() {
 		if err := scanner.Err(); err != nil {
@@ -94,7 +93,7 @@ func FeatureFilter(ctx *flags.Context) error {
 		sel = gts.Not(sel)
 	}
 
-	scanner := gts.NewRecordScanner(bufio.NewReader(infile))
+	scanner := gts.NewRecordFileScanner(infile)
 
 	if !scanner.Scan() {
 		return errors.New("expected at least one record entry")
@@ -139,7 +138,7 @@ func FeatureMerge(ctx *flags.Context) error {
 	defer infile.Close()
 	defer outfile.Close()
 
-	scanner := gts.NewRecordScanner(bufio.NewReader(infile))
+	scanner := gts.NewRecordFileScanner(infile)
 	if !scanner.Scan() {
 		if err := scanner.Err(); err != nil {
 			return err
@@ -194,7 +193,7 @@ func FeatureExtract(ctx *flags.Context) error {
 	defer infile.Close()
 	defer outfile.Close()
 
-	scanner := gts.NewRecordScanner(bufio.NewReader(infile))
+	scanner := gts.NewRecordFileScanner(infile)
 	if !scanner.Scan() {
 		if err := scanner.Err(); err != nil {
 			return err

@@ -574,3 +574,19 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 		}
 	}
 }
+
+func gbDecCtor(ctor DecoderConstructor) Constructor {
+	return func(r io.Reader) (Decoder, interface{}) {
+		return ctor(r), &GenBank{}
+	}
+}
+
+// GenBankFlatScanner scans for a GenBank Flatfile format.
+func GenBankFlatScanner(r io.Reader) *ParserScanner {
+	return NewParserScanner(r, GenBankParser)
+}
+
+// GenBankPackScanner scans for a GenBank Msgpack format.
+func GenBankPackScanner(r io.Reader) *ParserScanner {
+	return NewParserScanner(r, gbDecCtor(NewMsgpackDecoder))
+}

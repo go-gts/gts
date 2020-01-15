@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	flags "gopkg.in/ktnyt/flags.v1"
+	flags "gopkg.in/flags.v1"
 )
 
 func main() {
