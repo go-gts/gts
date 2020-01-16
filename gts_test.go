@@ -3,9 +3,9 @@ package gts
 import (
 	"io/ioutil"
 	"path/filepath"
-	"reflect"
 	"testing"
 
+	deep "gopkg.in/go-test/deep.v1"
 	pars "gopkg.in/pars.v2"
 )
 
@@ -44,18 +44,22 @@ func PanicTest(t *testing.T, f func()) {
 	f()
 }
 
-func same(a, b interface{}) bool { return reflect.DeepEqual(a, b) }
+func same(a, b interface{}) bool { return deep.Equal(a, b) == nil }
 
 func equals(t *testing.T, a, b interface{}) {
-	t.Helper()
-	if !same(a, b) {
-		t.Errorf("\nexpected: %v\n  actual: %v\nto be equal", a, b)
+	if h, ok := testing.TB(t).(interface{ Helper() }); ok {
+		h.Helper()
+	}
+	if diff := deep.Equal(a, b); diff != nil {
+		t.Error(diff)
 	}
 }
 
 func differs(t *testing.T, a, b interface{}) {
-	t.Helper()
-	if same(a, b) {
+	if h, ok := testing.TB(t).(interface{ Helper() }); ok {
+		h.Helper()
+	}
+	if deep.Equal(a, b) == nil {
 		t.Errorf("\nexpected: %v\n  actual: %v\nto be different", a, b)
 	}
 }

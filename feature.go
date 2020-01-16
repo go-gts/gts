@@ -16,14 +16,37 @@ import (
 // FeatureIO represents a temporary object for reading and writing a Feature
 // struct using various serialization libraries.
 type FeatureIO struct {
-	Key        string
-	Location   string
-	Qualifiers []Qualifier
+	Key        string      `json:"key" yaml:"key" msgpack:"key"`
+	Location   string      `json:"location" yaml:"location" msgpack:"location"`
+	Qualifiers []Qualifier `json:"qualifiers,omitempty" yaml:"qualifiers,omitempty" msgpack:"qualifiers,omitempty"`
 }
 
 // NewFeatureIO creates a new FeatureIO object.
 func NewFeatureIO(f Feature) FeatureIO {
 	return FeatureIO{f.Key, f.Location.String(), listQualifiers(f)}
+}
+
+// SetFeature sets the fields of the given Feature pointer.
+func (fio FeatureIO) SetFeature(f *Feature) error {
+	loc, err := AsLocation(fio.Location)
+	if err != nil {
+		return err
+	}
+
+	f.Key = fio.Key
+	f.Location = loc
+	f.Qualifiers = Values{}
+	f.order = make(map[string]int)
+
+	for _, q := range fio.Qualifiers {
+		name, value := q.Unpack()
+		if _, ok := f.order[name]; !ok && name != "translation" {
+			f.order[name] = len(f.order)
+		}
+		f.Qualifiers.Add(name, value)
+	}
+
+	return nil
 }
 
 // Feature represents a single feature within a feature table.
@@ -90,8 +113,7 @@ func listQualifiers(f Feature) []Qualifier {
 
 // EncodeWith satisfies the Encodable interface.
 func (f Feature) EncodeWith(enc Encoder) error {
-	fio := FeatureIO{f.Key, f.Location.String(), listQualifiers(f)}
-	return enc.Encode(fio)
+	return enc.Encode(NewFeatureIO(f))
 }
 
 // DecodeWith satisifes the Decodable interface.
@@ -100,31 +122,7 @@ func (f *Feature) DecodeWith(dec Decoder) (err error) {
 	if err = dec.Decode(&fio); err != nil {
 		return
 	}
-
-	if fio.Key == "" {
-		return fmt.Errorf("missing key")
-	}
-	f.Key = fio.Key
-
-	if fio.Location == "" {
-		return fmt.Errorf("missing Location")
-	}
-	s := fio.Location
-
-	f.Location, err = AsLocation(s)
-	if err != nil {
-		return fmt.Errorf("%q is not a Location", s)
-	}
-
-	f.order = make(map[string]int)
-	f.Qualifiers = Values{}
-	for _, q := range fio.Qualifiers {
-		if _, ok := f.order[q.Name]; q.Name != "translation" && !ok {
-			f.order[q.Name] = len(f.order)
-		}
-		f.Qualifiers.Add(q.Name, q.Value)
-	}
-	return nil
+	return fio.SetFeature(f)
 }
 
 // MarshalJSON satisifes the json.Marshaler interface.
@@ -137,17 +135,7 @@ func (f *Feature) UnmarshalJSON(data []byte) error {
 	return DecodeJSON(data, f)
 }
 
-// GobEncode satisifes the gob.GobEncoder interface.
-func (f Feature) GobEncode() ([]byte, error) {
-	return EncodeGob(f)
-}
-
-// GobDecode satisifes the gob.GobDecoder interface.
-func (f *Feature) GobDecode(data []byte) error {
-	return DecodeGob(data, f)
-}
-
-// MarshalYAML satisifes the yaml.Marshaler interface.
+// MarshalYAML satisfies the yaml.Marshaler interface.
 func (f Feature) MarshalYAML() (interface{}, error) {
 	return NewFeatureIO(f), nil
 }
@@ -427,10 +415,10 @@ func FeatureListParser(prefix string) pars.Parser {
 		order := make(map[string]int)
 
 		for _, child := range result.Children {
-			q := child.Value.(Qualifier)
-			qfs.Add(q.Name, q.Value)
-			if _, ok := order[q.Name]; q.Name != "translation" && !ok {
-				order[q.Name] = len(order)
+			name, value := child.Value.(Qualifier).Unpack()
+			qfs.Add(name, value)
+			if _, ok := order[name]; name != "translation" && !ok {
+				order[name] = len(order)
 			}
 		}
 
@@ -452,10 +440,10 @@ func FeatureListParser(prefix string) pars.Parser {
 			order := make(map[string]int)
 
 			for _, child := range result.Children {
-				q := child.Value.(Qualifier)
-				qfs.Add(q.Name, q.Value)
-				if _, ok := order[q.Name]; q.Name != "translation" && !ok {
-					order[q.Name] = len(order)
+				name, value := child.Value.(Qualifier).Unpack()
+				qfs.Add(name, value)
+				if _, ok := order[name]; name != "translation" && !ok {
+					order[name] = len(order)
 				}
 			}
 
