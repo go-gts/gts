@@ -1,11 +1,15 @@
 package gts
 
 import (
+	"bytes"
+	"encoding/json"
 	"sort"
 	"strings"
 	"testing"
 
 	pars "gopkg.in/pars.v2"
+	msgpack "gopkg.in/vmihailenco/msgpack.v4"
+	yaml "gopkg.in/yaml.v3"
 )
 
 func TestFeatureIO(t *testing.T) {
@@ -56,6 +60,77 @@ func TestFeatureIO(t *testing.T) {
 			t.Errorf("while parsing`\n%s\n`: expected error", in)
 		}
 	}
+}
+
+func TestFeatureEncoding(t *testing.T) {
+	loc := NewRangeLocation(39, 723)
+	qfs := Values{"foo": []string{"bar"}}
+	in := &Feature{
+		Key:        "misc_feature",
+		Location:   loc,
+		Qualifiers: qfs,
+		order:      map[string]int{"foo": 0},
+	}
+
+	t.Run("JSON", func(t *testing.T) {
+		out := &Feature{}
+		rw := &bytes.Buffer{}
+		enc := json.NewEncoder(rw)
+		if err := enc.Encode(in); err != nil {
+			t.Errorf("enc.Encode(in): %v", err)
+			return
+		}
+		if rw.Len() == 0 {
+			t.Errorf("nothing written by enc.Encode(in)")
+			return
+		}
+		dec := json.NewDecoder(rw)
+		if err := dec.Decode(out); err != nil {
+			t.Errorf("dec.Decode(out): %v", err)
+			return
+		}
+		equals(t, in, out)
+	})
+
+	t.Run("YAML", func(t *testing.T) {
+		out := &Feature{}
+		rw := &bytes.Buffer{}
+		enc := yaml.NewEncoder(rw)
+		if err := enc.Encode(in); err != nil {
+			t.Errorf("enc.Encode(in): %v", err)
+			return
+		}
+		if rw.Len() == 0 {
+			t.Errorf("nothing written by enc.Encode(in)")
+			return
+		}
+		dec := yaml.NewDecoder(rw)
+		if err := dec.Decode(out); err != nil {
+			t.Errorf("dec.Decode(out): %v", err)
+			return
+		}
+		equals(t, in, out)
+	})
+
+	t.Run("MsgPack", func(t *testing.T) {
+		out := &Feature{}
+		rw := &bytes.Buffer{}
+		enc := msgpack.NewEncoder(rw)
+		if err := enc.Encode(in); err != nil {
+			t.Errorf("enc.Encode(in): %v", err)
+			return
+		}
+		if rw.Len() == 0 {
+			t.Errorf("nothing written by enc.Encode(in)")
+			return
+		}
+		dec := msgpack.NewDecoder(rw)
+		if err := dec.Decode(out); err != nil {
+			t.Errorf("dec.Decode(out): %v", err)
+			return
+		}
+		equals(t, in, out)
+	})
 }
 
 func TestFeatureListIO(t *testing.T) {

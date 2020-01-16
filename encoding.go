@@ -25,13 +25,33 @@ type Encodable interface {
 	EncodeWith(enc Encoder) error
 }
 
+// NewJSONEncoder creates a JSON Encoder.
+func NewJSONEncoder(w io.Writer) Encoder {
+	return json.NewEncoder(w)
+}
+
+// NewGobEncoder creates a Gob Encoder.
+func NewGobEncoder(w io.Writer) Encoder {
+	return gob.NewEncoder(w)
+}
+
+// NewYAMLEncoder creates a YAML Encoder.
+func NewYAMLEncoder(w io.Writer) Encoder {
+	return yaml.NewEncoder(w)
+}
+
+// NewMsgpackEncoder creates a Msgpack Encoder.
+func NewMsgpackEncoder(w io.Writer) Encoder {
+	return msgpack.NewEncoder(w)
+}
+
 // Decoder implement the Decode method for reading and decoding from an input
 // stream to the object pointed by the given value.
 type Decoder interface {
 	Decode(v interface{}) error
 }
 
-// EncoderConstructor represents a constuctor function for a Decoder.
+// DecoderConstructor represents a constuctor function for a Decoder.
 type DecoderConstructor func(io.Reader) Decoder
 
 // Decodable implements the DecodeWith method whch should decode the object

@@ -19,33 +19,51 @@ import (
 // GenBankFields represents the fields of a GenBank record other than the
 // features and sequence.
 type GenBankFields struct {
-	LocusName string
-	Molecule  string
-	Topology  string
-	Division  string
-	Date      time.Time
+	LocusName string `json:"locus_name" yaml:"locus_name" msgpack:"locus_name"`
+	Molecule  string `json:"molecule" yaml:"molecule" msgpack:"molecule"`
+	Topology  string `json:"topology" yaml:"topology" msgpack:"topology"`
+	Division  string `json:"division" yaml:"division" msgpack:"division"`
+	Date      Date   `json:"date" yaml:"date" msgpack:"date"`
 
-	Definition string
-	Accession  string
-	Version    string
-	DBLink     PairList
-	Keywords   []string
-	Source     Organism
-	References []Reference
-	Comment    string
+	Definition string      `json:"definition" yaml:"definition" msgpack:"definition"`
+	Accession  string      `json:"accession" yaml:"accession" msgpack:"accession"`
+	Version    string      `json:"version" yaml:"version" msgpack:"version"`
+	DBLink     PairList    `json:"dblink" yaml:"dblink" msgpack:"dblink"`
+	Keywords   []string    `json:"keywords,omitempty" yaml:"keywords,omitempty" msgpack:"keywords,omitempty"`
+	Source     Organism    `json:"source" yaml:"source" msgpack:"source"`
+	References []Reference `json:"references,omitempty" yaml:"references,omitempty" msgpack:"references,omitempty"`
+	Comment    string      `json:"comment" yaml:"comment" msgpack:"comment"`
 }
 
 // GenBankIO represents a temporary object for reading and writing a GenBank
 // struct using various serialization libraries.
 type GenBankIO struct {
-	Fields   GenBankFields
-	Features []Feature
-	Origin   []byte
+	Fields   GenBankFields `json:"fields" yaml:"fields" msgpack:"fields"`
+	Features []FeatureIO   `json:"features" yaml:"features" msgpack:"features"`
+	Origin   []byte        `json:"origin" yaml:"origin" msgpack:"origin"`
 }
 
 // NewGenBankIO creates a new GenBankIO object.
 func NewGenBankIO(gb GenBank) GenBankIO {
-	return GenBankIO{gb.Fields, []Feature(gb.Features), gb.Origin.Bytes()}
+	fios := make([]FeatureIO, len(gb.Features))
+	for i, f := range gb.Features {
+		fios[i] = NewFeatureIO(f)
+	}
+	return GenBankIO{gb.Fields, fios, gb.Origin.Bytes()}
+}
+
+// SetGenBank sets the fields of the given GenBank pointer.
+func (gbio GenBankIO) SetGenBank(gb *GenBank) error {
+	gb.Fields = gbio.Fields
+	gb.Origin = NewSequenceServer(BasicSequence(gbio.Origin))
+	gb.Features = make([]Feature, len(gbio.Features))
+	for i, fio := range gbio.Features {
+		if err := fio.SetFeature(&gb.Features[i]); err != nil {
+			return err
+		}
+		gb.Features[i].proxy = gb.Origin.Proxy()
+	}
+	return nil
 }
 
 // GenBank represents a GenBank sequence record.
@@ -53,6 +71,10 @@ type GenBank struct {
 	Fields   GenBankFields
 	Features FeatureList
 	Origin   SequenceServer
+}
+
+func emptyGenBank() interface{} {
+	return &GenBank{}
 }
 
 // EncodeWith satisfies the Encodable interface.
@@ -66,13 +88,7 @@ func (gb *GenBank) DecodeWith(dec Decoder) error {
 	if err := dec.Decode(&gbio); err != nil {
 		return err
 	}
-	gb.Fields = gbio.Fields
-	gb.Features = FeatureList(gbio.Features)
-	gb.Origin = NewSequenceServer(BasicSequence(gbio.Origin))
-	for i := range gb.Features {
-		gb.Features[i].proxy = gb.Origin.Proxy()
-	}
-	return nil
+	return gbio.SetGenBank(gb)
 }
 
 // MarshalJSON satisifes the json.Marshaler interface.
@@ -174,7 +190,7 @@ func (gf GenBankFormatter) String() string {
 		pad1 := strings.Repeat(" ", 28-(len(metadata.LocusName)+len(length)))
 		pad2 := strings.Repeat(" ", 8-len(metadata.Molecule))
 		pad3 := strings.Repeat(" ", 9-len(metadata.Topology))
-		date := strings.ToUpper(metadata.Date.Format("02-Jan-2006"))
+		date := strings.ToUpper(metadata.Date.ToTime().Format("02-Jan-2006"))
 		locus := "LOCUS       " + metadata.LocusName + pad1 + length + " bp    " +
 			metadata.Molecule + pad2 + metadata.Topology + pad3 + metadata.Division +
 			" " + date
@@ -329,7 +345,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 	molecule := string(result.Children[3].Token)
 	topology := result.Children[4].Value.(string)
 	division := string(result.Children[5].Token)
-	date := result.Children[6].Value.(time.Time)
+	date := FromTime(result.Children[6].Value.(time.Time))
 
 	fields := GenBankFields{
 		LocusName: locus,
@@ -453,7 +469,6 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 					what := fmt.Sprintf("unexpected %q in reference position", v)
 					return pars.NewError(what, state.Position())
 				}
-				reference.Ranges = []Range{}
 			default:
 				children := result.Children[1].Children
 				ranges := make([]Range, len(children))
@@ -575,18 +590,8 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 	}
 }
 
-func gbDecCtor(ctor DecoderConstructor) Constructor {
-	return func(r io.Reader) (Decoder, interface{}) {
-		return ctor(r), &GenBank{}
-	}
-}
-
-// GenBankFlatScanner scans for a GenBank Flatfile format.
-func GenBankFlatScanner(r io.Reader) *ParserScanner {
-	return NewParserScanner(r, GenBankParser)
-}
-
-// GenBankPackScanner scans for a GenBank Msgpack format.
-func GenBankPackScanner(r io.Reader) *ParserScanner {
-	return NewParserScanner(r, gbDecCtor(NewMsgpackDecoder))
-}
+var (
+	genbankJSONParser    = DecoderParser(NewJSONDecoder, emptyGenBank)
+	genbankYAMLParser    = DecoderParser(NewYAMLDecoder, emptyGenBank)
+	genbankMsgpackParser = DecoderParser(NewMsgpackDecoder, emptyGenBank)
+)

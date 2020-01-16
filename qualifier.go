@@ -9,92 +9,28 @@ import (
 
 	ascii "gopkg.in/ascii.v1"
 	pars "gopkg.in/pars.v2"
-	msgpack "gopkg.in/vmihailenco/msgpack.v4"
-	yaml "gopkg.in/yaml.v3"
 )
 
-// QualifierIO represents a temporary object for reading and writing a
-// Qualifier sturct using various serialization libraries.
-type QualifierIO [2]string
-
-// NewQualifierIO creates a new QualifierIO object.
-func NewQualifierIO(q Qualifier) QualifierIO {
-	return [2]string{q.Name, q.Value}
-}
-
 // Qualifier represents a single qualifier name-value pair.
-type Qualifier struct {
-	Name  string
-	Value string
-}
+type Qualifier [2]string
 
-// EncodeWith satisfies the Encodable interface.
-func (q Qualifier) EncodeWith(enc Encoder) error {
-	return enc.Encode(NewQualifierIO(q))
-}
-
-// DecodeWith satisifes the Decodable interface.
-func (q *Qualifier) DecodeWith(dec Decoder) error {
-	var qio QualifierIO
-	if err := dec.Decode(&qio); err != nil {
-		return err
-	}
-	q.Name = qio[0]
-	q.Value = qio[1]
-	return nil
-}
-
-// MarshalJSON satisifes the json.Marshaler interface.
-func (q Qualifier) MarshalJSON() ([]byte, error) {
-	return EncodeJSON(q)
-}
-
-// UnmarshalJSON satisifes the json.Unmarshaler interface.
-func (q *Qualifier) UnmarshalJSON(data []byte) error {
-	return DecodeJSON(data, q)
-}
-
-// GobEncode satisifes the gob.GobEncoder interface.
-func (q Qualifier) GobEncode() ([]byte, error) {
-	return EncodeGob(q)
-}
-
-// GobDecode satisifes the gob.GobDecoder interface.
-func (q *Qualifier) GobDecode(data []byte) error {
-	return DecodeGob(data, q)
-}
-
-// MarshalYAML satisifes the yaml.Marshaler interface.
-func (q Qualifier) MarshalYAML() (interface{}, error) {
-	return NewQualifierIO(q), nil
-}
-
-// UnmarshalYAML satisifes the yaml.Unmarshaler interface.
-func (q *Qualifier) UnmarshalYAML(value *yaml.Node) error {
-	return q.DecodeWith(value)
-}
-
-// EncodeMsgpack satisifes the msgpack.CustomEncoder interface.
-func (q Qualifier) EncodeMsgpack(enc *msgpack.Encoder) error {
-	return q.EncodeWith(enc)
-}
-
-// DecodeMsgpack satisifes the msgpack.CustomDecoder interface.
-func (q *Qualifier) DecodeMsgpack(dec *msgpack.Decoder) error {
-	return q.DecodeWith(dec)
+// Unpack returns the name and value strings of the Qualifier.
+func (q Qualifier) Unpack() (string, string) {
+	return q[0], q[1]
 }
 
 // String satisfies the fmt.Stringer interface.
 func (q Qualifier) String() string {
-	switch GetQualifierType(q.Name) {
+	name, value := q.Unpack()
+	switch GetQualifierType(name) {
 	case QuotedQualifier:
-		return fmt.Sprintf("/%s=\"%s\"", q.Name, q.Value)
+		return fmt.Sprintf("/%s=\"%s\"", name, value)
 	case LiteralQualifier:
-		return fmt.Sprintf("/%s=%s", q.Name, q.Value)
+		return fmt.Sprintf("/%s=%s", name, value)
 	case ToggleQualifier:
-		return "/" + q.Name
+		return "/" + name
 	default:
-		panic(fmt.Sprintf("gts does not know how to format a qualifier of name `%s`", q.Name))
+		return fmt.Sprintf("/%s=\"%s\"", name, value)
 	}
 }
 

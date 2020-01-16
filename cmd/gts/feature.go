@@ -1,24 +1,22 @@
 package main
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
 	"strings"
 
-	flags "gopkg.in/flags.v1"
 	gts "gopkg.in/gts.v0"
+	flags "gopkg.in/flags.v1"
 	pars "gopkg.in/pars.v2"
 )
 
 func init() {
-	prog := flags.NewProgram()
-	prog.Add("clear", "remove all features (excluding sources)", FeatureClear)
-	prog.Add("select", "select features by feature keys", FeatureFilter)
-	prog.Add("merge", "merge features from other file(s)", FeatureMerge)
-	prog.Add("extract", "extract qualifier value(s) from the input record", FeatureExtract)
-	flags.Add("feature", "feature manipulation commands", prog.Compile())
+	flags.Add("clear", "remove all features (excluding sources)", FeatureClear)
+	flags.Add("select", "select features by feature keys", FeatureFilter)
+	flags.Add("merge", "merge features from other file(s)", FeatureMerge)
+	flags.Add("extract", "extract qualifier value(s) from the input record", FeatureExtract)
+	flags.Add("view", "view the input record as the specified format", FeatureView)
 }
 
 func FeatureClear(ctx *flags.Context) error {
@@ -27,12 +25,19 @@ func FeatureClear(ctx *flags.Context) error {
 	infile := pos.Input("input record file")
 	outfile := pos.Output("output record file")
 
+	format := opt.String(0, "format", "default", "output file format")
+
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
 	}
 
 	defer infile.Close()
 	defer outfile.Close()
+
+	filetype := gts.Detect(outfile.Name())
+	if filetype == gts.UnknownFile {
+		filetype = gts.ToFileType(*format)
+	}
 
 	scanner := gts.NewRecordFileScanner(infile)
 
@@ -46,16 +51,12 @@ func FeatureClear(ctx *flags.Context) error {
 	for {
 		in := scanner.Record()
 		ff := in.Filter(gts.Key("source"))
-		buffer := &bytes.Buffer{}
 		out := gts.NewRecord(in.Metadata(), ff, in.Bytes())
-		gts.DefaultFormatter(out).WriteTo(buffer)
-
-		if _, err := buffer.WriteTo(outfile); err != nil {
+		if _, err := gts.NewRecordFormatter(out, filetype).WriteTo(outfile); err != nil {
 			return err
 		}
-
 		if !scanner.Scan() {
-			return nil
+			break
 		}
 	}
 
@@ -75,6 +76,7 @@ func FeatureFilter(ctx *flags.Context) error {
 
 	invert := opt.Switch('v', "invert-match", "select feature that do not match the given criteria")
 	extraKeys := opt.StringSlice(0, "and", nil, "additional feature key(s) to select")
+	format := opt.String(0, "format", "default", "output file format")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -82,6 +84,11 @@ func FeatureFilter(ctx *flags.Context) error {
 
 	defer infile.Close()
 	defer outfile.Close()
+
+	filetype := gts.Detect(outfile.Name())
+	if filetype == gts.UnknownFile {
+		filetype = gts.ToFileType(*format)
+	}
 
 	keys := append([]string{*mainKey}, (*extraKeys)...)
 	ss := make([]gts.FeatureFilter, len(keys))
@@ -102,16 +109,12 @@ func FeatureFilter(ctx *flags.Context) error {
 	for {
 		in := scanner.Record()
 		ff := in.Filter(sel)
-		buffer := &bytes.Buffer{}
 		out := gts.NewRecord(in.Metadata(), ff, in.Bytes())
-		gts.DefaultFormatter(out).WriteTo(buffer)
-
-		if _, err := buffer.WriteTo(outfile); err != nil {
+		if _, err := gts.NewRecordFormatter(out, filetype).WriteTo(outfile); err != nil {
 			return err
 		}
-
 		if !scanner.Scan() {
-			return nil
+			break
 		}
 	}
 
@@ -130,6 +133,7 @@ func FeatureMerge(ctx *flags.Context) error {
 	mainFile := pos.Open("feature", "primary feature file to merge")
 
 	extraFiles := opt.OpenSlice(0, "and", nil, "additional feature file(s) to merge")
+	format := opt.String(0, "format", "default", "output file format")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -137,6 +141,11 @@ func FeatureMerge(ctx *flags.Context) error {
 
 	defer infile.Close()
 	defer outfile.Close()
+
+	filetype := gts.Detect(outfile.Name())
+	if filetype == gts.UnknownFile {
+		filetype = gts.ToFileType(*format)
+	}
 
 	scanner := gts.NewRecordFileScanner(infile)
 	if !scanner.Scan() {
@@ -162,14 +171,10 @@ func FeatureMerge(ctx *flags.Context) error {
 		}
 	}
 
-	buffer := &bytes.Buffer{}
 	out := gts.NewRecord(in.Metadata(), ff, in.Bytes())
-	gts.DefaultFormatter(out).WriteTo(buffer)
-
-	if _, err := buffer.WriteTo(outfile); err != nil {
+	if _, err := gts.NewRecordFormatter(out, filetype).WriteTo(outfile); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -185,6 +190,7 @@ func FeatureExtract(ctx *flags.Context) error {
 	sep := opt.String('s', "separator", ",", "string to insert between values with same qualifier keys")
 	featureKey := opt.Switch('f', "feature-key", "extract the feature key")
 	location := opt.Switch('l', "location", "extract the location")
+	format := opt.String(0, "format", "default", "output file format")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -192,6 +198,11 @@ func FeatureExtract(ctx *flags.Context) error {
 
 	defer infile.Close()
 	defer outfile.Close()
+
+	filetype := gts.Detect(outfile.Name())
+	if filetype == gts.UnknownFile {
+		filetype = gts.ToFileType(*format)
+	}
 
 	scanner := gts.NewRecordFileScanner(infile)
 	if !scanner.Scan() {
@@ -235,6 +246,52 @@ func FeatureExtract(ctx *flags.Context) error {
 				fmt.Fprintf(outfile, "%s\n", strings.Join(values, *delim))
 			}
 		}
+	}
+
+	return nil
+}
+
+func FeatureView(ctx *flags.Context) error {
+	pos, opt := flags.Args()
+
+	infile := pos.Input("input record file")
+	outfile := pos.Output("output record file")
+
+	format := opt.String(0, "format", "genbank", "output file format")
+
+	if err := ctx.Parse(pos, opt); err != nil {
+		return err
+	}
+
+	defer infile.Close()
+	defer outfile.Close()
+
+	filetype := gts.Detect(outfile.Name())
+	if filetype == gts.UnknownFile {
+		filetype = gts.ToFileType(*format)
+	}
+
+	scanner := gts.NewRecordFileScanner(infile)
+
+	if !scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+		return errors.New("expected at least one record entry")
+	}
+
+	for {
+		rec := scanner.Record()
+		if _, err := gts.NewRecordFormatter(rec, filetype).WriteTo(outfile); err != nil {
+			return err
+		}
+		if !scanner.Scan() {
+			return nil
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return err
 	}
 
 	return nil

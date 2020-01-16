@@ -1,10 +1,14 @@
 package gts
 
 import (
+	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 
 	pars "gopkg.in/pars.v2"
+	msgpack "gopkg.in/vmihailenco/msgpack.v4"
+	yaml "gopkg.in/yaml.v3"
 )
 
 func TestQualifierIO(t *testing.T) {
@@ -45,8 +49,70 @@ func TestQualifierIO(t *testing.T) {
 			t.Errorf("while parsing`\n%s\n`: expected error", in)
 		}
 	}
+}
 
-	PanicTest(t, func() { Qualifier{"foo", "bar"}.Format("").String() })
+func TestQualifierEncoding(t *testing.T) {
+	in := &Qualifier{"foo", "bar"}
+
+	t.Run("JSON", func(t *testing.T) {
+		out := &Qualifier{}
+		rw := &bytes.Buffer{}
+		enc := json.NewEncoder(rw)
+		if err := enc.Encode(in); err != nil {
+			t.Errorf("enc.Encode(in): %v", err)
+			return
+		}
+		if rw.Len() == 0 {
+			t.Errorf("nothing written by enc.Encode(in)")
+			return
+		}
+		dec := json.NewDecoder(rw)
+		if err := dec.Decode(out); err != nil {
+			t.Errorf("dec.Decode(out): %v", err)
+			return
+		}
+		equals(t, in, out)
+	})
+
+	t.Run("YAML", func(t *testing.T) {
+		out := &Qualifier{}
+		rw := &bytes.Buffer{}
+		enc := yaml.NewEncoder(rw)
+		if err := enc.Encode(in); err != nil {
+			t.Errorf("enc.Encode(in): %v", err)
+			return
+		}
+		if rw.Len() == 0 {
+			t.Errorf("nothing written by enc.Encode(in)")
+			return
+		}
+		dec := yaml.NewDecoder(rw)
+		if err := dec.Decode(out); err != nil {
+			t.Errorf("dec.Decode(out): %v", err)
+			return
+		}
+		equals(t, in, out)
+	})
+
+	t.Run("MsgPack", func(t *testing.T) {
+		out := &Qualifier{}
+		rw := &bytes.Buffer{}
+		enc := msgpack.NewEncoder(rw)
+		if err := enc.Encode(in); err != nil {
+			t.Errorf("enc.Encode(in): %v", err)
+			return
+		}
+		if rw.Len() == 0 {
+			t.Errorf("nothing written by enc.Encode(in)")
+			return
+		}
+		dec := msgpack.NewDecoder(rw)
+		if err := dec.Decode(out); err != nil {
+			t.Errorf("dec.Decode(out): %v", err)
+			return
+		}
+		equals(t, in, out)
+	})
 }
 
 func TestQualifierListIO(t *testing.T) {

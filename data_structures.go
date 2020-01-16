@@ -2,8 +2,8 @@ package gts
 
 // Pair represents a pair of strings.
 type Pair struct {
-	Key   string
-	Value string
+	Key   string `json:"key" yaml:"key" msgpack:"key"`
+	Value string `json:"value" yaml:"value" msgpack:"value"`
 }
 
 // PairList represents a list of pairs.

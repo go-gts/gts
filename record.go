@@ -37,6 +37,24 @@ func DefaultFormatter(rec Record) Formatter {
 	}
 }
 
+// NewRecordFormatter returns a new formatter for the given filetype.
+func NewRecordFormatter(rec Record, filetype FileType) Formatter {
+	switch filetype {
+	case DefaultFile:
+		return DefaultFormatter(rec)
+	case GenBankFlat:
+		return GenBankFormatter{rec}
+	case JSONFile:
+		return NewEncoderFormatter(rec, NewJSONEncoder)
+	case YAMLFile:
+		return NewEncoderFormatter(rec, NewYAMLEncoder)
+	case MsgpackFile:
+		return NewEncoderFormatter(rec, NewMsgpackEncoder)
+	default:
+		return DefaultFormatter(rec)
+	}
+}
+
 // RecordParser attempts to parse a single sequence record.
 var RecordParser = pars.Any(GenBankParser)
 
@@ -49,7 +67,9 @@ type RecordScanner struct {
 func newRecordScanner(r io.Reader) *MultiParserScanner {
 	return NewMultiParserScanner(r,
 		GenBankParser,
-		DecoderParser(gbDecCtor(NewMsgpackDecoder)),
+		genbankJSONParser,
+		genbankYAMLParser,
+		genbankMsgpackParser,
 	)
 }
 
@@ -58,17 +78,42 @@ func NewRecordScanner(r io.Reader) *RecordScanner {
 	return &RecordScanner{newRecordScanner(r), nil}
 }
 
+func filesize(f *os.File) int64 {
+	stat, err := f.Stat()
+	if err != nil {
+		panic(err)
+	}
+	return stat.Size()
+}
+
+const maxFilesize int = 100 * (1 << 20)
+
 // NewRecordFileScanner creates a new specialized RecordScanner based on the
 // given filename.
 func NewRecordFileScanner(f *os.File) *RecordScanner {
+	state := pars.NewState(f)
+	if size := filesize(f); size <= int64(maxFilesize) {
+		state.Request(int(size))
+	}
+
 	var s Scanner
-	switch GetFileType(f.Name()) {
+	switch Detect(f.Name()) {
 	case GenBankFlat:
-		s = GenBankFlatScanner(f)
-	case GenBankPack:
-		s = GenBankPackScanner(f)
+		s = NewParserScanner(state, GenBankParser)
+	case JSONFile:
+		s = NewMultiParserScanner(state,
+			genbankJSONParser,
+		)
+	case YAMLFile:
+		s = NewMultiParserScanner(state,
+			genbankYAMLParser,
+		)
+	case MsgpackFile:
+		s = NewMultiParserScanner(state,
+			genbankMsgpackParser,
+		)
 	default:
-		s = newRecordScanner(f)
+		s = newRecordScanner(state)
 	}
 	return &RecordScanner{s, nil}
 }
