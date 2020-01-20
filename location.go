@@ -323,10 +323,10 @@ func (loc JoinLocation) Locate(seq Sequence) Sequence {
 	r := make([]byte, loc.Len())
 	i := 0
 	for _, l := range loc.Locations {
-		copy(r[i:], l.Locate(seq).Bytes())
+		copy(r[i:], l.Locate(seq).Data())
 		i += l.Len()
 	}
-	return Seq(r)
+	return New(seq.Info(), r)
 }
 
 // Len returns the length spanned by the location.
@@ -388,10 +388,10 @@ func (loc OrderLocation) Locate(seq Sequence) Sequence {
 	r := make([]byte, loc.Len())
 	i := 0
 	for _, l := range loc.Locations {
-		copy(r[i:], l.Locate(seq).Bytes())
+		copy(r[i:], l.Locate(seq).Data())
 		i += l.Len()
 	}
-	return Seq(r)
+	return New(seq.Info(), r)
 }
 
 // Len returns the length spanned by the location.
