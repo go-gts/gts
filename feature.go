@@ -256,6 +256,12 @@ func (ff ByLocation) Swap(i, j int) {
 	ff[i], ff[j] = ff[j], ff[i]
 }
 
+// FeatureTable represents a feature table.
+type FeatureTable interface {
+	Filter(ss ...FeatureFilter) []Feature
+	Add(f Feature)
+}
+
 // FeatureList represents an INSDC feature table. The features are sorted by
 // Location in ascending order.
 type FeatureList []Feature

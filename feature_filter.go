@@ -39,9 +39,3 @@ func Not(s FeatureFilter) FeatureFilter {
 func Key(key string) FeatureFilter {
 	return func(f Feature) bool { return f.Key == key }
 }
-
-// FeatureTable represents a feature table.
-type FeatureTable interface {
-	Filter(ss ...FeatureFilter) []Feature
-	Add(f Feature)
-}
