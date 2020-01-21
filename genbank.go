@@ -49,7 +49,7 @@ func NewGenBankIO(gb GenBank) GenBankIO {
 	for i, f := range gb.Features {
 		fios[i] = NewFeatureIO(f)
 	}
-	return GenBankIO{gb.Fields, fios, gb.Origin.Data()}
+	return GenBankIO{gb.Fields, fios, gb.Origin.Bytes()}
 }
 
 // SetGenBank sets the fields of the given GenBank pointer.
@@ -134,8 +134,8 @@ func (gb *GenBank) DecodeMsgpack(dec *msgpack.Decoder) error {
 // Info returns the metadata of the sequence.
 func (gb GenBank) Info() interface{} { return gb.Fields }
 
-// Data returns the byte representation of the sequence.
-func (gb GenBank) Data() []byte { return gb.Origin.Data() }
+// Bytes returns the byte representation of the sequence.
+func (gb GenBank) Bytes() []byte { return gb.Origin.Bytes() }
 
 // Filter the features in the list matching the selector criteria.
 func (gb GenBank) Filter(ss ...FeatureFilter) []Feature {
@@ -271,7 +271,7 @@ func (gb GenBank) String() string {
 
 	builder.WriteString("\nORIGIN      ")
 
-	p := gb.Data()
+	p := gb.Bytes()
 	for i := 0; i < len(p); i += 60 {
 		builder.WriteString(fmt.Sprintf("\n%9d ", i+1))
 		for j := 0; j < 60 && i+j < len(p); j += 10 {

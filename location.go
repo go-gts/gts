@@ -323,7 +323,7 @@ func (loc JoinLocation) Locate(seq Sequence) Sequence {
 	r := make([]byte, loc.Len())
 	i := 0
 	for _, l := range loc.Locations {
-		copy(r[i:], l.Locate(seq).Data())
+		copy(r[i:], l.Locate(seq).Bytes())
 		i += l.Len()
 	}
 	return New(seq.Info(), r)
@@ -388,7 +388,7 @@ func (loc OrderLocation) Locate(seq Sequence) Sequence {
 	r := make([]byte, loc.Len())
 	i := 0
 	for _, l := range loc.Locations {
-		copy(r[i:], l.Locate(seq).Data())
+		copy(r[i:], l.Locate(seq).Bytes())
 		i += l.Len()
 	}
 	return New(seq.Info(), r)
@@ -438,6 +438,7 @@ func (loc OrderLocation) Map(index int) int {
 	panic(fmt.Errorf("index [%d] is outside of `%T` with length %d", index, loc, loc.Len()))
 }
 
+// LocationParser attempts to parse some location.
 var LocationParser pars.Parser
 
 // PointLocationParser attempts to parse a PointLocation.

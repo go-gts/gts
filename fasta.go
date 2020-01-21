@@ -17,8 +17,8 @@ func (f Fasta) Info() interface{} {
 	return f.Desc
 }
 
-// Data returns the byte representation of the sequence.
-func (f Fasta) Data() []byte {
+// Bytes returns the byte representation of the sequence.
+func (f Fasta) Bytes() []byte {
 	return f.Body
 }
 
@@ -74,7 +74,7 @@ func (ff FastaWriter) WriteTo(w io.Writer) (int64, error) {
 	case *Fasta:
 		return seq.WriteTo(w)
 	default:
-		data := seq.Data()
+		data := seq.Bytes()
 		switch info := seq.Info().(type) {
 		case string:
 			return Fasta{info, data}.WriteTo(w)

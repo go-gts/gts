@@ -40,8 +40,8 @@ func TestGenBankIO(t *testing.T) {
 			}
 			equals(t, gb.Fields, out.Fields)
 			equals(t, gb.Features, out.Features)
-			if !bytes.Equal(gb.Data(), out.Data()) {
-				t.Error("gb.Data() != out.Data()")
+			if !bytes.Equal(gb.Bytes(), out.Bytes()) {
+				t.Error("gb.Bytes() != out.Bytes()")
 				return
 			}
 		})
@@ -65,8 +65,8 @@ func TestGenBankIO(t *testing.T) {
 			}
 			equals(t, gb.Fields, out.Fields)
 			equals(t, gb.Features, out.Features)
-			if !bytes.Equal(gb.Data(), out.Data()) {
-				t.Error("gb.Data() != out.Data()")
+			if !bytes.Equal(gb.Bytes(), out.Bytes()) {
+				t.Error("gb.Bytes() != out.Bytes()")
 				return
 			}
 		})
@@ -90,8 +90,8 @@ func TestGenBankIO(t *testing.T) {
 			}
 			equals(t, gb.Fields, out.Fields)
 			equals(t, gb.Features, out.Features)
-			if !bytes.Equal(gb.Data(), out.Data()) {
-				t.Error("gb.Data() != out.Data()")
+			if !bytes.Equal(gb.Bytes(), out.Bytes()) {
+				t.Error("gb.Bytes() != out.Bytes()")
 				return
 			}
 		})
