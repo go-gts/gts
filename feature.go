@@ -228,8 +228,9 @@ func (ff FeatureFormatter) String() string {
 }
 
 // WriteTo satisfies the io.WriteTo interface.
-func (ff FeatureFormatter) WriteTo(w io.Writer) (int, error) {
-	return w.Write([]byte(ff.String()))
+func (ff FeatureFormatter) WriteTo(w io.Writer) (int64, error) {
+	n, err := io.WriteString(w, ff.String())
+	return int64(n), err
 }
 
 // ByLocation implements sort.Interface for []Feature by location.
@@ -342,7 +343,7 @@ func (ff FeatureListFormatter) String() string {
 
 // WriteTo satisfies the io.WriterTo interface.
 func (ff FeatureListFormatter) WriteTo(w io.Writer) (int64, error) {
-	n, err := w.Write([]byte(ff.String()))
+  n, err := io.WriteString(w, ff.String())
 	return int64(n), err
 }
 

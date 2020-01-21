@@ -53,8 +53,9 @@ func (qf QualifierFormatter) String() string {
 }
 
 // WriteTo satisfies the io.WriterTo interface.
-func (qf QualifierFormatter) WriteTo(w io.Writer) (int, error) {
-	return w.Write([]byte(qf.String()))
+func (qf QualifierFormatter) WriteTo(w io.Writer) (int64, error) {
+	n, err := io.WriteString(w, qf.String())
+	return int64(n), err
 }
 
 // Names of qualifiers.
