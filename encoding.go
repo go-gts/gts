@@ -45,6 +45,29 @@ func NewMsgpackEncoder(w io.Writer) Encoder {
 	return msgpack.NewEncoder(w)
 }
 
+// EncoderWriter provides an interface for encoding objects with the given
+// Encoder.
+type EncoderWriter struct {
+	value interface{}
+	ctor  EncoderConstructor
+}
+
+// NewEncoderWriter creates a new EncoderWriter.
+func NewEncoderWriter(v interface{}, ctor EncoderConstructor) EncoderWriter {
+	return EncoderWriter{v, ctor}
+}
+
+// WriteTo satisfies the WriterTo interface.
+func (f EncoderWriter) WriteTo(w io.Writer) (int64, error) {
+	b := &bytes.Buffer{}
+	enc := f.ctor(b)
+	if err := enc.Encode(f.value); err != nil {
+		return 0, err
+	}
+	n, err := w.Write(b.Bytes())
+	return int64(n), err
+}
+
 // Decoder implement the Decode method for reading and decoding from an input
 // stream to the object pointed by the given value.
 type Decoder interface {

@@ -49,13 +49,13 @@ func NewGenBankIO(gb GenBank) GenBankIO {
 	for i, f := range gb.Features {
 		fios[i] = NewFeatureIO(f)
 	}
-	return GenBankIO{gb.Fields, fios, gb.Origin.Bytes()}
+	return GenBankIO{gb.Fields, fios, gb.Origin.Data()}
 }
 
 // SetGenBank sets the fields of the given GenBank pointer.
 func (gbio GenBankIO) SetGenBank(gb *GenBank) error {
 	gb.Fields = gbio.Fields
-	gb.Origin = NewSequenceServer(BasicSequence(gbio.Origin))
+	gb.Origin = NewSequenceServer(New(gb.Fields, gbio.Origin))
 	gb.Features = make([]Feature, len(gbio.Features))
 	for i, fio := range gbio.Features {
 		if err := fio.SetFeature(&gb.Features[i]); err != nil {
@@ -131,8 +131,11 @@ func (gb *GenBank) DecodeMsgpack(dec *msgpack.Decoder) error {
 	return gb.DecodeWith(dec)
 }
 
-// Metadata returns the metadata of the GenBank record.
-func (gb GenBank) Metadata() interface{} { return gb.Fields }
+// Info returns the metadata of the sequence.
+func (gb GenBank) Info() interface{} { return gb.Fields }
+
+// Data returns the byte representation of the sequence.
+func (gb GenBank) Data() []byte { return gb.Origin.Data() }
 
 // Filter the features in the list matching the selector criteria.
 func (gb GenBank) Filter(ss ...FeatureFilter) []Feature {
@@ -144,9 +147,6 @@ func (gb GenBank) Add(f Feature) {
 	f.proxy = gb.Origin.Proxy()
 	gb.Features.Add(f)
 }
-
-// Bytes satisfies the gts.Sequence interface.
-func (gb GenBank) Bytes() []byte { return gb.Origin.Bytes() }
 
 // Insert a sequence at the specified position.
 func (gb GenBank) Insert(pos int, seq Sequence) error {
@@ -175,135 +175,141 @@ func (gb GenBank) Replace(pos int, seq Sequence) error {
 	return gb.Origin.Replace(pos, seq)
 }
 
-// GenBankFormatter attempts to format a record in GenBank flatfile format.
-type GenBankFormatter struct {
-	Rec Record
-}
-
-func (gf GenBankFormatter) String() string {
+// String satisifes the fmt.Stringer interface.
+func (gb GenBank) String() string {
 	builder := strings.Builder{}
 	indent := "            "
 
-	switch metadata := gf.Rec.Metadata().(type) {
-	case GenBankFields:
-		length := strconv.Itoa(Len(gf.Rec))
-		pad1 := strings.Repeat(" ", 28-(len(metadata.LocusName)+len(length)))
-		pad2 := strings.Repeat(" ", 8-len(metadata.Molecule))
-		pad3 := strings.Repeat(" ", 9-len(metadata.Topology))
-		date := strings.ToUpper(metadata.Date.ToTime().Format("02-Jan-2006"))
-		locus := "LOCUS       " + metadata.LocusName + pad1 + length + " bp    " +
-			metadata.Molecule + pad2 + metadata.Topology + pad3 + metadata.Division +
-			" " + date
+	length := strconv.Itoa(Len(gb))
+	pad1 := strings.Repeat(" ", 28-(len(gb.Fields.LocusName)+len(length)))
+	pad2 := strings.Repeat(" ", 8-len(gb.Fields.Molecule))
+	pad3 := strings.Repeat(" ", 9-len(gb.Fields.Topology))
+	date := strings.ToUpper(gb.Fields.Date.ToTime().Format("02-Jan-2006"))
+	locus := "LOCUS       " + gb.Fields.LocusName + pad1 + length + " bp    " +
+		gb.Fields.Molecule + pad2 + gb.Fields.Topology + pad3 + gb.Fields.Division +
+		" " + date
 
-		builder.WriteString(locus)
+	builder.WriteString(locus)
 
-		definition := AddPrefix(metadata.Definition, indent)
-		builder.WriteString("\nDEFINITION  " + definition)
-		builder.WriteString("\nACCESSION   " + metadata.Accession)
-		builder.WriteString("\nVERSION     " + metadata.Version)
+	definition := AddPrefix(gb.Fields.Definition, indent)
+	builder.WriteString("\nDEFINITION  " + definition)
+	builder.WriteString("\nACCESSION   " + gb.Fields.Accession)
+	builder.WriteString("\nVERSION     " + gb.Fields.Version)
 
-		for i, pair := range metadata.DBLink {
-			switch i {
-			case 0:
-				builder.WriteString("\nDBLINK      ")
-			default:
-				builder.WriteString("\n" + indent)
-			}
-			builder.WriteString(fmt.Sprintf("%s: %s", pair.Key, pair.Value))
+	for i, pair := range gb.Fields.DBLink {
+		switch i {
+		case 0:
+			builder.WriteString("\nDBLINK      ")
+		default:
+			builder.WriteString("\n" + indent)
 		}
-
-		keywords := wrap.Space(strings.Join(metadata.Keywords, "; ")+".", 67)
-		keywords = AddPrefix(keywords, indent)
-		builder.WriteString("\nKEYWORDS    " + keywords)
-
-		source := wrap.Space(metadata.Source.Species, 67)
-		source = AddPrefix(source, indent)
-		builder.WriteString("\nSOURCE      " + source)
-
-		organism := wrap.Space(metadata.Source.Name, 67)
-		organism = AddPrefix(organism, indent)
-		builder.WriteString("\n  ORGANISM  " + organism)
-
-		taxon := wrap.Space(strings.Join(metadata.Source.Taxon, "; ")+".", 67)
-		taxon = AddPrefix(taxon, indent)
-		builder.WriteString("\n" + indent + taxon)
-
-		for _, ref := range metadata.References {
-			builder.WriteString(fmt.Sprintf("\nREFERENCE   %-2d ", ref.Number))
-			switch len(ref.Ranges) {
-			case 0:
-				builder.WriteString("(sites)")
-			default:
-				ranges := []string{}
-				s := "bases"
-				if metadata.Molecule == "aa" {
-					s = "residues"
-				}
-				for _, rng := range ref.Ranges {
-					ranges = append(ranges, fmt.Sprintf("%s %d to %d", s, rng.Start, rng.End))
-				}
-				builder.WriteString(fmt.Sprintf("(%s)", strings.Join(ranges, "; ")))
-			}
-			if ref.Authors != "" {
-				builder.WriteString("\n  AUTHORS   " + AddPrefix(ref.Authors, indent))
-			}
-			if ref.Group != "" {
-				builder.WriteString("\n  CONSRTM   " + AddPrefix(ref.Group, indent))
-			}
-			if ref.Title != "" {
-				builder.WriteString("\n  TITLE     " + AddPrefix(ref.Title, indent))
-			}
-			if ref.Journal != "" {
-				builder.WriteString("\n  JOURNAL   " + AddPrefix(ref.Journal, indent))
-			}
-			if ref.Xref != nil {
-				if v, ok := ref.Xref["PUBMED"]; ok {
-					builder.WriteString("\n   PUBMED   " + v)
-				}
-			}
-			if ref.Comment != "" {
-				builder.WriteString("\n  REMARK    " + AddPrefix(ref.Comment, indent))
-			}
-		}
-
-		if metadata.Comment != "" {
-			builder.WriteString("\nCOMMENT     " + AddPrefix(metadata.Comment, indent))
-		}
-
-		builder.WriteString("\nFEATURES             Location/Qualifiers\n")
-
-		ff := FeatureList(gf.Rec.Filter(Any))
-		ff.Format("     ", 21).WriteTo(&builder)
-
-		builder.WriteString("\nORIGIN      ")
-
-		p := gf.Rec.Bytes()
-		for i := 0; i < len(p); i += 60 {
-			builder.WriteString(fmt.Sprintf("\n%9d ", i+1))
-			for j := 0; j < 60 && i+j < len(p); j += 10 {
-				k := i + j + 10
-				if k > len(p) {
-					k = len(p)
-				}
-				if j != 0 {
-					builder.WriteByte(' ')
-				}
-				builder.Write(p[i+j : k])
-			}
-		}
-
-		builder.WriteString("\n//\n")
-
-	default:
-		panic(fmt.Errorf("gts does not know how to format `%T` in GenBank flatfile form", metadata))
+		builder.WriteString(fmt.Sprintf("%s: %s", pair.Key, pair.Value))
 	}
+
+	keywords := wrap.Space(strings.Join(gb.Fields.Keywords, "; ")+".", 67)
+	keywords = AddPrefix(keywords, indent)
+	builder.WriteString("\nKEYWORDS    " + keywords)
+
+	source := wrap.Space(gb.Fields.Source.Species, 67)
+	source = AddPrefix(source, indent)
+	builder.WriteString("\nSOURCE      " + source)
+
+	organism := wrap.Space(gb.Fields.Source.Name, 67)
+	organism = AddPrefix(organism, indent)
+	builder.WriteString("\n  ORGANISM  " + organism)
+
+	taxon := wrap.Space(strings.Join(gb.Fields.Source.Taxon, "; ")+".", 67)
+	taxon = AddPrefix(taxon, indent)
+	builder.WriteString("\n" + indent + taxon)
+
+	for _, ref := range gb.Fields.References {
+		builder.WriteString(fmt.Sprintf("\nREFERENCE   %-2d ", ref.Number))
+		switch len(ref.Ranges) {
+		case 0:
+			builder.WriteString("(sites)")
+		default:
+			ranges := make([]string, len(ref.Ranges))
+			s := "bases"
+			if gb.Fields.Molecule == "aa" {
+				s = "residues"
+			}
+			for i, rng := range ref.Ranges {
+				ranges[i] = fmt.Sprintf("%d to %d", rng.Start, rng.End)
+			}
+			builder.WriteString(fmt.Sprintf("(%s %s)", s, strings.Join(ranges, "; ")))
+		}
+		if ref.Authors != "" {
+			builder.WriteString("\n  AUTHORS   " + AddPrefix(ref.Authors, indent))
+		}
+		if ref.Group != "" {
+			builder.WriteString("\n  CONSRTM   " + AddPrefix(ref.Group, indent))
+		}
+		if ref.Title != "" {
+			builder.WriteString("\n  TITLE     " + AddPrefix(ref.Title, indent))
+		}
+		if ref.Journal != "" {
+			builder.WriteString("\n  JOURNAL   " + AddPrefix(ref.Journal, indent))
+		}
+		if ref.Xref != nil {
+			if v, ok := ref.Xref["PUBMED"]; ok {
+				builder.WriteString("\n   PUBMED   " + v)
+			}
+		}
+		if ref.Comment != "" {
+			builder.WriteString("\n  REMARK    " + AddPrefix(ref.Comment, indent))
+		}
+	}
+
+	if gb.Fields.Comment != "" {
+		builder.WriteString("\nCOMMENT     " + AddPrefix(gb.Fields.Comment, indent))
+	}
+
+	builder.WriteString("\nFEATURES             Location/Qualifiers\n")
+
+	ff := FeatureList(gb.Filter(Any))
+	ff.Format("     ", 21).WriteTo(&builder)
+
+	builder.WriteString("\nORIGIN      ")
+
+	p := gb.Data()
+	for i := 0; i < len(p); i += 60 {
+		builder.WriteString(fmt.Sprintf("\n%9d ", i+1))
+		for j := 0; j < 60 && i+j < len(p); j += 10 {
+			k := i + j + 10
+			if k > len(p) {
+				k = len(p)
+			}
+			if j != 0 {
+				builder.WriteByte(' ')
+			}
+			builder.Write(p[i+j : k])
+		}
+	}
+
+	builder.WriteString("\n//\n")
 
 	return builder.String()
 }
 
-func (gf GenBankFormatter) WriteTo(w io.Writer) (int64, error) {
-	n, err := w.Write([]byte(gf.String()))
+// WriteTo satisfies the io.WriterTo interface.
+func (gb GenBank) WriteTo(w io.Writer) (int64, error) {
+	n, err := io.WriteString(w, gb.String())
 	return int64(n), err
+}
+
+// GenBankWriter attempts to format a record in GenBank flatfile format.
+type GenBankWriter struct {
+	seq Sequence
+}
+
+// WriteTo satisfies the io.WriterTo interface.
+func (gf GenBankWriter) WriteTo(w io.Writer) (int64, error) {
+	switch info := gf.seq.Info().(type) {
+	case GenBankFields:
+		return gf.WriteTo(w)
+	default:
+		panic(fmt.Errorf("gts does not know how to format `%T` in GenBank flatfile form", info))
+	}
 }
 
 var genbankLocusParser = pars.Seq(
@@ -581,7 +587,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				}
 			}
 
-			gb.Origin = NewSequenceServer(BasicSequence(origin))
+			gb.Origin = NewSequenceServer(Seq(origin))
 
 		default:
 			what := fmt.Sprintf("unexpected field name `%s`", name)

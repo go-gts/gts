@@ -24,7 +24,7 @@ func complementBase(b byte) byte {
 }
 
 func Complement(seq Sequence) Sequence {
-	p := seq.Bytes()
+	p := seq.Data()
 	r := make([]byte, len(p))
 	for i, b := range p {
 		r[i] = complementBase(b)

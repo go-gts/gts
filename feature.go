@@ -155,9 +155,14 @@ func (f *Feature) DecodeMsgpack(dec *msgpack.Decoder) error {
 	return f.DecodeWith(dec)
 }
 
-// Bytes satisfies the gts.Sequence interface.
-func (f Feature) Bytes() []byte {
-	return f.Location.Locate(f.proxy).Bytes()
+// Info returns the metadata of the sequence.
+func (f Feature) Info() interface{} {
+	return f.Location.Locate(f.proxy).Info()
+}
+
+// Data returns the byte representation of the sequence.
+func (f Feature) Data() []byte {
+	return f.Location.Locate(f.proxy).Data()
 }
 
 // Insert a sequence at the specified position.
