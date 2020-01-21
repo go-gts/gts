@@ -61,7 +61,6 @@ func Entry(ctx *flags.Context) error {
 	idlist := opt.StringSlice('a', "and", nil, "additional identifier(s)")
 	fields := opt.StringSlice('f', "field", nil, "name of field to extract")
 	format := opt.String('F', "format", "", "output data format")
-	nocache := opt.Switch(0, "no-cache", "do not use the local cache of the entry")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
