@@ -160,9 +160,9 @@ func (f Feature) Info() interface{} {
 	return f.Location.Locate(f.proxy).Info()
 }
 
-// Data returns the byte representation of the sequence.
-func (f Feature) Data() []byte {
-	return f.Location.Locate(f.proxy).Data()
+// Bytes returns the byte representation of the sequence.
+func (f Feature) Bytes() []byte {
+	return f.Location.Locate(f.proxy).Bytes()
 }
 
 // Insert a sequence at the specified position.

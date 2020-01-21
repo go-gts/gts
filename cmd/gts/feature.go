@@ -7,7 +7,7 @@ import (
 	"os"
 	"strings"
 
-	gts "gopkg.in/gts.v0"
+	"github.com/ktnyt/gts"
 	flags "gopkg.in/flags.v1"
 	pars "gopkg.in/pars.v2"
 )
@@ -331,7 +331,7 @@ func FeatureSeq(ctx *flags.Context) error {
 						b.WriteString(value)
 					}
 				}
-				seq := gts.New(b.String(), f.Data())
+				seq := gts.New(b.String(), f.Bytes())
 				if _, err := gts.NewSequenceWriter(seq, filetype).WriteTo(outfile); err != nil {
 					return ctx.Raise(err)
 				}

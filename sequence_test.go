@@ -30,8 +30,8 @@ func TestBareSequence(t *testing.T) {
 	if err := seq0.Insert(2, seq1); err != nil {
 		t.Errorf(
 			"Seq(%q).Insert(2, Seq(%q)): %v",
-			string(seq0.Data()),
-			string(seq1.Data()),
+			string(seq0.Bytes()),
+			string(seq1.Bytes()),
 			err,
 		)
 	}
@@ -39,8 +39,8 @@ func TestBareSequence(t *testing.T) {
 	if err := seq0.Replace(2, Complement(seq1)); err != nil {
 		t.Errorf(
 			"Seq(%q).Replace(2, Complement(Seq(%q))): %v",
-			string(seq0.Data()),
-			string(seq1.Data()),
+			string(seq0.Bytes()),
+			string(seq1.Bytes()),
 			err,
 		)
 	}
@@ -48,7 +48,7 @@ func TestBareSequence(t *testing.T) {
 	if err := seq0.Delete(2, 4); err != nil {
 		t.Errorf(
 			"Seq(%q).Delete(2, 4): %v",
-			string(seq0.Data()),
+			string(seq0.Bytes()),
 			err,
 		)
 	}
@@ -57,8 +57,8 @@ func TestBareSequence(t *testing.T) {
 	if seq0.Insert(4, seq1) == nil {
 		t.Errorf(
 			"Seq(%q).Insert(4, Seq(%q)) = nil, want error",
-			string(seq0.Data()),
-			string(seq1.Data()),
+			string(seq0.Bytes()),
+			string(seq1.Bytes()),
 		)
 	}
 	equals(t, seq0, seq1)
@@ -66,7 +66,7 @@ func TestBareSequence(t *testing.T) {
 	if seq0.Delete(4, 4) == nil {
 		t.Errorf(
 			"Seq(%q).Delete(4, 4) = nil, want error",
-			string(seq0.Data()),
+			string(seq0.Bytes()),
 		)
 	}
 	equals(t, seq0, seq1)
@@ -74,7 +74,7 @@ func TestBareSequence(t *testing.T) {
 	if seq0.Delete(1, 4) == nil {
 		t.Errorf(
 			"Seq(%q).Delete(1, 4) = nil, want error",
-			string(seq0.Data()),
+			string(seq0.Bytes()),
 		)
 	}
 	equals(t, seq0, seq1)
@@ -82,8 +82,8 @@ func TestBareSequence(t *testing.T) {
 	if seq0.Replace(4, seq1) == nil {
 		t.Errorf(
 			"Seq(%q).Replace(4, Seq(%q)) = nil, want error",
-			string(seq0.Data()),
-			string(seq1.Data()),
+			string(seq0.Bytes()),
+			string(seq1.Bytes()),
 		)
 	}
 	equals(t, seq0, seq1)
@@ -91,8 +91,8 @@ func TestBareSequence(t *testing.T) {
 	if seq0.Replace(1, seq1) == nil {
 		t.Errorf(
 			"Seq(%q).Replace(1, Seq(%q)) = nil, want error",
-			string(seq0.Data()),
-			string(seq1.Data()),
+			string(seq0.Bytes()),
+			string(seq1.Bytes()),
 		)
 	}
 	equals(t, seq0, seq1)
@@ -170,107 +170,107 @@ func TestSequenceServer(t *testing.T) {
 	if err := server.Insert(2, seq); err != nil {
 		t.Errorf(
 			"Seq(%q).Insert(2, Seq(%q)): %v",
-			string(server.Data()),
-			string(seq.Data()),
+			string(server.Bytes()),
+			string(seq.Bytes()),
 			err,
 		)
 	}
-	equals(t, server.Data(), Seq("atatgcgc").Data())
-	equals(t, proxy.Data(), Seq("atatgcgc").Data())
+	equals(t, server.Bytes(), Seq("atatgcgc").Bytes())
+	equals(t, proxy.Bytes(), Seq("atatgcgc").Bytes())
 
 	if err := server.Replace(2, Complement(seq)); err != nil {
 		t.Errorf(
 			"Seq(%q).Replace(2, Complement(Seq(%q))): %v",
-			string(server.Data()),
-			string(seq.Data()),
+			string(server.Bytes()),
+			string(seq.Bytes()),
 			err,
 		)
 	}
-	equals(t, server.Data(), Seq("attacggc").Data())
-	equals(t, proxy.Data(), Seq("attacggc").Data())
+	equals(t, server.Bytes(), Seq("attacggc").Bytes())
+	equals(t, proxy.Bytes(), Seq("attacggc").Bytes())
 
 	if err := server.Delete(2, 4); err != nil {
 		t.Errorf(
 			"Seq(%q).Delete(2, 4): %v",
-			string(server.Data()),
+			string(server.Bytes()),
 			err,
 		)
 	}
-	equals(t, server.Data(), seq.Data())
-	equals(t, proxy.Data(), seq.Data())
+	equals(t, server.Bytes(), seq.Bytes())
+	equals(t, proxy.Bytes(), seq.Bytes())
 
 	if err := proxy.Insert(2, seq); err != nil {
 		t.Errorf(
 			"Seq(%q).Insert(2, Seq(%q)): %v",
-			string(proxy.Data()),
-			string(seq.Data()),
+			string(proxy.Bytes()),
+			string(seq.Bytes()),
 			err,
 		)
 	}
-	equals(t, server.Data(), Seq("atatgcgc").Data())
-	equals(t, proxy.Data(), Seq("atatgcgc").Data())
+	equals(t, server.Bytes(), Seq("atatgcgc").Bytes())
+	equals(t, proxy.Bytes(), Seq("atatgcgc").Bytes())
 
 	if err := proxy.Replace(2, Complement(seq)); err != nil {
 		t.Errorf(
 			"Seq(%q).Replace(2, Complement(Seq(%q))): %v",
-			string(proxy.Data()),
-			string(seq.Data()),
+			string(proxy.Bytes()),
+			string(seq.Bytes()),
 			err,
 		)
 	}
-	equals(t, server.Data(), Seq("attacggc").Data())
-	equals(t, proxy.Data(), Seq("attacggc").Data())
+	equals(t, server.Bytes(), Seq("attacggc").Bytes())
+	equals(t, proxy.Bytes(), Seq("attacggc").Bytes())
 
 	if err := proxy.Delete(2, 4); err != nil {
 		t.Errorf(
 			"Seq(%q).Delete(2, 4): %v",
-			string(proxy.Data()),
+			string(proxy.Bytes()),
 			err,
 		)
 	}
-	equals(t, server.Data(), seq.Data())
-	equals(t, proxy.Data(), seq.Data())
+	equals(t, server.Bytes(), seq.Bytes())
+	equals(t, proxy.Bytes(), seq.Bytes())
 
 	if proxy.Insert(4, seq) == nil {
 		t.Errorf(
 			"Seq(%q).Insert(4, Seq(%q)) = nil, want error",
-			string(proxy.Data()),
-			string(seq.Data()),
+			string(proxy.Bytes()),
+			string(seq.Bytes()),
 		)
 	}
-	equals(t, proxy.Data(), seq.Data())
+	equals(t, proxy.Bytes(), seq.Bytes())
 
 	if proxy.Delete(4, 4) == nil {
 		t.Errorf(
 			"Seq(%q).Delete(4, 4) = nil, want error",
-			string(proxy.Data()),
+			string(proxy.Bytes()),
 		)
 	}
-	equals(t, proxy.Data(), seq.Data())
+	equals(t, proxy.Bytes(), seq.Bytes())
 
 	if proxy.Delete(1, 4) == nil {
 		t.Errorf(
 			"Seq(%q).Delete(1, 4) = nil, want error",
-			string(proxy.Data()),
+			string(proxy.Bytes()),
 		)
 	}
-	equals(t, proxy.Data(), seq.Data())
+	equals(t, proxy.Bytes(), seq.Bytes())
 
 	if proxy.Replace(4, seq) == nil {
 		t.Errorf(
 			"Seq(%q).Replace(4, Seq(%q)) = nil, want error",
-			string(proxy.Data()),
-			string(seq.Data()),
+			string(proxy.Bytes()),
+			string(seq.Bytes()),
 		)
 	}
-	equals(t, proxy.Data(), seq.Data())
+	equals(t, proxy.Bytes(), seq.Bytes())
 
 	if proxy.Replace(1, seq) == nil {
 		t.Errorf(
 			"Seq(%q).Replace(1, Seq(%q)) = nil, want error",
-			string(proxy.Data()),
-			string(seq.Data()),
+			string(proxy.Bytes()),
+			string(seq.Bytes()),
 		)
 	}
-	equals(t, proxy.Data(), seq.Data())
+	equals(t, proxy.Bytes(), seq.Bytes())
 }

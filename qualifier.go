@@ -257,7 +257,7 @@ func literalQualifierParser(prefix string) pars.Parser {
 	}
 }
 
-// QualfierParser attempts to match a single qualifier name-value pair.
+// QualifierParser attempts to match a single qualifier name-value pair.
 func QualifierParser(prefix string) pars.Parser {
 	nameParser := qualifierNameParser(prefix)
 

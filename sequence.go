@@ -19,7 +19,7 @@ func (p *mutableByteSlice) Insert(pos int, arg Sequence) error {
 	if n := Len(arg); n > 0 {
 		q := make([]byte, len(*p)+n)
 		copy(q, (*p)[:pos])
-		copy(q[pos:], arg.Data())
+		copy(q[pos:], arg.Bytes())
 		copy(q[pos+n:], (*p)[pos:])
 		*p = q
 	}
@@ -59,7 +59,7 @@ func (p *mutableByteSlice) Replace(pos int, arg Sequence) error {
 		)
 	}
 	if n := Len(arg); n > 0 {
-		copy((*p)[pos:], arg.Data())
+		copy((*p)[pos:], arg.Bytes())
 	}
 	return nil
 }
@@ -68,14 +68,14 @@ func (p *mutableByteSlice) Replace(pos int, arg Sequence) error {
 // generate a byte slice representation of itself.
 type Sequence interface {
 	Info() interface{}
-	Data() []byte
+	Bytes() []byte
 }
 
 // Len returns the length of a Sequence.
-func Len(seq Sequence) int { return len(seq.Data()) }
+func Len(seq Sequence) int { return len(seq.Bytes()) }
 
 // Equal tests if the given Sequences have equal byte slice representations.
-func Equal(a, b Sequence) bool { return bytes.Equal(a.Data(), b.Data()) }
+func Equal(a, b Sequence) bool { return bytes.Equal(a.Bytes(), b.Bytes()) }
 
 // Identical tests if the given Sequences have identical metadata values and
 // byte slice representations.
@@ -108,7 +108,7 @@ func Seq(v interface{}) *GTS {
 	case *GTS:
 		return v
 	case Sequence:
-		return New(v.Info(), v.Data())
+		return New(v.Info(), v.Bytes())
 	case []byte:
 		return New(nil, v)
 	case string:
@@ -121,8 +121,8 @@ func Seq(v interface{}) *GTS {
 // Info returns the metadata of the sequence.
 func (seq GTS) Info() interface{} { return seq.info }
 
-// Data returns the byte representation of the sequence.
-func (seq GTS) Data() []byte { return []byte(seq.data) }
+// Bytes returns the byte representation of the sequence.
+func (seq GTS) Bytes() []byte { return []byte(seq.data) }
 
 // Insert a sequence at the specified position.
 func (seq *GTS) Insert(pos int, arg Sequence) error {
@@ -141,7 +141,7 @@ func (seq *GTS) Replace(pos int, arg Sequence) error {
 
 // Slice returns a slice of the Sequnece.
 func Slice(seq Sequence, start, end int) Sequence {
-	return New(seq.Info(), seq.Data()[start:end])
+	return New(seq.Info(), seq.Bytes()[start:end])
 }
 
 type modifier interface {
@@ -214,8 +214,8 @@ func (sp SequenceProxy) Info() interface{} {
 	return <-sp.infoch
 }
 
-// Data satisfies the gts.Sequence interface.
-func (sp SequenceProxy) Data() []byte {
+// Bytes satisfies the gts.Sequence interface.
+func (sp SequenceProxy) Bytes() []byte {
 	sp.reqch <- dataRequest
 	return <-sp.datach
 }
@@ -264,7 +264,7 @@ func NewSequenceServer(seq Sequence) SequenceServer {
 		go ss.Spin()
 		return ss
 	}
-	return NewSequenceServer(New(seq.Info(), seq.Data()))
+	return NewSequenceServer(New(seq.Info(), seq.Bytes()))
 }
 
 // Spin prepares internal channels for recieving messages from the proxies
@@ -283,7 +283,7 @@ func (ss *SequenceServer) Spin() {
 				case infoRequest:
 					ss.infoch <- ss.mut.Info()
 				case dataRequest:
-					ss.datach <- ss.mut.Data()
+					ss.datach <- ss.mut.Bytes()
 				}
 			}
 		}
@@ -304,8 +304,8 @@ func (ss SequenceServer) Info() interface{} {
 	return <-ss.infoch
 }
 
-// Data satisfies the gts.Sequence interface.
-func (ss SequenceServer) Data() []byte {
+// Bytes satisfies the gts.Sequence interface.
+func (ss SequenceServer) Bytes() []byte {
 	ss.reqch <- dataRequest
 	return <-ss.datach
 }
@@ -329,7 +329,7 @@ func (ss *SequenceServer) Replace(pos int, arg Sequence) error {
 // given Sequence from position 0 separated by `slide` bytes and with length of
 // `window`.
 func Fragment(seq Sequence, window, slide int) []Sequence {
-	p := seq.Data()
+	p := seq.Bytes()
 	ret := make([]Sequence, 0)
 	for i := 0; i < len(p); i += slide {
 		j := i + window
@@ -344,7 +344,7 @@ func Fragment(seq Sequence, window, slide int) []Sequence {
 // Composition computes the occurence of each byte within the Sequence.
 func Composition(seq Sequence) map[byte]int {
 	comp := make(map[byte]int)
-	for _, b := range seq.Data() {
+	for _, b := range seq.Bytes() {
 		if _, ok := comp[b]; !ok {
 			comp[b] = 0
 		}
