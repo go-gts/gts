@@ -64,8 +64,7 @@ func (f EncoderWriter) WriteTo(w io.Writer) (int64, error) {
 	if err := enc.Encode(f.value); err != nil {
 		return 0, err
 	}
-	n, err := w.Write(b.Bytes())
-	return int64(n), err
+	return io.Copy(w, b)
 }
 
 // Decoder implement the Decode method for reading and decoding from an input

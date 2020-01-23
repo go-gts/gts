@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -9,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	flags "gopkg.in/flags.v1"
@@ -18,13 +18,36 @@ type URL = url.URL
 
 const Host = "togows.org"
 
-func get(url URL, w io.Writer) error {
+type LastByte byte
+
+func (c *LastByte) Write(p []byte) (int, error) {
+	if len(p) > 0 {
+		*c = LastByte(p[len(p)-1])
+	}
+	return len(p), nil
+}
+
+func cacheFile(url URL, open func(string) (*os.File, error)) (*os.File, bool) {
+	dir, err := os.UserCacheDir()
+	if err != nil {
+		return nil, false
+	}
+	path := filepath.Join(dir, url.Host, filepath.FromSlash(url.Path))
+	if os.MkdirAll(filepath.Dir(path), 0755) != nil {
+		return nil, false
+	}
+	f, err := open(path)
+	if err != nil {
+		return nil, false
+	}
+	return f, true
+}
+
+func download(url URL, w io.Writer) error {
 	res, err := http.Get(url.String())
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
-
 	if res.StatusCode != 200 {
 		p, err := ioutil.ReadAll(res.Body)
 		if err != nil {
@@ -32,17 +55,31 @@ func get(url URL, w io.Writer) error {
 		}
 		return fmt.Errorf("%s\n%s", res.Status, string(p))
 	}
-
-	_, err = bufio.NewReader(res.Body).WriteTo(w)
+	if f, ok := cacheFile(url, os.Create); ok {
+		defer f.Close()
+		w = io.MultiWriter(w, f)
+	}
+	lb := new(LastByte)
+	w = io.MultiWriter(w, lb)
+	_, err = io.Copy(w, res.Body)
+	if err != nil {
+		return err
+	}
+	if *lb != '\n' {
+		_, err = io.WriteString(w, "\n")
+	}
 	return err
 }
 
-func getNewline(url URL, w io.Writer) error {
-	if err := get(url, w); err != nil {
-		return err
+func call(url URL, w io.Writer, cache bool) error {
+	if cache {
+		if f, ok := cacheFile(url, os.Open); ok {
+			defer f.Close()
+			_, err := io.Copy(w, f)
+			return err
+		}
 	}
-	_, err := w.Write([]byte{'\n'})
-	return err
+	return download(url, w)
 }
 
 func init() {
@@ -61,6 +98,7 @@ func Entry(ctx *flags.Context) error {
 	idlist := opt.StringSlice('a', "and", nil, "additional identifier(s)")
 	fields := opt.StringSlice('f', "field", nil, "name of field to extract")
 	format := opt.String('F', "format", "", "output data format")
+	nocache := opt.Switch(0, "no-cache", "do not use local cache")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -81,7 +119,7 @@ func Entry(ctx *flags.Context) error {
 		url.Path += "." + *format
 	}
 
-	return ctx.Raise(get(url, outfile))
+	return ctx.Raise(call(url, outfile, !*nocache))
 }
 
 func Search(ctx *flags.Context) error {
@@ -95,6 +133,7 @@ func Search(ctx *flags.Context) error {
 	limit := opt.Int('n', "limit", 100, "pagination result limit")
 	count := opt.Switch('c', "count", "report the number of total search results")
 	format := opt.String('F', "format", "", "output data format")
+	nocache := opt.Switch(0, "no-cache", "do not use local cache")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -120,7 +159,7 @@ func Search(ctx *flags.Context) error {
 		}
 	}
 
-	return ctx.Raise(getNewline(url, outfile))
+	return ctx.Raise(call(url, outfile, !*nocache))
 }
 
 func ListDB(ctx *flags.Context) error {
@@ -129,6 +168,7 @@ func ListDB(ctx *flags.Context) error {
 	tool := pos.String("tool", "TogoWS tool name (entry or search)")
 	outfile := pos.Output("output file")
 	format := opt.String('F', "format", "", "output data format")
+	nocache := opt.Switch(0, "no-cache", "do not use local cache")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -144,7 +184,7 @@ func ListDB(ctx *flags.Context) error {
 		url.Path += "." + *format
 	}
 
-	return ctx.Raise(getNewline(url, outfile))
+	return ctx.Raise(call(url, outfile, !*nocache))
 }
 
 func main() {
