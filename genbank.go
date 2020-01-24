@@ -138,8 +138,9 @@ func (gb GenBank) Info() interface{} { return gb.Fields }
 func (gb GenBank) Bytes() []byte { return gb.Origin.Bytes() }
 
 // Filter the features in the list matching the selector criteria.
-func (gb GenBank) Filter(ss ...FeatureFilter) []Feature {
-	return gb.Features.Filter(ss...)
+func (gb GenBank) Filter(ss ...Filter) []Feature {
+	filter := Key("source").Or(And(ss...))
+	return gb.Features.Filter(filter)
 }
 
 // Add a feature to the GenBank record.

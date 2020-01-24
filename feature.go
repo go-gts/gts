@@ -16,9 +16,9 @@ import (
 // FeatureIO represents a temporary object for reading and writing a Feature
 // struct using various serialization libraries.
 type FeatureIO struct {
-	Key        string      `json:"key" yaml:"key" msgpack:"key"`
-	Location   string      `json:"location" yaml:"location" msgpack:"location"`
-	Qualifiers []Qualifier `json:"qualifiers,omitempty" yaml:"qualifiers,omitempty" msgpack:"qualifiers,omitempty"`
+	Key        string        `json:"key" yaml:"key" msgpack:"key"`
+	Location   string        `json:"location" yaml:"location" msgpack:"location"`
+	Qualifiers []QualifierIO `json:"qualifiers,omitempty" yaml:"qualifiers,omitempty" msgpack:"qualifiers,omitempty"`
 }
 
 // NewFeatureIO creates a new FeatureIO object.
@@ -68,7 +68,7 @@ func NewFeature(key string, loc Location, qfs Values) Feature {
 	}
 }
 
-func listQualifiers(f Feature) []Qualifier {
+func listQualifiers(f Feature) []QualifierIO {
 	ordered := make([]string, len(f.order))
 	remains := []string{}
 
@@ -100,11 +100,11 @@ func listQualifiers(f Feature) []Qualifier {
 		names = append(names, "translation")
 	}
 
-	qfs := make([]Qualifier, 0, len(names))
+	qfs := make([]QualifierIO, 0, len(names))
 
 	for _, name := range names {
 		for _, value := range f.Qualifiers[name] {
-			qfs = append(qfs, Qualifier{name, value})
+			qfs = append(qfs, QualifierIO{name, value})
 		}
 	}
 
@@ -259,7 +259,7 @@ func (ff ByLocation) Swap(i, j int) {
 
 // FeatureTable represents a feature table.
 type FeatureTable interface {
-	Filter(ss ...FeatureFilter) []Feature
+	Filter(ss ...Filter) []Feature
 	Add(f Feature)
 }
 
@@ -274,7 +274,7 @@ func (ff FeatureList) Format(prefix string, depth int) FeatureListFormatter {
 }
 
 // Filter the features in the list matching the selector criteria.
-func (ff FeatureList) Filter(ss ...FeatureFilter) []Feature {
+func (ff FeatureList) Filter(ss ...Filter) []Feature {
 	sel := And(ss...)
 	idx, n := make([]int, len(ff)), 0
 	for i, f := range ff {
@@ -343,7 +343,7 @@ func (ff FeatureListFormatter) String() string {
 
 // WriteTo satisfies the io.WriterTo interface.
 func (ff FeatureListFormatter) WriteTo(w io.Writer) (int64, error) {
-  n, err := io.WriteString(w, ff.String())
+	n, err := io.WriteString(w, ff.String())
 	return int64(n), err
 }
 
@@ -427,7 +427,7 @@ func FeatureListParser(prefix string) pars.Parser {
 		order := make(map[string]int)
 
 		for _, child := range result.Children {
-			name, value := child.Value.(Qualifier).Unpack()
+			name, value := child.Value.(QualifierIO).Unpack()
 			qfs.Add(name, value)
 			if _, ok := order[name]; name != "translation" && !ok {
 				order[name] = len(order)
@@ -452,7 +452,7 @@ func FeatureListParser(prefix string) pars.Parser {
 			order := make(map[string]int)
 
 			for _, child := range result.Children {
-				name, value := child.Value.(Qualifier).Unpack()
+				name, value := child.Value.(QualifierIO).Unpack()
 				qfs.Add(name, value)
 				if _, ok := order[name]; name != "translation" && !ok {
 					order[name] = len(order)

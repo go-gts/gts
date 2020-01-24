@@ -26,7 +26,7 @@ func TestQualifierIO(t *testing.T) {
 			return
 		}
 		switch q := result.Value.(type) {
-		case Qualifier:
+		case QualifierIO:
 			b := strings.Builder{}
 			n, err := q.Format(prefix).WriteTo(&b)
 			if err != nil {
@@ -37,7 +37,7 @@ func TestQualifierIO(t *testing.T) {
 				t.Errorf("q.Format(%q) = %q, want %q", prefix, out, in)
 			}
 		default:
-			t.Errorf("result.Value.(type) = %T, want %T", q, Qualifier{})
+			t.Errorf("result.Value.(type) = %T, want %T", q, QualifierIO{})
 		}
 	}
 
@@ -52,10 +52,10 @@ func TestQualifierIO(t *testing.T) {
 }
 
 func TestQualifierEncoding(t *testing.T) {
-	in := &Qualifier{"foo", "bar"}
+	in := &QualifierIO{"foo", "bar"}
 
 	t.Run("JSON", func(t *testing.T) {
-		out := &Qualifier{}
+		out := &QualifierIO{}
 		rw := &bytes.Buffer{}
 		enc := json.NewEncoder(rw)
 		if err := enc.Encode(in); err != nil {
@@ -75,7 +75,7 @@ func TestQualifierEncoding(t *testing.T) {
 	})
 
 	t.Run("YAML", func(t *testing.T) {
-		out := &Qualifier{}
+		out := &QualifierIO{}
 		rw := &bytes.Buffer{}
 		enc := yaml.NewEncoder(rw)
 		if err := enc.Encode(in); err != nil {
@@ -95,7 +95,7 @@ func TestQualifierEncoding(t *testing.T) {
 	})
 
 	t.Run("MsgPack", func(t *testing.T) {
-		out := &Qualifier{}
+		out := &QualifierIO{}
 		rw := &bytes.Buffer{}
 		enc := msgpack.NewEncoder(rw)
 		if err := enc.Encode(in); err != nil {

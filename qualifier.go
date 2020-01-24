@@ -11,16 +11,16 @@ import (
 	pars "gopkg.in/pars.v2"
 )
 
-// Qualifier represents a single qualifier name-value pair.
-type Qualifier [2]string
+// QualifierIO represents a single qualifier name-value pair.
+type QualifierIO [2]string
 
-// Unpack returns the name and value strings of the Qualifier.
-func (q Qualifier) Unpack() (string, string) {
+// Unpack returns the name and value strings of the QualifierIO.
+func (q QualifierIO) Unpack() (string, string) {
 	return q[0], q[1]
 }
 
 // String satisfies the fmt.Stringer interface.
-func (q Qualifier) String() string {
+func (q QualifierIO) String() string {
 	name, value := q.Unpack()
 	switch GetQualifierType(name) {
 	case QuotedQualifier:
@@ -36,13 +36,13 @@ func (q Qualifier) String() string {
 
 // Format creates a QualifierFormatter object for the qualifier with the given
 // prefix.
-func (q Qualifier) Format(prefix string) QualifierFormatter {
+func (q QualifierIO) Format(prefix string) QualifierFormatter {
 	return QualifierFormatter{q, prefix}
 }
 
-// QualifierFormatter formats a Qualifier object with the given prefix.
+// QualifierFormatter formats a QualifierIO object with the given prefix.
 type QualifierFormatter struct {
-	Qualifier Qualifier
+	Qualifier QualifierIO
 	Prefix    string
 }
 
@@ -293,7 +293,7 @@ func QualifierParser(prefix string) pars.Parser {
 		}
 
 		value := string(result.Token)
-		result.SetValue(Qualifier{name, value})
+		result.SetValue(QualifierIO{name, value})
 		return nil
 	}
 }

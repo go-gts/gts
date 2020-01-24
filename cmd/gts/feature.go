@@ -7,14 +7,14 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ktnyt/gts"
 	flags "gopkg.in/flags.v1"
+	gts "gopkg.in/gts.v0"
 	pars "gopkg.in/pars.v2"
 )
 
 func init() {
 	flags.Add("clear", "remove all features (excluding sources)", FeatureClear)
-	flags.Add("select", "select features by feature keys", FeatureFilter)
+	flags.Add("select", "select features by feature keys", FeatureSelect)
 	flags.Add("merge", "merge features from other file(s)", FeatureMerge)
 	flags.Add("extract", "extract qualifier value(s) from the given record", FeatureExtract)
 	flags.Add("view", "view the input record as the specified format", FeatureView)
@@ -63,15 +63,14 @@ func FeatureClear(ctx *flags.Context) error {
 	return nil
 }
 
-func FeatureFilter(ctx *flags.Context) error {
+func FeatureSelect(ctx *flags.Context) error {
 	pos, opt := flags.Args()
 
 	infile := pos.Input("input record file")
 	outfile := pos.Output("output record file")
-	mainKey := pos.String("key", "feature key to select")
+	selector := pos.String("selector", "feature selector")
 
 	invert := opt.Switch('v', "invert-match", "select feature that do not match the given criteria")
-	extraKeys := opt.StringSlice(0, "and", nil, "additional feature key(s) to select")
 	format := opt.String('F', "format", "default", "output file format")
 
 	if err := ctx.Parse(pos, opt); err != nil {
@@ -81,26 +80,21 @@ func FeatureFilter(ctx *flags.Context) error {
 	defer infile.Close()
 	defer outfile.Close()
 
+	filter := gts.ParseSelector(*selector)
+	if *invert {
+		filter = gts.Not(filter)
+	}
+
 	filetype := gts.Detect(outfile.Name())
 	if filetype == gts.UnknownFile {
 		filetype = gts.ToFileType(*format)
-	}
-
-	keys := append([]string{"source", *mainKey}, (*extraKeys)...)
-	ss := make([]gts.FeatureFilter, len(keys))
-	for i, key := range keys {
-		ss[i] = gts.Key(key)
-	}
-	sel := gts.Or(ss...)
-	if *invert {
-		sel = gts.Not(sel)
 	}
 
 	scanner := gts.NewRecordFileScanner(infile)
 
 	for scanner.Scan() {
 		in := scanner.Record()
-		ff := in.Filter(sel)
+		ff := in.Filter(filter)
 		out := gts.NewRecord(in, ff)
 		if _, err := gts.NewRecordWriter(out, filetype).WriteTo(outfile); err != nil {
 			return ctx.Raise(err)
@@ -187,7 +181,7 @@ func FeatureExtract(ctx *flags.Context) error {
 	format := opt.String('F', "format", "default", "output file format")
 
 	if err := ctx.Parse(pos, opt); err != nil {
-		return ctx.Raise(err)
+		return err
 	}
 
 	defer infile.Close()
