@@ -91,14 +91,18 @@ var locationShiftTests = []struct {
 	{Point(1), Point(0), 0, -1},
 
 	{Range(0, 2), Range(1, 3), 0, 1},
-	{Range(0, 2), Point(0), 0, -1},
+	// DISCUSS: should a complete, one base range be reduced to a Point?
+	// {Range(0, 2), Point(0), 0, -1},
+	{Range(0, 2), Range(0, 1), 0, -1},
 	{Range(0, 2), Between(0), 0, -2},
 	{Range(1, 3), Range(0, 2), 0, -1},
 	{Range(0, 2), Range(0, 2), 2, 1},
 	{Range(0, 2), Range(0, 2), 2, -1},
 
 	{Join(Range(0, 2), Range(3, 5)), Join(Range(1, 3), Range(4, 6)), 0, 1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Point(0), Range(2, 4)), 0, -1},
+	// DISCUSS: should a complete, one base range be reduced to a Point?
+	// {Join(Range(0, 2), Range(3, 5)), Join(Point(0), Range(2, 4)), 0, -1},
+	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 1), Range(2, 4)), 0, -1},
 	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(4, 6)), 2, 1},
 	{Join(Range(0, 2), Range(3, 5)), Range(0, 4), 2, -1},
 	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), 5, 1},
@@ -112,7 +116,9 @@ var locationShiftTests = []struct {
 	{Ambiguous{0, 2}, Ambiguous{0, 2}, 2, -1},
 
 	{Order(Range(0, 2), Range(3, 5)), Order(Range(1, 3), Range(4, 6)), 0, 1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Point(0), Range(2, 4)), 0, -1},
+	// DISCUSS: should a complete, one base range be reduced to a Point?
+	// {Order(Range(0, 2), Range(3, 5)), Order(Point(0), Range(2, 4)), 0, -1},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 1), Range(2, 4)), 0, -1},
 	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(4, 6)), 2, 1},
 	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(2, 4)), 2, -1},
 	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), 5, 1},
@@ -154,11 +160,187 @@ func TestLocationShift(t *testing.T) {
 	}
 }
 
+type NullLocation int
+
+func (null NullLocation) String() string {
+	return "nil"
+}
+
+func (null NullLocation) Len() int {
+	return 0
+}
+
+func (null NullLocation) Shift(i, j int) Location {
+	return null
+}
+
+func (null NullLocation) Less(loc Location) bool {
+	return false
+}
+
+var locationLessTests = []struct {
+	loc  Location
+	pass []Location
+	fail []Location
+}{
+	{
+		Between(1),
+		[]Location{
+			Between(2),
+			Point(1),
+			Range(1, 3),
+			Join(Range(1, 3), Range(4, 6)),
+			Ambiguous{1, 3},
+			Order(Range(1, 3), Range(4, 6)),
+			NullLocation(0),
+		},
+		[]Location{
+			Between(1),
+			Point(0),
+			Range(0, 2),
+			Join(Range(0, 2), Range(3, 5)),
+			Ambiguous{0, 2},
+			Order(Range(0, 2), Range(3, 5)),
+		},
+	},
+	{
+		Point(0),
+		[]Location{
+			Between(1),
+			Point(1),
+			Range(1, 3),
+			Join(Range(1, 3), Range(4, 6)),
+			Ambiguous{1, 3},
+			Order(Range(1, 3), Range(4, 6)),
+			NullLocation(0),
+		},
+		[]Location{
+			Between(0),
+			Point(0),
+			Range(0, 2),
+			Join(Range(0, 2), Range(3, 5)),
+			Ambiguous{0, 2},
+			Order(Range(0, 2), Range(3, 5)),
+		},
+	},
+	{
+		Range(1, 3),
+		[]Location{
+			Between(2),
+			Point(1),
+			Range(2, 3),
+			Range(1, 4),
+			Join(Range(2, 4), Range(5, 7)),
+			Ambiguous{2, 3},
+			Ambiguous{1, 4},
+			Order(Range(2, 4), Range(5, 7)),
+			NullLocation(0),
+		},
+		[]Location{
+			Between(1),
+			Point(0),
+			Range(0, 3),
+			Range(1, 2),
+			Range(1, 3),
+			Join(Range(1, 3), Range(4, 6)),
+			Ambiguous{0, 3},
+			Ambiguous{1, 2},
+			Ambiguous{1, 3},
+			Order(Range(1, 3), Range(4, 6)),
+		},
+	},
+	{PartialRange(1, 3, Partial5), []Location{Range(1, 3), Ambiguous{1, 3}}, nil},
+	{PartialRange(1, 3, Partial3), nil, []Location{Range(1, 3), Ambiguous{1, 3}}},
+	{Range(1, 3), nil, []Location{PartialRange(1, 3, Partial5)}},
+	{Range(1, 3), []Location{PartialRange(1, 3, Partial3)}, nil},
+	{
+		Join(Range(0, 2), Range(3, 5)),
+		[]Location{Join(Range(1, 2), Range(3, 5))},
+		[]Location{Join(Range(0, 2), Range(3, 5))},
+	},
+	{
+		Ambiguous{1, 3},
+		[]Location{
+			Between(2),
+			Point(1),
+			Range(2, 3),
+			Range(1, 4),
+			PartialRange(1, 3, Partial3),
+			Join(Range(2, 4), Range(5, 7)),
+			Ambiguous{2, 3},
+			Ambiguous{1, 4},
+			Order(Range(2, 4), Range(5, 7)),
+			NullLocation(0),
+		},
+		[]Location{
+			Between(1),
+			Point(0),
+			Range(0, 3),
+			PartialRange(1, 3, Partial5),
+			Range(1, 2),
+			Range(1, 3),
+			Join(Range(1, 3), Range(4, 6)),
+			Ambiguous{0, 3},
+			Ambiguous{1, 3},
+			Order(Range(1, 3), Range(4, 6)),
+		},
+	},
+	{
+		Order(Range(0, 2), Range(3, 5)),
+		[]Location{Order(Range(1, 2), Range(3, 5))},
+		[]Location{Order(Range(0, 2), Range(3, 5))},
+	},
+}
+
+func locationLessPassTest(t *testing.T, lhs, rhs Location) {
+	if !lhs.Less(rhs) {
+		t.Errorf("expected %s < %s", locRep(lhs), locRep(rhs))
+	}
+	if l, ok := lhs.(Locatable); ok {
+		if _, ok := l.(Complemented); !ok {
+			locationLessPassTest(t, l.Complement(), rhs)
+		}
+	}
+	if r, ok := rhs.(Locatable); ok {
+		if _, ok := r.(Complemented); !ok {
+			locationLessPassTest(t, lhs, r.Complement())
+		}
+	}
+}
+
+func locationLessFailTest(t *testing.T, lhs, rhs Location) {
+	if lhs.Less(rhs) {
+		t.Errorf("expected %s >= %s", locRep(lhs), locRep(rhs))
+	}
+	if l, ok := lhs.(Locatable); ok {
+		if _, ok := l.(Complemented); !ok {
+			locationLessFailTest(t, l.Complement(), rhs)
+		}
+	}
+	if r, ok := rhs.(Locatable); ok {
+		if _, ok := r.(Complemented); !ok {
+			locationLessFailTest(t, lhs, r.Complement())
+		}
+	}
+}
+
+func TestLocationLess(t *testing.T) {
+	for _, tt := range locationLessTests {
+		for _, loc := range tt.pass {
+			locationLessPassTest(t, tt.loc, loc)
+		}
+		for _, loc := range tt.fail {
+			locationLessFailTest(t, tt.loc, loc)
+		}
+	}
+}
+
 var locationReductionTests = []struct {
 	in  Location
 	out Location
 }{
-	{Range(0, 1), Point(0)},
+	// DISCUSS: should a complete, one base range be reduced to a Point?
+	// {Range(0, 1), Point(0)},
 	{Join(Point(0), Point(0)), Point(0)},
 	{Join(Point(0), Range(0, 2)), Range(0, 2)},
 	{Join(Range(0, 2), Point(2)), Range(0, 2)},

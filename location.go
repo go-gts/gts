@@ -16,6 +16,7 @@ type Location interface {
 	fmt.Stringer
 	Len() int
 	Shift(i, n int) Location
+	Less(loc Location) bool
 }
 
 // Locatable represents a location that can locate a region within a sequence.
@@ -84,6 +85,38 @@ func (between Between) Shift(i, n int) Location {
 	return Between(shift(int(between), i, n, false))
 }
 
+// Less returns true if the location is less than the given location.
+func (between Between) Less(loc Location) bool {
+	switch v := loc.(type) {
+	case Between:
+		return int(between) < int(v)
+	case Point:
+		return int(between) <= int(v)
+	case Ranged:
+		return int(between) <= v.Start
+	case Complemented:
+		return between.Less(v[0])
+	case Joined:
+		for _, u := range v {
+			if !between.Less(u) {
+				return false
+			}
+		}
+		return true
+	case Ambiguous:
+		return int(between) <= v[0]
+	case Ordered:
+		for _, u := range v {
+			if !between.Less(u) {
+				return false
+			}
+		}
+		return true
+	default:
+		return true
+	}
+}
+
 // Complement returns the complement location.
 func (between Between) Complement() Locatable {
 	return Complemented{between}
@@ -148,6 +181,43 @@ func (point Point) Shift(i, n int) Location {
 	return Point(shift(pos, i, n, true))
 }
 
+// Less returns true if the location is less than the given location.
+func (point Point) Less(loc Location) bool {
+	switch v := loc.(type) {
+	case Between:
+		return int(point) < int(v)
+	case Point:
+		return int(point) < int(v)
+	case Ranged:
+		switch {
+		case int(point) < v.Start:
+			return true
+		default:
+			return false
+		}
+	case Complemented:
+		return point.Less(v[0])
+	case Joined:
+		for _, u := range v {
+			if !point.Less(u) {
+				return false
+			}
+		}
+		return true
+	case Ambiguous:
+		return int(point) < v[0]
+	case Ordered:
+		for _, u := range v {
+			if !point.Less(u) {
+				return false
+			}
+		}
+		return true
+	default:
+		return true
+	}
+}
+
 // Complement returns the complement location.
 func (point Point) Complement() Locatable {
 	return Complemented{point}
@@ -191,9 +261,11 @@ func PartialRange(start, end int, partial Partial) Locatable {
 	if end <= start {
 		panic(fmt.Errorf("Ranged bounds out of range [%d:%d]", start, end))
 	}
+	/* DISCUSS: should a complete, one base range be reduced to a Point?
 	if partial == Complete && start+1 == end {
 		return Point(start)
 	}
+	*/
 	return Ranged{start, end, partial}
 }
 
@@ -229,6 +301,72 @@ func (ranged Ranged) Shift(i, n int) Location {
 	}
 	start, end := shift(ranged.Start, i, n, true), shift(ranged.End, i, n, false)
 	return PartialRange(start, end, ranged.Partial)
+}
+
+// Less returns true if the location is less than the given location.
+func (ranged Ranged) Less(loc Location) bool {
+	switch v := loc.(type) {
+	case Between:
+		return ranged.Start < int(v)
+	case Point:
+		return ranged.Start <= int(v)
+	case Ranged:
+		switch {
+		case ranged.Start < v.Start:
+			return true
+		case v.Start < ranged.Start:
+			return false
+		case ranged.Partial[0] && !v.Partial[0]:
+			return true
+		case !ranged.Partial[0] && v.Partial[0]:
+			return false
+		case ranged.End < v.End:
+			return true
+		case v.End < ranged.End:
+			return false
+		case !ranged.Partial[1] && v.Partial[1]:
+			return true
+		case ranged.Partial[1] && !v.Partial[1]:
+			return false
+		default:
+			return false
+		}
+	case Complemented:
+		return ranged.Less(v[0])
+	case Joined:
+		for _, u := range v {
+			if !ranged.Less(u) {
+				return false
+			}
+		}
+		return true
+	case Ambiguous:
+		switch {
+		case ranged.Start < v[0]:
+			return true
+		case v[0] < ranged.Start:
+			return false
+		case ranged.Partial[0]:
+			return true
+		case ranged.End < v[1]:
+			return true
+		case v[1] < ranged.End:
+			return false
+		case ranged.Partial[1]:
+			return false
+		default:
+			return false
+		}
+	case Ordered:
+		for _, u := range v {
+			if !ranged.Less(u) {
+				return false
+			}
+		}
+		return true
+	default:
+		return true
+	}
 }
 
 // Complement returns the complement location.
@@ -308,6 +446,11 @@ func (complement Complemented) Len() int {
 // Shift the location beyond the given position i by n.
 func (complement Complemented) Shift(i, n int) Location {
 	return Complemented{complement[0].Shift(i, n).(Locatable)}
+}
+
+// Less returns true if the location is less than the given location.
+func (complement Complemented) Less(loc Location) bool {
+	return complement[0].Less(loc)
 }
 
 // Complement returns the complement location.
@@ -493,6 +636,16 @@ func (joined Joined) Shift(i, n int) Location {
 	return Join(locs...)
 }
 
+// Less returns true if the location is less than the given location.
+func (joined Joined) Less(loc Location) bool {
+	for _, v := range joined {
+		if v.Less(loc) {
+			return true
+		}
+	}
+	return false
+}
+
 // Complement returns the complement location.
 func (joined Joined) Complement() Locatable {
 	return Complemented{joined}
@@ -604,6 +757,62 @@ func (ambiguous Ambiguous) Shift(i, n int) Location {
 	}
 }
 
+// Less returns true if the location is less than the given location.
+func (ambiguous Ambiguous) Less(loc Location) bool {
+	switch v := loc.(type) {
+	case Between:
+		return ambiguous[0] < int(v)
+	case Point:
+		return ambiguous[0] <= int(v)
+	case Ranged:
+		switch {
+		case ambiguous[0] < v.Start:
+			return true
+		case v.Start < ambiguous[0]:
+			return false
+		case v.Partial[0]:
+			return false
+		case ambiguous[1] < v.End:
+			return true
+		case v.End < ambiguous[1]:
+			return false
+		case v.Partial[1]:
+			return true
+		default:
+			return false
+		}
+	case Complemented:
+		return ambiguous.Less(v[0])
+	case Joined:
+		for _, u := range v {
+			if !ambiguous.Less(u) {
+				return false
+			}
+		}
+		return true
+	case Ambiguous:
+		switch {
+		case ambiguous[0] < v[0]:
+			return true
+		case v[0] < ambiguous[0]:
+			return false
+		case ambiguous[1] < v[1]:
+			return true
+		default:
+			return false
+		}
+	case Ordered:
+		for _, u := range v {
+			if !ambiguous.Less(u) {
+				return false
+			}
+		}
+		return true
+	default:
+		return true
+	}
+}
+
 // AmbiguousParser attempts to parse a Ambiguous location.
 func AmbiguousParser(state *pars.State, result *pars.Result) error {
 	state.Push()
@@ -688,6 +897,16 @@ func (ordered Ordered) Shift(i, n int) Location {
 		locs[j] = loc.Shift(i, n)
 	}
 	return Order(locs...)
+}
+
+// Less returns true if the location is less than the given location.
+func (ordered Ordered) Less(loc Location) bool {
+	for _, v := range ordered {
+		if v.Less(loc) {
+			return true
+		}
+	}
+	return false
 }
 
 func multipleLocationParser(state *pars.State, result *pars.Result) error {
