@@ -221,7 +221,7 @@ func TestLocatable(t *testing.T) {
 	}
 }
 
-var locationParserSuccessTests = []struct {
+var locationParserPassTests = []struct {
 	prs pars.Parser
 	loc Location
 }{
@@ -239,7 +239,7 @@ var locationParserSuccessTests = []struct {
 	{OrderParser, Order(Range(0, 2), Range(2, 4))},
 }
 
-var locationParserFailureTests = []struct {
+var locationParserFailTests = []struct {
 	prs pars.Parser
 	in  string
 }{
@@ -287,7 +287,7 @@ var locationParserFailureTests = []struct {
 }
 
 func TestLocationParsers(t *testing.T) {
-	for _, tt := range locationParserSuccessTests {
+	for _, tt := range locationParserPassTests {
 		prs := pars.Exact(tt.prs)
 		in := tt.loc.String()
 		res, err := prs.Parse(pars.FromString(in))
@@ -305,7 +305,7 @@ func TestLocationParsers(t *testing.T) {
 		}
 	}
 
-	for _, tt := range locationParserFailureTests {
+	for _, tt := range locationParserFailTests {
 		prs := pars.Exact(tt.prs)
 		_, err := prs.Parse(pars.FromString(tt.in))
 		if err == nil {
