@@ -185,7 +185,7 @@ func (f Feature) Replace(pos int, seq Sequence) error {
 func (f Feature) Translation() Sequence {
 	if values := f.Qualifiers.Get("translation"); len(values) != 0 {
 		s := values[0]
-		return Seq(strings.ReplaceAll(s, "\n", ""))
+		return Seq(strings.Replace(s, "\n", "", -1))
 	}
 	return nil
 }

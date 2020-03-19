@@ -39,7 +39,7 @@ func TestFeatureIO(t *testing.T) {
 			switch f.Key {
 			case "CDS":
 				s := f.Qualifiers.Get("translation")[0]
-				seq := Seq(strings.ReplaceAll(s, "\n", ""))
+				seq := Seq(strings.Replace(s, "\n", "", -1))
 				out := f.Translation()
 				equals(t, out, seq)
 			default:

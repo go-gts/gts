@@ -49,7 +49,7 @@ type QualifierFormatter struct {
 // String satisfies the fmt.Stringer interface.
 func (qf QualifierFormatter) String() string {
 	s := qf.Qualifier.String()
-	return qf.Prefix + strings.ReplaceAll(s, "\n", "\n"+qf.Prefix)
+	return qf.Prefix + strings.Replace(s, "\n", "\n"+qf.Prefix, -1)
 }
 
 // WriteTo satisfies the io.WriterTo interface.
