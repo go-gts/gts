@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	flags "gopkg.in/flags.v1"
+	gts "gopkg.in/gts.v0"
 )
 
 type URL = url.URL
@@ -28,7 +29,7 @@ func (c *LastByte) Write(p []byte) (int, error) {
 }
 
 func cacheFile(url URL, open func(string) (*os.File, error)) (*os.File, bool) {
-	dir, err := os.UserCacheDir()
+	dir, err := gts.UserCacheDir()
 	if err != nil {
 		return nil, false
 	}
