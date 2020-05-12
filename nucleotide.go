@@ -11,7 +11,7 @@ func Complement(seq Sequence) Sequence {
 		[]byte("ACGTURYKMBDHVacgturykmbdhv"),
 		[]byte("TGCAAYRMKVHDBtgcaayrmkvhdb"),
 	)
-	return New(seq.Info(), p)
+	return New(seq.Info(), nil, p)
 }
 
 // Transcribe returns the complement RNA sequence based on the FASTA sequence
@@ -23,5 +23,5 @@ func Transcribe(seq Sequence) Sequence {
 		[]byte("ACGTURYKMBDHVacgturykmbdhv"),
 		[]byte("UGCAAYRMKVHDBugcaayrmkvhdb"),
 	)
-	return New(seq.Info(), p)
+	return New(seq.Info(), nil, p)
 }

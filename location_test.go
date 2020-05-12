@@ -359,14 +359,14 @@ var locatableTests = []struct {
 	in  Locatable
 	out Sequence
 }{
-	{Between(0), New(nil, []byte(""))},
-	{Point(0), New(nil, []byte("a"))},
-	{Range(0, 2), New(nil, []byte("at"))},
-	{Join(Range(0, 2), Range(3, 5)), New(nil, []byte("atca"))},
+	{Between(0), New(nil, nil, []byte(""))},
+	{Point(0), New(nil, nil, []byte("a"))},
+	{Range(0, 2), New(nil, nil, []byte("at"))},
+	{Join(Range(0, 2), Range(3, 5)), New(nil, nil, []byte("atca"))},
 }
 
 func TestLocatable(t *testing.T) {
-	seq := New(nil, []byte("atgcatgc"))
+	seq := New(nil, nil, []byte("atgcatgc"))
 	for _, tt := range locatableTests {
 		out := tt.in.Locate(seq)
 		exp := tt.out
@@ -559,7 +559,6 @@ func TestLocationParser(t *testing.T) {
 		if !ok {
 			t.Errorf("parsed result is of type `%T`, want Location", res.Value)
 			return
-			continue
 		}
 		if !reflect.DeepEqual(out, tt.out) {
 			t.Errorf("parsed %q: expected %s, got %s", tt.in, locRep(tt.out), locRep(out))

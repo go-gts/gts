@@ -19,6 +19,7 @@ const (
 // able to return its metadata and byte representation.
 type Sequence interface {
 	Info() interface{}
+	Features() FeatureTable
 	Bytes() []byte
 }
 
@@ -32,33 +33,39 @@ func Equal(a, b Sequence) bool {
 	return reflect.DeepEqual(a.Info(), b.Info()) && bytes.Equal(a.Bytes(), b.Bytes())
 }
 
-// GTS represents the most basic Sequence object.
-type GTS struct {
-	info interface{}
-	data []byte
+// BasicSequence represents the most basic Sequence object.
+type BasicSequence struct {
+	info  interface{}
+	table FeatureTable
+	data  []byte
 }
 
 // New returns a new GTS object with the given metadata and bytes.
-func New(info interface{}, p []byte) GTS {
-	return GTS{info, p}
+func New(info interface{}, table FeatureTable, p []byte) BasicSequence {
+	return BasicSequence{info, table, p}
 }
 
 // Info returns the metadata of the sequence.
-func (gts GTS) Info() interface{} {
-	return gts.info
+func (seq BasicSequence) Info() interface{} {
+	return seq.info
+}
+
+// Features returns the feature table of the sequence.
+func (seq BasicSequence) Features() FeatureTable {
+	return seq.table
 }
 
 // Bytes returns the byte representation of the sequence.
-func (gts GTS) Bytes() []byte {
-	return gts.data
+func (seq BasicSequence) Bytes() []byte {
+	return seq.data
 }
 
 // Slice returns a subsequence of the given sequence starting at start and up
 // to end. The target sequence region is copied.
-func Slice(seq Sequence, start, end int) GTS {
+func Slice(seq Sequence, start, end int) BasicSequence {
 	p := make([]byte, end-start)
 	copy(p, seq.Bytes()[start:end])
-	return New(seq.Info(), p)
+	return New(seq.Info(), seq.Features(), p)
 }
 
 // Reverse returns a Sequence object with the byte representation in the
@@ -69,5 +76,5 @@ func Reverse(seq Sequence) Sequence {
 	for l, r := 0, len(p)-1; l < r; l, r = l+1, r-1 {
 		p[l], p[r] = p[r], p[l]
 	}
-	return New(seq.Info(), p)
+	return New(seq.Info(), seq.Features(), p)
 }

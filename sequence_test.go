@@ -5,7 +5,7 @@ import "testing"
 func TestSequence(t *testing.T) {
 	info := "test sequence"
 	p := []byte("atgc")
-	seq := New(info, p)
+	seq := New(info, nil, p)
 
 	equals(t, seq.Info(), info)
 	equals(t, seq.Bytes(), p)
@@ -17,10 +17,10 @@ func TestSequence(t *testing.T) {
 
 func TestSlice(t *testing.T) {
 	p := []byte("atatexpcgc")
-	in := New(nil, p)
+	in := New(nil, nil, p)
 	for i := 0; i < len(p); i++ {
 		for j := i; j < len(p); j++ {
-			out, exp := Slice(in, i, j), New(nil, p[i:j])
+			out, exp := Slice(in, i, j), New(nil, nil, p[i:j])
 			if !Equal(out, exp) {
 				t.Errorf(
 					"Slice(%q, %d, %d) = %q, want %q",
@@ -34,7 +34,7 @@ func TestSlice(t *testing.T) {
 }
 
 func TestReverse(t *testing.T) {
-	in, exp := New(nil, []byte("atgc")), New(nil, []byte("cgta"))
+	in, exp := New(nil, nil, []byte("atgc")), New(nil, nil, []byte("cgta"))
 	out := Reverse(in)
 	if !Equal(out, exp) {
 		t.Errorf(

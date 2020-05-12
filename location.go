@@ -124,7 +124,7 @@ func (between Between) Complement() Locatable {
 
 // Locate the sequence region represented by the location.
 func (between Between) Locate(seq Sequence) Sequence {
-	return New(seq.Info(), []byte{})
+	return New(seq.Info(), nil, []byte{})
 }
 
 // BetweenParser will attempt to parse a Between loctation.
@@ -658,7 +658,7 @@ func (joined Joined) Locate(seq Sequence) Sequence {
 	for _, loc := range joined {
 		n += copy(p[n:], loc.Locate(seq).Bytes())
 	}
-	return New(seq.Info(), p)
+	return New(seq.Info(), nil, p)
 }
 
 func locationDelimiter(state *pars.State, result *pars.Result) bool {
