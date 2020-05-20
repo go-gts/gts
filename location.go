@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	ascii "gopkg.in/ascii.v1"
-	pars "gopkg.in/pars.v2"
+	"github.com/go-ascii/ascii"
+	"github.com/go-pars/pars"
 )
 
 // Location represents a location in a sequence as defined by the INSDC feature

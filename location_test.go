@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	pars "gopkg.in/pars.v2"
+	"github.com/go-pars/pars"
 )
 
 func locRep(loc Location) string {

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	pars "gopkg.in/pars.v2"
+	"github.com/go-pars/pars"
 )
 
 var featureIOTest = `     source          1..465

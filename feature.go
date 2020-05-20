@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	ascii "gopkg.in/ascii.v1"
-	pars "gopkg.in/pars.v2"
+	"github.com/go-ascii/ascii"
+	"github.com/go-pars/pars"
 )
 
 // Feature represents a single feature within a feature table.

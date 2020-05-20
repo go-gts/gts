@@ -5,7 +5,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	deep "gopkg.in/go-test/deep.v1"
+	"github.com/go-test/deep"
+	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 func ReadGolden(t *testing.T) string {
@@ -21,6 +22,19 @@ func equals(t *testing.T, a, b interface{}) {
 	t.Helper()
 	if diff := deep.Equal(a, b); diff != nil {
 		t.Error(diff)
+	}
+}
+
+func diff(t *testing.T, a, b string) {
+	t.Helper()
+	if a != b {
+		dmp := diffmatchpatch.New()
+		lineText1, lineText2, array := dmp.DiffLinesToChars(a, b)
+		diffs := dmp.DiffMain(lineText1, lineText2, false)
+		if len(diffs) > 0 {
+			lineDiffs := dmp.DiffCharsToLines(diffs, array)
+			t.Errorf("\n%s", dmp.DiffPrettyText(lineDiffs))
+		}
 	}
 }
 

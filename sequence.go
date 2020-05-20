@@ -25,6 +25,12 @@ type Sequence interface {
 
 // Len returns the length of the given Sequence.
 func Len(seq Sequence) int {
+	if v, ok := seq.(interface {
+		Len() int
+	}); ok {
+		return v.Len()
+
+	}
 	return len(seq.Bytes())
 }
 
