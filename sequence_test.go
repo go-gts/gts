@@ -32,6 +32,11 @@ func TestSequence(t *testing.T) {
 	testutils.Equals(t, seq.Info(), info)
 	testutils.Equals(t, seq.Bytes(), p)
 
+	cpy := Copy(seq)
+
+	testutils.Equals(t, seq.Info(), cpy.Info())
+	testutils.Equals(t, seq.Bytes(), cpy.Bytes())
+
 	if Len(seq) != Len(LenObj(p)) {
 		t.Errorf("Len(seq) = %d, want %d", Len(seq), len(p))
 	}

@@ -1,4 +1,4 @@
-package gts
+package seqio
 
 import (
 	"bytes"
@@ -21,19 +21,19 @@ func TestGenBankIO(t *testing.T) {
 		t.Errorf("parser returned %v\nBuffer:\n%q", err, string(result.Token))
 	}
 
-	switch gb := result.Value.(type) {
+	switch seq := result.Value.(type) {
 	case GenBank:
-		data := gb.Bytes()
-		if len(data) != gts.Len(gb) {
-			t.Errorf("len(data) = %d, want %d", len(data), gts.Len(gb))
+		data := seq.Bytes()
+		if len(data) != gts.Len(seq) {
+			t.Errorf("len(data) = %d, want %d", len(data), gts.Len(seq))
 			return
 		}
-		if gb.Info() == nil {
-			t.Error("gb.Info() is nil")
+		if seq.Info() == nil {
+			t.Error("seq.Info() is nil")
 			return
 		}
-		if gb.Features() == nil {
-			t.Error("gb.Features() is nil")
+		if seq.Features() == nil {
+			t.Error("seq.Features() is nil")
 			return
 		}
 		for i, c := range data {
@@ -43,7 +43,7 @@ func TestGenBankIO(t *testing.T) {
 			}
 		}
 		b := strings.Builder{}
-		f := GenBankFormatter{&gb}
+		f := GenBankFormatter{&seq}
 		n, err := f.WriteTo(&b)
 		if int(n) != len([]byte(in)) || err != nil {
 			t.Errorf("f.WriteTo(&b) = (%d, %v), want %d, nil", n, err, len(in))
@@ -52,7 +52,7 @@ func TestGenBankIO(t *testing.T) {
 		out := b.String()
 		testutils.Diff(t, in, out)
 	default:
-		t.Errorf("result.Value.(type) = %T, want %T", gb, GenBank{})
+		t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
 	}
 }
 

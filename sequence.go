@@ -46,9 +46,15 @@ type BasicSequence struct {
 	data  []byte
 }
 
-// New returns a new GTS object with the given metadata and bytes.
+// New returns a new Sequence object with the given values.
 func New(info interface{}, table FeatureTable, p []byte) BasicSequence {
 	return BasicSequence{info, table, p}
+}
+
+// Copy returns a fresh copy of the given sequence. The metadata wil be naively
+// copied.
+func Copy(seq Sequence) BasicSequence {
+	return New(seq.Info(), seq.Features(), seq.Bytes())
 }
 
 // Info returns the metadata of the sequence.

@@ -1,4 +1,4 @@
-package utils
+package seqio
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ var flatfileSplitTests = []struct {
 	in  string
 	out []string
 }{
-	{".", make([]string, 0)},
+	{".", nil},
 	{"foo; bar.", []string{"foo", "bar"}},
 }
 

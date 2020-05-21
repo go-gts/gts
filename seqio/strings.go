@@ -1,10 +1,13 @@
-package utils
+package seqio
 
 import "strings"
 
 // FlatFileSplit splits the string with the flatfile convention.
 func FlatFileSplit(s string) []string {
 	s = strings.TrimSuffix(s, ".")
+	if len(s) == 0 {
+		return nil
+	}
 	return strings.Split(s, "; ")
 }
 

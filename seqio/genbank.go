@@ -1,4 +1,4 @@
-package gts
+package seqio
 
 import (
 	"bytes"
@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-ascii/ascii"
 	"github.com/go-gts/gts"
-	"github.com/go-gts/gts/utils"
 	"github.com/go-pars/pars"
 	"github.com/go-wrap/wrap"
 )
@@ -72,7 +71,8 @@ func (gb GenBank) Len() int {
 	i, _ := iter.Next()
 	length := 0
 	for i < len(gb.Origin) {
-		n := utils.Min(10, len(gb.Origin)-i)
+		n :=
+			min(10, len(gb.Origin)-i)
 		length += n
 		i, _ = iter.Next()
 	}
@@ -85,7 +85,8 @@ func (gb GenBank) Bytes() []byte {
 	iter := originIterator{0, 0}
 	i, j := iter.Next()
 	for i < len(gb.Origin) {
-		n := utils.Min(10, len(gb.Origin)-i)
+		n :=
+			min(10, len(gb.Origin)-i)
 		copy(data[j:j+n], gb.Origin[i:i+n])
 		i, j = iter.Next()
 	}
@@ -105,7 +106,8 @@ func (gb GenBank) String() string {
 
 	builder.WriteString(locus)
 
-	definition := utils.AddPrefix(gb.Fields.Definition, indent)
+	definition :=
+		AddPrefix(gb.Fields.Definition, indent)
 	builder.WriteString("\nDEFINITION  " + definition)
 	builder.WriteString("\nACCESSION   " + gb.Fields.Accession)
 	builder.WriteString("\nVERSION     " + gb.Fields.Version)
@@ -121,19 +123,23 @@ func (gb GenBank) String() string {
 	}
 
 	keywords := wrap.Space(strings.Join(gb.Fields.Keywords, "; ")+".", 67)
-	keywords = utils.AddPrefix(keywords, indent)
+	keywords =
+		AddPrefix(keywords, indent)
 	builder.WriteString("\nKEYWORDS    " + keywords)
 
 	source := wrap.Space(gb.Fields.Source.Species, 67)
-	source = utils.AddPrefix(source, indent)
+	source =
+		AddPrefix(source, indent)
 	builder.WriteString("\nSOURCE      " + source)
 
 	organism := wrap.Space(gb.Fields.Source.Name, 67)
-	organism = utils.AddPrefix(organism, indent)
+	organism =
+		AddPrefix(organism, indent)
 	builder.WriteString("\n  ORGANISM  " + organism)
 
 	taxon := wrap.Space(strings.Join(gb.Fields.Source.Taxon, "; ")+".", 67)
-	taxon = utils.AddPrefix(taxon, indent)
+	taxon =
+		AddPrefix(taxon, indent)
 	builder.WriteString("\n" + indent + taxon)
 
 	for _, ref := range gb.Fields.References {
@@ -149,16 +155,20 @@ func (gb GenBank) String() string {
 			builder.WriteString(fmt.Sprintf("(bases %s)", strings.Join(ranges, "; ")))
 		}
 		if ref.Authors != "" {
-			builder.WriteString("\n  AUTHORS   " + utils.AddPrefix(ref.Authors, indent))
+			builder.WriteString("\n  AUTHORS   " +
+				AddPrefix(ref.Authors, indent))
 		}
 		if ref.Group != "" {
-			builder.WriteString("\n  CONSRTM   " + utils.AddPrefix(ref.Group, indent))
+			builder.WriteString("\n  CONSRTM   " +
+				AddPrefix(ref.Group, indent))
 		}
 		if ref.Title != "" {
-			builder.WriteString("\n  TITLE     " + utils.AddPrefix(ref.Title, indent))
+			builder.WriteString("\n  TITLE     " +
+				AddPrefix(ref.Title, indent))
 		}
 		if ref.Journal != "" {
-			builder.WriteString("\n  JOURNAL   " + utils.AddPrefix(ref.Journal, indent))
+			builder.WriteString("\n  JOURNAL   " +
+				AddPrefix(ref.Journal, indent))
 		}
 		if ref.Xref != nil {
 			if v, ok := ref.Xref["PUBMED"]; ok {
@@ -166,12 +176,14 @@ func (gb GenBank) String() string {
 			}
 		}
 		if ref.Comment != "" {
-			builder.WriteString("\n  REMARK    " + utils.AddPrefix(ref.Comment, indent))
+			builder.WriteString("\n  REMARK    " +
+				AddPrefix(ref.Comment, indent))
 		}
 	}
 
 	if gb.Fields.Comment != "" {
-		builder.WriteString("\nCOMMENT     " + utils.AddPrefix(gb.Fields.Comment, indent))
+		builder.WriteString("\nCOMMENT     " +
+			AddPrefix(gb.Fields.Comment, indent))
 	}
 
 	builder.WriteString("\nFEATURES             Location/Qualifiers\n")
@@ -191,20 +203,20 @@ func (gb GenBank) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// GenBankFormatter attempts to format a record in GenBank flatfile format.
+// GenBankFormatter implements the Formatter interface for GenBank files.
 type GenBankFormatter struct {
-	seq gts.Sequence
+	Seq gts.Sequence
 }
 
 // WriteTo satisfies the io.WriterTo interface.
 func (gf GenBankFormatter) WriteTo(w io.Writer) (int64, error) {
-	switch seq := gf.seq.(type) {
+	switch seq := gf.Seq.(type) {
 	case GenBank:
 		return seq.WriteTo(w)
 	case *GenBank:
 		return GenBankFormatter{*seq}.WriteTo(w)
 	default:
-		return 0, fmt.Errorf("gts does not know how to format `%T` in GenBank flatfile form", seq)
+		return 0, fmt.Errorf("gts does not know how to format `%T` as GenBank", seq)
 	}
 }
 
@@ -312,7 +324,8 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 		case "KEYWORDS":
 			parser := fieldBodyParser.Map(pars.Join([]byte(" ")))
 			parser(state, result)
-			gb.Fields.Keywords = utils.FlatFileSplit(string(result.Token))
+			gb.Fields.Keywords =
+				FlatFileSplit(string(result.Token))
 
 		case "SOURCE":
 			sourceParser := fieldBodyParser.Map(pars.Join([]byte("\n")))
@@ -336,7 +349,8 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 					pars.Seq(indent, pars.Line).Child(1),
 				).Map(pars.Join([]byte(" ")))
 				taxonParser(state, result)
-				organism.Taxon = utils.FlatFileSplit(string(result.Token))
+				organism.Taxon =
+					FlatFileSplit(string(result.Token))
 			}
 
 			gb.Fields.Source = organism
