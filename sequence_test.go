@@ -1,16 +1,38 @@
 package gts
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/go-gts/gts/testutils"
+)
+
+type LenObj []byte
+
+func (obj LenObj) Info() interface{} {
+	return nil
+}
+
+func (obj LenObj) Features() FeatureTable {
+	return nil
+}
+
+func (obj LenObj) Bytes() []byte {
+	return obj
+}
+
+func (obj LenObj) Len() int {
+	return len(obj)
+}
 
 func TestSequence(t *testing.T) {
 	info := "test sequence"
 	p := []byte("atgc")
 	seq := New(info, nil, p)
 
-	equals(t, seq.Info(), info)
-	equals(t, seq.Bytes(), p)
+	testutils.Equals(t, seq.Info(), info)
+	testutils.Equals(t, seq.Bytes(), p)
 
-	if Len(seq) != len(p) {
+	if Len(seq) != Len(LenObj(p)) {
 		t.Errorf("Len(seq) = %d, want %d", Len(seq), len(p))
 	}
 }

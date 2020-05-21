@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-gts/gts/testutils"
 	"github.com/go-pars/pars"
 )
 
@@ -126,5 +127,5 @@ func TestFeature(t *testing.T) {
 		{"db_xref", "HGNC:HGNC:6081"},
 		{"db_xref", "MIM:176730"},
 	}
-	equals(t, qq, out)
+	testutils.Equals(t, qq, out)
 }

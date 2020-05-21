@@ -1,4 +1,4 @@
-package gts
+package testutils
 
 import (
 	"io/ioutil"
@@ -9,6 +9,7 @@ import (
 	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
+// ReadGolden will attempt to read the golden file associated to the test.
 func ReadGolden(t *testing.T) string {
 	t.Helper()
 	p, err := ioutil.ReadFile(filepath.Join("testdata", t.Name()+".golden"))
@@ -18,14 +19,16 @@ func ReadGolden(t *testing.T) string {
 	return string(p)
 }
 
-func equals(t *testing.T, a, b interface{}) {
+// Equals checks the equality of two objects using go-test/deep.
+func Equals(t *testing.T, a, b interface{}) {
 	t.Helper()
 	if diff := deep.Equal(a, b); diff != nil {
 		t.Error(diff)
 	}
 }
 
-func diff(t *testing.T, a, b string) {
+// Diff checks the equality of two strings and reports its diff if they differ.
+func Diff(t *testing.T, a, b string) {
 	t.Helper()
 	if a != b {
 		dmp := diffmatchpatch.New()
@@ -38,7 +41,8 @@ func diff(t *testing.T, a, b string) {
 	}
 }
 
-func panics(t *testing.T, f func()) {
+// Panics will test if the given function panics.
+func Panics(t *testing.T, f func()) {
 	t.Helper()
 	defer func() {
 		t.Helper()

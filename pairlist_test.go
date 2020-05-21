@@ -1,13 +1,17 @@
 package gts
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/go-gts/gts/testutils"
+)
 
 func TestPairList(t *testing.T) {
 	d := Dictionary{}
 	d.Set("foo", "foo")
-	equals(t, d.Get("foo"), []string{"foo"})
+	testutils.Equals(t, d.Get("foo"), []string{"foo"})
 	d.Set("foo", "bar")
-	equals(t, d.Get("foo"), []string{"bar"})
+	testutils.Equals(t, d.Get("foo"), []string{"bar"})
 	d.Del("foo")
-	equals(t, d.Get("foo"), []string{})
+	testutils.Equals(t, d.Get("foo"), []string{})
 }

@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/go-ascii/ascii"
+	"github.com/go-gts/gts"
+	"github.com/go-gts/gts/utils"
 	"github.com/go-pars/pars"
 	"github.com/go-wrap/wrap"
 )
@@ -20,22 +22,22 @@ type GenBankFields struct {
 	Molecule  string
 	Topology  string
 	Division  string
-	Date      Date
+	Date      gts.Date
 
 	Definition string
 	Accession  string
 	Version    string
-	DBLink     Dictionary
+	DBLink     gts.Dictionary
 	Keywords   []string
-	Source     Organism
-	References []Reference
+	Source     gts.Organism
+	References []gts.Reference
 	Comment    string
 }
 
 // GenBank represents a GenBank sequence record.
 type GenBank struct {
 	Fields GenBankFields
-	Table  FeatureTable
+	Table  gts.FeatureTable
 	Origin []byte
 }
 
@@ -45,7 +47,7 @@ func (gb GenBank) Info() interface{} {
 }
 
 // Features returns the feature table of the sequence.
-func (gb GenBank) Features() FeatureTable {
+func (gb GenBank) Features() gts.FeatureTable {
 	return gb.Table
 }
 
@@ -70,7 +72,7 @@ func (gb GenBank) Len() int {
 	i, _ := iter.Next()
 	length := 0
 	for i < len(gb.Origin) {
-		n := min(10, len(gb.Origin)-i)
+		n := utils.Min(10, len(gb.Origin)-i)
 		length += n
 		i, _ = iter.Next()
 	}
@@ -83,7 +85,7 @@ func (gb GenBank) Bytes() []byte {
 	iter := originIterator{0, 0}
 	i, j := iter.Next()
 	for i < len(gb.Origin) {
-		n := min(10, len(gb.Origin)-i)
+		n := utils.Min(10, len(gb.Origin)-i)
 		copy(data[j:j+n], gb.Origin[i:i+n])
 		i, j = iter.Next()
 	}
@@ -103,7 +105,7 @@ func (gb GenBank) String() string {
 
 	builder.WriteString(locus)
 
-	definition := AddPrefix(gb.Fields.Definition, indent)
+	definition := utils.AddPrefix(gb.Fields.Definition, indent)
 	builder.WriteString("\nDEFINITION  " + definition)
 	builder.WriteString("\nACCESSION   " + gb.Fields.Accession)
 	builder.WriteString("\nVERSION     " + gb.Fields.Version)
@@ -119,19 +121,19 @@ func (gb GenBank) String() string {
 	}
 
 	keywords := wrap.Space(strings.Join(gb.Fields.Keywords, "; ")+".", 67)
-	keywords = AddPrefix(keywords, indent)
+	keywords = utils.AddPrefix(keywords, indent)
 	builder.WriteString("\nKEYWORDS    " + keywords)
 
 	source := wrap.Space(gb.Fields.Source.Species, 67)
-	source = AddPrefix(source, indent)
+	source = utils.AddPrefix(source, indent)
 	builder.WriteString("\nSOURCE      " + source)
 
 	organism := wrap.Space(gb.Fields.Source.Name, 67)
-	organism = AddPrefix(organism, indent)
+	organism = utils.AddPrefix(organism, indent)
 	builder.WriteString("\n  ORGANISM  " + organism)
 
 	taxon := wrap.Space(strings.Join(gb.Fields.Source.Taxon, "; ")+".", 67)
-	taxon = AddPrefix(taxon, indent)
+	taxon = utils.AddPrefix(taxon, indent)
 	builder.WriteString("\n" + indent + taxon)
 
 	for _, ref := range gb.Fields.References {
@@ -147,16 +149,16 @@ func (gb GenBank) String() string {
 			builder.WriteString(fmt.Sprintf("(bases %s)", strings.Join(ranges, "; ")))
 		}
 		if ref.Authors != "" {
-			builder.WriteString("\n  AUTHORS   " + AddPrefix(ref.Authors, indent))
+			builder.WriteString("\n  AUTHORS   " + utils.AddPrefix(ref.Authors, indent))
 		}
 		if ref.Group != "" {
-			builder.WriteString("\n  CONSRTM   " + AddPrefix(ref.Group, indent))
+			builder.WriteString("\n  CONSRTM   " + utils.AddPrefix(ref.Group, indent))
 		}
 		if ref.Title != "" {
-			builder.WriteString("\n  TITLE     " + AddPrefix(ref.Title, indent))
+			builder.WriteString("\n  TITLE     " + utils.AddPrefix(ref.Title, indent))
 		}
 		if ref.Journal != "" {
-			builder.WriteString("\n  JOURNAL   " + AddPrefix(ref.Journal, indent))
+			builder.WriteString("\n  JOURNAL   " + utils.AddPrefix(ref.Journal, indent))
 		}
 		if ref.Xref != nil {
 			if v, ok := ref.Xref["PUBMED"]; ok {
@@ -164,12 +166,12 @@ func (gb GenBank) String() string {
 			}
 		}
 		if ref.Comment != "" {
-			builder.WriteString("\n  REMARK    " + AddPrefix(ref.Comment, indent))
+			builder.WriteString("\n  REMARK    " + utils.AddPrefix(ref.Comment, indent))
 		}
 	}
 
 	if gb.Fields.Comment != "" {
-		builder.WriteString("\nCOMMENT     " + AddPrefix(gb.Fields.Comment, indent))
+		builder.WriteString("\nCOMMENT     " + utils.AddPrefix(gb.Fields.Comment, indent))
 	}
 
 	builder.WriteString("\nFEATURES             Location/Qualifiers\n")
@@ -191,7 +193,7 @@ func (gb GenBank) WriteTo(w io.Writer) (int64, error) {
 
 // GenBankFormatter attempts to format a record in GenBank flatfile format.
 type GenBankFormatter struct {
-	seq Sequence
+	seq gts.Sequence
 }
 
 // WriteTo satisfies the io.WriterTo interface.
@@ -245,7 +247,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 	molecule := string(result.Children[3].Token)
 	topology := result.Children[4].Value.(string)
 	division := string(result.Children[5].Token)
-	date := FromTime(result.Children[6].Value.(time.Time))
+	date := gts.FromTime(result.Children[6].Value.(time.Time))
 
 	fields := GenBankFields{
 		LocusName: locus,
@@ -310,13 +312,13 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 		case "KEYWORDS":
 			parser := fieldBodyParser.Map(pars.Join([]byte(" ")))
 			parser(state, result)
-			gb.Fields.Keywords = FlatFileSplit(string(result.Token))
+			gb.Fields.Keywords = utils.FlatFileSplit(string(result.Token))
 
 		case "SOURCE":
 			sourceParser := fieldBodyParser.Map(pars.Join([]byte("\n")))
 			sourceParser(state, result)
 
-			organism := Organism{}
+			organism := gts.Organism{}
 			organism.Species = string(result.Token)
 
 			organismLineParser := pars.Seq(
@@ -334,7 +336,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 					pars.Seq(indent, pars.Line).Child(1),
 				).Map(pars.Join([]byte(" ")))
 				taxonParser(state, result)
-				organism.Taxon = FlatFileSplit(string(result.Token))
+				organism.Taxon = utils.FlatFileSplit(string(result.Token))
 			}
 
 			gb.Fields.Source = organism
@@ -357,16 +359,16 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				return pars.NewError("failed to parse reference", state.Position())
 			}
 
-			reference := Reference{}
+			reference := gts.Reference{}
 			reference.Number = result.Children[0].Value.(int)
 
 			if _, ok := result.Children[1].Value.(string); !ok {
 				children := result.Children[1].Children
-				ranges := make([]ReferenceRange, len(children))
+				ranges := make([]gts.ReferenceRange, len(children))
 				for i, child := range children {
 					start := child.Children[0].Value.(int)
 					end := child.Children[1].Value.(int)
-					ranges[i] = ReferenceRange{start, end}
+					ranges[i] = gts.ReferenceRange{Start: start, End: end}
 				}
 				reference.Ranges = ranges
 			}
@@ -422,11 +424,11 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 
 		case "FEATURES":
 			pars.Line(state, result)
-			parser := FeatureTableParser("")
+			parser := gts.FeatureTableParser("")
 			if err := parser(state, result); err != nil {
 				return err
 			}
-			gb.Table = FeatureTable(result.Value.(FeatureTable))
+			gb.Table = gts.FeatureTable(result.Value.(gts.FeatureTable))
 
 		case "ORIGIN":
 			// Trim off excess whitespace.

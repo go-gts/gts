@@ -6,11 +6,13 @@ import (
 	"testing"
 
 	"github.com/go-ascii/ascii"
+	"github.com/go-gts/gts"
+	"github.com/go-gts/gts/testutils"
 	"github.com/go-pars/pars"
 )
 
 func TestGenBankIO(t *testing.T) {
-	in := ReadGolden(t)
+	in := testutils.ReadGolden(t)
 	state := pars.FromString(in)
 	parser := pars.AsParser(GenBankParser)
 
@@ -22,8 +24,8 @@ func TestGenBankIO(t *testing.T) {
 	switch gb := result.Value.(type) {
 	case GenBank:
 		data := gb.Bytes()
-		if len(data) != Len(gb) {
-			t.Errorf("len(data) = %d, want %d", len(data), Len(gb))
+		if len(data) != gts.Len(gb) {
+			t.Errorf("len(data) = %d, want %d", len(data), gts.Len(gb))
 			return
 		}
 		if gb.Info() == nil {
@@ -48,7 +50,7 @@ func TestGenBankIO(t *testing.T) {
 			return
 		}
 		out := b.String()
-		diff(t, in, out)
+		testutils.Diff(t, in, out)
 	default:
 		t.Errorf("result.Value.(type) = %T, want %T", gb, GenBank{})
 	}
@@ -109,7 +111,7 @@ func TestGenBankIOFail(t *testing.T) {
 	}
 
 	w := bytes.Buffer{}
-	n, err := GenBankFormatter{New(nil, nil, nil)}.WriteTo(&w)
+	n, err := GenBankFormatter{gts.New(nil, nil, nil)}.WriteTo(&w)
 	if n != 0 || err == nil {
 		t.Errorf("formatting an empty Sequence should return an error")
 	}

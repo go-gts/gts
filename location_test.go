@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-gts/gts/testutils"
 	"github.com/go-pars/pars"
 )
 
@@ -351,7 +352,7 @@ var locationReductionTests = []struct {
 
 func TestLocationReduction(t *testing.T) {
 	for _, tt := range locationReductionTests {
-		equals(t, tt.in, tt.out)
+		testutils.Equals(t, tt.in, tt.out)
 	}
 }
 
@@ -567,7 +568,7 @@ func TestLocationParser(t *testing.T) {
 }
 
 func TestLocationPanics(t *testing.T) {
-	panics(t, func() { Range(2, 0) })
-	panics(t, func() { Join() })
-	panics(t, func() { Order() })
+	testutils.Panics(t, func() { Range(2, 0) })
+	testutils.Panics(t, func() { Join() })
+	testutils.Panics(t, func() { Order() })
 }

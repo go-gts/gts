@@ -1,4 +1,4 @@
-package gts
+package utils
 
 import "strings"
 
