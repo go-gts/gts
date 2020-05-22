@@ -11,7 +11,7 @@ import (
 )
 
 func TestFastaIO(t *testing.T) {
-	in := testutils.ReadGolden(t)
+	in := testutils.ReadTestfile(t, "NC_001422.fasta")
 	state := pars.FromString(in)
 	parser := pars.AsParser(FastaParser)
 

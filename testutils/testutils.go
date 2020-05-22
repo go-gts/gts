@@ -19,6 +19,16 @@ func ReadGolden(t *testing.T) string {
 	return string(p)
 }
 
+// ReadTestfile will open a file in the testdata directory.
+func ReadTestfile(t *testing.T, path string) string {
+	t.Helper()
+	p, err := ioutil.ReadFile(filepath.Join("testdata", path))
+	if err != nil {
+		t.Fatalf("failed to read file: %s", err)
+	}
+	return string(p)
+}
+
 // Equals checks the equality of two objects using go-test/deep.
 func Equals(t *testing.T, a, b interface{}) {
 	t.Helper()

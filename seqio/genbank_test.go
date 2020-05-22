@@ -12,7 +12,7 @@ import (
 )
 
 func TestGenBankIO(t *testing.T) {
-	in := testutils.ReadGolden(t)
+	in := testutils.ReadTestfile(t, "NC_001422.gb")
 	state := pars.FromString(in)
 	parser := pars.AsParser(GenBankParser)
 
