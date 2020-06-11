@@ -43,7 +43,7 @@ func FeatureClear(ctx *flags.Context) error {
 	if *outpath != "-" {
 		f, err := os.Create(*outpath)
 		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *inpath, err))
+			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *outpath, err))
 		}
 		outfile = f
 	}
