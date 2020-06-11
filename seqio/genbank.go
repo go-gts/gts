@@ -183,8 +183,7 @@ func (gb GenBank) String() string {
 	builder.WriteString("\n  ORGANISM  " + organism)
 
 	taxon := wrap.Space(strings.Join(gb.Fields.Source.Taxon, "; ")+".", 67)
-	taxon =
-		AddPrefix(taxon, indent)
+	taxon = AddPrefix(taxon, indent)
 	builder.WriteString("\n" + indent + taxon)
 
 	for _, ref := range gb.Fields.References {

@@ -126,6 +126,54 @@ func Or(filters ...Filter) Filter {
 	}
 }
 
+// Not creates a Filter which will return true if the given Filter does not
+// return true for the Feature.
+func Not(filter Filter) Filter {
+	return func(f Feature) bool {
+		return !filter(f)
+	}
+}
+
+func selectorShift(s string) (string, string) {
+	esc := false
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '\\':
+			esc = true
+		case '/':
+			if !esc {
+				return s[:i], s[i+1:]
+			}
+		default:
+			esc = false
+		}
+	}
+	return s, ""
+}
+
+func toQualifier(s string) (Filter, error) {
+	if i := strings.IndexByte(s, '='); i >= 0 {
+		return Qualifier(s[:i], s[i+1:])
+	}
+	return Qualifier(s, "")
+}
+
+// Selector creates a Filter which will return true if the Feature matches the
+// given selector string.
+func Selector(sel string) (Filter, error) {
+	head, tail := selectorShift(sel)
+	filter := Key(head)
+	for tail != "" {
+		head, tail = selectorShift(tail)
+		qfs, err := toQualifier(head)
+		if err != nil {
+			return FalseFilter, err
+		}
+		filter = And(filter, qfs)
+	}
+	return filter, nil
+}
+
 // FeatureTable represents a table of features.
 type FeatureTable []Feature
 

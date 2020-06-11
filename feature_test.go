@@ -146,6 +146,14 @@ func qualifierFilter(name, exp string) Filter {
 	return f
 }
 
+func selectorFilter(sel string) Filter {
+	f, err := Selector(sel)
+	if err != nil {
+		panic(err)
+	}
+	return f
+}
+
 var featureFilterTests = []struct {
 	f   Filter
 	out FeatureTable
@@ -160,6 +168,10 @@ var featureFilterTests = []struct {
 	{And(Key("source"), qualifierFilter("mol_type", "DNA")), FeatureTable{sampleSourceFeature}},
 	{Or(Key("source"), Key("gene")), sampleFeatureTable},
 	{Or(Key("foo"), Key("bar")), FeatureTable{}},
+	{Not(Key("source")), FeatureTable{sampleGeneFeature}},
+	{selectorFilter("source/mol_type=DNA"), FeatureTable{sampleSourceFeature}},
+	{selectorFilter("source/mol_type"), FeatureTable{sampleSourceFeature}},
+	{selectorFilter("source/mol_type=\\/"), FeatureTable{}},
 }
 
 func TestFeatureFilter(t *testing.T) {
@@ -174,5 +186,8 @@ func TestFeatureFilter(t *testing.T) {
 func TestFeatureQualifierFilter(t *testing.T) {
 	testutils.Panics(t, func() {
 		qualifierFilter("", "[")
+	})
+	testutils.Panics(t, func() {
+		selectorFilter("/mol_type=[")
 	})
 }
