@@ -87,13 +87,12 @@ func call(addr url.URL, w io.Writer, cache bool) error {
 }
 
 func init() {
-	flags.Register("entry", "download database entries through the TogoWS REST service", Entry)
-	flags.Register("search", "search for database entries through the TogoWS REST service", Search)
-	flags.Register("listdb", "list databases available for access with entry or search", ListDB)
+	flags.Register("entry", "download database entries through the TogoWS REST service", entry)
+	flags.Register("search", "search for database entries through the TogoWS REST service", search)
+	flags.Register("listdb", "list databases available for access with entry or search", listdb)
 }
 
-// Entry downloads a database entry using the TogoWS REST service
-func Entry(ctx *flags.Context) error {
+func entry(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
 	db := pos.String("database", "database name (or alias) to access")
@@ -140,8 +139,7 @@ func Entry(ctx *flags.Context) error {
 	return ctx.Raise(call(addr, outfile, !*nocache))
 }
 
-// Search queries a database search using the TogoWS REST service.
-func Search(ctx *flags.Context) error {
+func search(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
 	db := pos.String("database", "database name (or alias) to access")
@@ -190,8 +188,7 @@ func Search(ctx *flags.Context) error {
 	return ctx.Raise(download(addr, outfile))
 }
 
-// ListDB displays the available databases in the TogoWS REST service.
-func ListDB(ctx *flags.Context) error {
+func listdb(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
 	tool := pos.String("tool", "TogoWS tool name (entry or search")
