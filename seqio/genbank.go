@@ -109,8 +109,7 @@ func (gb GenBank) Bytes() []byte {
 	iter := originIterator{0, 0}
 	i, j := iter.Next()
 	for i < len(gb.Origin) {
-		n :=
-			min(10, len(gb.Origin)-i)
+		n := min(10, len(gb.Origin)-i)
 		copy(data[j:j+n], gb.Origin[i:i+n])
 		i, j = iter.Next()
 	}
@@ -294,6 +293,21 @@ func genbankFieldBodyParser(depth int) pars.Parser {
 		result.SetChildren(children)
 		return nil
 	}
+}
+
+func originLength(length int) int {
+	lines := length / 60
+	lastLine := length % 60
+	blocks := lastLine / 10
+	lastBlock := lastLine % 10
+	ret := lines * 76
+	if lastLine != 0 {
+		ret += 10 + blocks*11
+		if lastBlock != 0 {
+			ret += lastBlock + 1
+		}
+	}
+	return ret
 }
 
 // GenBankParser attempts to parse a single GenBank record.
@@ -502,39 +516,12 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 			// Trim off excess whitespace.
 			pars.Line(state, result)
 
-			// Check for origin syntax but do not parse.
 			state.Push()
-			for i := 0; i < length; i += 60 {
-				prefix := []byte(fmt.Sprintf("% 9d", i+1))
-				if err := state.Request(9); err != nil {
-					return pars.NewError("not enough bytes in state", state.Position())
-				}
-				if !bytes.Equal(state.Buffer(), prefix) {
-					return pars.NewError("malformed origin prefix", state.Position())
-				}
-				state.Advance()
-
-				j := 0
-				c, err := pars.Next(state)
-				for err == nil && c != '\n' {
-					if j%11 == 0 {
-						if c != ' ' {
-							return pars.NewError("expected space", state.Position())
-						}
-					} else {
-						if !ascii.IsLetter(c) {
-							return pars.NewError("expected sequence character", state.Position())
-						}
-					}
-
-					state.Advance()
-					c, err = pars.Next(state)
-					j++
-				}
-				state.Advance()
+			if err := state.Request(originLength(length)); err != nil {
+				return pars.NewError("not enough bytes in state", state.Position())
 			}
-
-			buffer, _ := pars.Trail(state)
+			buffer := state.Buffer()
+			state.Advance()
 			gb.Origin = buffer[:len(buffer)-1]
 
 		default:
