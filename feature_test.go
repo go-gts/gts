@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-gts/gts/testutils"
 	"github.com/go-pars/pars"
+	"github.com/go-test/deep"
 )
 
 var featureIOTest = `     source          1..465
@@ -128,4 +129,50 @@ func TestFeature(t *testing.T) {
 		{"db_xref", "MIM:176730"},
 	}
 	testutils.Equals(t, qq, out)
+}
+
+var sampleSourceFeature = Feature{"source", Range(0, 5386), Values{"mol_type": []string{"Genomic DNA"}}, nil}
+var sampleGeneFeature = Feature{"gene", Range(51, 221), Values{"locus_tag": []string{"phiX174p04"}}, nil}
+var sampleFeatureTable = FeatureTable{
+	sampleSourceFeature,
+	sampleGeneFeature,
+}
+
+func qualifierFilter(name, exp string) Filter {
+	f, err := Qualifier(name, exp)
+	if err != nil {
+		panic(err)
+	}
+	return f
+}
+
+var featureFilterTests = []struct {
+	f   Filter
+	out FeatureTable
+}{
+	{TrueFilter, sampleFeatureTable},
+	{FalseFilter, FeatureTable{}},
+	{Key(""), sampleFeatureTable},
+	{Key("source"), FeatureTable{sampleSourceFeature}},
+	{Key("gene"), FeatureTable{sampleGeneFeature}},
+	{qualifierFilter("mol_type", "DNA"), FeatureTable{sampleSourceFeature}},
+	{And(Key("source"), Key("gene")), FeatureTable{}},
+	{And(Key("source"), qualifierFilter("mol_type", "DNA")), FeatureTable{sampleSourceFeature}},
+	{Or(Key("source"), Key("gene")), sampleFeatureTable},
+	{Or(Key("foo"), Key("bar")), FeatureTable{}},
+}
+
+func TestFeatureFilter(t *testing.T) {
+	for i, tt := range featureFilterTests {
+		out := sampleFeatureTable.Filter(tt.f)
+		if diff := deep.Equal(out, tt.out); diff != nil {
+			t.Errorf("case %d: %v", i+1, diff)
+		}
+	}
+}
+
+func TestFeatureQualifierFilter(t *testing.T) {
+	testutils.Panics(t, func() {
+		qualifierFilter("", "[")
+	})
 }

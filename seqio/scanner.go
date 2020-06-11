@@ -74,7 +74,7 @@ func (s *Scanner) Scan() bool {
 	}
 
 	s.res, s.err = s.p.Parse(s.s)
-	return s.err == nil || dig(s.err) == io.EOF
+	return s.err == nil
 }
 
 // Value returns the most recently scanned sequence value.

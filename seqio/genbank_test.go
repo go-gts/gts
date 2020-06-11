@@ -4,12 +4,115 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-ascii/ascii"
 	"github.com/go-gts/gts"
 	"github.com/go-gts/gts/testutils"
 	"github.com/go-pars/pars"
 )
+
+func formatGenBankHelper(t *testing.T, seq gts.Sequence, in string) {
+	t.Helper()
+	b := strings.Builder{}
+	f := GenBankFormatter{seq}
+	n, err := f.WriteTo(&b)
+	if int(n) != len([]byte(in)) || err != nil {
+		t.Errorf("f.WriteTo(&b) = (%d, %v), want %d, nil", n, err, len(in))
+		return
+	}
+	testutils.Diff(t, in, b.String())
+}
+
+func TestGenBank(t *testing.T) {
+	info := GenBankFields{
+		"LOCUS_NAME",
+		"DNA",
+		"linear",
+		"UNA",
+		gts.FromTime(time.Now()),
+
+		"Sample sequence",
+		"ACCESSION",
+		"VERSION",
+		gts.Dictionary{},
+		nil,
+		gts.Organism{
+			Species: "Genus species",
+			Name:    "Name",
+			Taxon:   []string{"Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "species"},
+		},
+		nil,
+		"",
+	}
+
+	p := []byte(strings.Repeat("atgc", 100))
+	qfs := gts.Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	loc := gts.Range(0, len(p))
+	ff := []gts.Feature{
+		{
+			Key:        "source",
+			Location:   loc,
+			Qualifiers: qfs,
+		},
+	}
+
+	gb := NewGenBank(info, ff, p)
+	in := gb.String()
+
+	seq := gts.New(info, ff, p)
+	formatGenBankHelper(t, seq, in)
+}
+
+func TestGenBankWithInterface(t *testing.T) {
+	info := GenBankFields{
+		"LOCUS_NAME",
+		"DNA",
+		"linear",
+		"UNA",
+		gts.FromTime(time.Now()),
+
+		"Sample sequence",
+		"ACCESSION",
+		"VERSION",
+		gts.Dictionary{},
+		nil,
+		gts.Organism{
+			Species: "Genus species",
+			Name:    "Name",
+			Taxon:   []string{"Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "species"},
+		},
+		nil,
+		"",
+	}
+	p := []byte(strings.Repeat("atgc", 100))
+	qfs := gts.Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	loc := gts.Range(0, len(p))
+	ff := []gts.Feature{
+		{
+			Key:        "source",
+			Location:   loc,
+			Qualifiers: qfs,
+		},
+	}
+
+	in := GenBank{GenBankFields{}, nil, nil}
+	out := gts.WithInfo(in, info)
+	testutils.Equals(t, out, GenBank{info, nil, nil})
+
+	out = gts.WithFeatures(in, ff)
+	testutils.Equals(t, out, GenBank{GenBankFields{}, ff, nil})
+
+	out = gts.WithBytes(in, p)
+	testutils.Equals(t, out, GenBank{GenBankFields{}, nil, p})
+
+	out = gts.WithInfo(in, "info")
+	testutils.Equals(t, out, gts.New("info", nil, nil))
+}
 
 func TestGenBankIO(t *testing.T) {
 	in := testutils.ReadTestfile(t, "NC_001422.gb")
@@ -42,15 +145,9 @@ func TestGenBankIO(t *testing.T) {
 				return
 			}
 		}
-		b := strings.Builder{}
-		f := GenBankFormatter{&seq}
-		n, err := f.WriteTo(&b)
-		if int(n) != len([]byte(in)) || err != nil {
-			t.Errorf("f.WriteTo(&b) = (%d, %v), want %d, nil", n, err, len(in))
-			return
-		}
-		out := b.String()
-		testutils.Diff(t, in, out)
+
+		formatGenBankHelper(t, &seq, in)
+
 	default:
 		t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
 	}

@@ -51,12 +51,6 @@ func New(info interface{}, table FeatureTable, p []byte) BasicSequence {
 	return BasicSequence{info, table, p}
 }
 
-// Copy returns a fresh copy of the given sequence. The metadata wil be naively
-// copied.
-func Copy(seq Sequence) BasicSequence {
-	return New(seq.Info(), seq.Features(), seq.Bytes())
-}
-
 // Info returns the metadata of the sequence.
 func (seq BasicSequence) Info() interface{} {
 	return seq.info
@@ -70,6 +64,50 @@ func (seq BasicSequence) Features() FeatureTable {
 // Bytes returns the byte representation of the sequence.
 func (seq BasicSequence) Bytes() []byte {
 	return seq.data
+}
+
+// Copy returns a shallow copy of the given sequence.
+func Copy(seq Sequence) BasicSequence {
+	return New(seq.Info(), seq.Features(), seq.Bytes())
+}
+
+type withInterface interface {
+	WithInfo(info interface{}) Sequence
+	WithFeatures(ff FeatureTable) Sequence
+	WithBytes(p []byte) Sequence
+}
+
+// WithInfo creates a shallow copy of the given Sequence object and swaps the
+// metadata with the given value.
+func WithInfo(seq Sequence, info interface{}) Sequence {
+	switch v := seq.(type) {
+	case withInterface:
+		return v.WithInfo(info)
+	default:
+		return New(info, seq.Features(), seq.Bytes())
+	}
+}
+
+// WithFeatures creates a shallow copy of the given Sequence object and swaps
+// the feature table with the given features.
+func WithFeatures(seq Sequence, ff []Feature) Sequence {
+	switch v := seq.(type) {
+	case withInterface:
+		return v.WithFeatures(ff)
+	default:
+		return New(seq.Info(), ff, seq.Bytes())
+	}
+}
+
+// WithBytes creates a shallow copy of the given Sequence object and swaps the
+// byte representation with the given byte slice.
+func WithBytes(seq Sequence, p []byte) Sequence {
+	switch v := seq.(type) {
+	case withInterface:
+		return v.WithBytes(p)
+	default:
+		return New(seq.Info(), seq.Features(), p)
+	}
 }
 
 // Slice returns a subsequence of the given sequence starting at start and up

@@ -1,6 +1,7 @@
 package seqio
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
@@ -33,11 +34,34 @@ type GenBankFields struct {
 	Comment    string
 }
 
+// String satisifes the fmt.Stringer interface.
+func (gbf GenBankFields) String() string {
+	return fmt.Sprintf("%s %s", gbf.Version, gbf.Definition)
+}
+
 // GenBank represents a GenBank sequence record.
 type GenBank struct {
 	Fields GenBankFields
 	Table  gts.FeatureTable
 	Origin []byte
+}
+
+// NewGenBank creates a new GenBank object.
+func NewGenBank(info GenBankFields, ff []gts.Feature, p []byte) GenBank {
+	buf := &bytes.Buffer{}
+	w := bufio.NewWriter(buf)
+	for i := 0; i < len(p); i += 60 {
+		prefix := fmt.Sprintf("%10d", i+1)
+		w.Write([]byte(prefix))
+		for j := 0; j < 60 && i+j < len(p); j += 10 {
+			start := i + j
+			end := min(start+10, len(p))
+			w.Write([]byte{' '})
+			w.Write(p[start:end])
+		}
+	}
+	w.Flush()
+	return GenBank{info, ff, buf.Bytes()}
 }
 
 // Info returns the metadata of the sequence.
@@ -93,6 +117,29 @@ func (gb GenBank) Bytes() []byte {
 	return data
 }
 
+// WithInfo creates a shallow copy of the given Sequence object and swaps the
+// metadata with the given value.
+func (gb GenBank) WithInfo(info interface{}) gts.Sequence {
+	switch v := info.(type) {
+	case GenBankFields:
+		return GenBank{v, gb.Table, gb.Origin}
+	default:
+		return gts.New(v, gb.Features(), gb.Bytes())
+	}
+}
+
+// WithFeatures creates a shallow copy of the given Sequence object and swaps
+// the feature table with the given features.
+func (gb GenBank) WithFeatures(ff gts.FeatureTable) gts.Sequence {
+	return GenBank{gb.Fields, ff, gb.Origin}
+}
+
+// WithBytes creates a shallow copy of the given Sequence object and swaps the
+// byte representation with the given byte slice.
+func (gb GenBank) WithBytes(p []byte) gts.Sequence {
+	return GenBank{gb.Fields, gb.Table, p}
+}
+
 // String satisifes the fmt.Stringer interface.
 func (gb GenBank) String() string {
 	builder := strings.Builder{}
@@ -106,9 +153,8 @@ func (gb GenBank) String() string {
 
 	builder.WriteString(locus)
 
-	definition :=
-		AddPrefix(gb.Fields.Definition, indent)
-	builder.WriteString("\nDEFINITION  " + definition)
+	definition := AddPrefix(gb.Fields.Definition, indent)
+	builder.WriteString("\nDEFINITION  " + definition + ".")
 	builder.WriteString("\nACCESSION   " + gb.Fields.Accession)
 	builder.WriteString("\nVERSION     " + gb.Fields.Version)
 
@@ -205,18 +251,25 @@ func (gb GenBank) WriteTo(w io.Writer) (int64, error) {
 
 // GenBankFormatter implements the Formatter interface for GenBank files.
 type GenBankFormatter struct {
-	Seq gts.Sequence
+	seq gts.Sequence
 }
 
 // WriteTo satisfies the io.WriterTo interface.
 func (gf GenBankFormatter) WriteTo(w io.Writer) (int64, error) {
-	switch seq := gf.Seq.(type) {
+	switch seq := gf.seq.(type) {
 	case GenBank:
 		return seq.WriteTo(w)
 	case *GenBank:
 		return GenBankFormatter{*seq}.WriteTo(w)
 	default:
-		return 0, fmt.Errorf("gts does not know how to format `%T` as GenBank", seq)
+		switch info := seq.Info().(type) {
+		case GenBankFields:
+			gb := NewGenBank(info, seq.Features(), seq.Bytes())
+			return GenBankFormatter{gb}.WriteTo(w)
+		default:
+			return 0, fmt.Errorf("gts does not know how to format a sequence with metadata of type `%T` as GenBank", info)
+
+		}
 	}
 }
 
@@ -294,7 +347,8 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 		case "DEFINITION":
 			parser := fieldBodyParser.Map(pars.Join([]byte("\n")))
 			parser(state, result)
-			gb.Fields.Definition = string(result.Token)
+			token := bytes.TrimRight(result.Token, ".")
+			gb.Fields.Definition = string(token)
 
 		case "ACCESSION":
 			pars.Line(state, result)

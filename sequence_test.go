@@ -1,6 +1,7 @@
 package gts
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/go-gts/gts/testutils"
@@ -71,4 +72,90 @@ func TestReverse(t *testing.T) {
 			string(exp.Bytes()),
 		)
 	}
+}
+
+func TestWith(t *testing.T) {
+	p := []byte(strings.Repeat("atgc", 100))
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	loc := Range(0, len(p))
+	ff := []Feature{
+		{
+			Key:        "source",
+			Location:   loc,
+			Qualifiers: qfs,
+		},
+	}
+	info := "info"
+
+	in := New(nil, nil, nil)
+	out := WithInfo(in, info)
+	testutils.Equals(t, out, New(info, nil, nil))
+
+	out = WithFeatures(in, ff)
+	testutils.Equals(t, out, New(nil, ff, nil))
+
+	out = WithBytes(in, p)
+	testutils.Equals(t, out, New(nil, nil, p))
+}
+
+type withTest struct {
+	info  interface{}
+	table FeatureTable
+	data  []byte
+}
+
+func newWithTest(info interface{}, table FeatureTable, p []byte) withTest {
+	return withTest{info, table, p}
+}
+
+func (wt withTest) Info() interface{} {
+	return wt.info
+}
+
+func (wt withTest) Features() FeatureTable {
+	return wt.table
+}
+
+func (wt withTest) Bytes() []byte {
+	return wt.data
+}
+
+func (wt withTest) WithInfo(info interface{}) Sequence {
+	return withTest{info, wt.table, wt.data}
+}
+
+func (wt withTest) WithFeatures(ff FeatureTable) Sequence {
+	return withTest{wt.info, ff, wt.data}
+}
+
+func (wt withTest) WithBytes(p []byte) Sequence {
+	return withTest{wt.info, wt.table, p}
+}
+
+func TestWithInterface(t *testing.T) {
+	p := []byte(strings.Repeat("atgc", 100))
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	loc := Range(0, len(p))
+	ff := []Feature{
+		{
+			Key:        "source",
+			Location:   loc,
+			Qualifiers: qfs,
+		},
+	}
+	info := "info"
+
+	in := newWithTest(nil, nil, nil)
+	out := WithInfo(in, info)
+	testutils.Equals(t, out, newWithTest(info, nil, nil))
+
+	out = WithFeatures(in, ff)
+	testutils.Equals(t, out, newWithTest(nil, ff, nil))
+
+	out = WithBytes(in, p)
+	testutils.Equals(t, out, newWithTest(nil, nil, p))
 }

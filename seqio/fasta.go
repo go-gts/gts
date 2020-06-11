@@ -33,24 +33,27 @@ func (f Fasta) Bytes() []byte {
 
 // FastaFormatter implements the Formatter interface for FASTA files.
 type FastaFormatter struct {
-	Seq  gts.Sequence
-	Wrap int
+	seq  gts.Sequence
+	wrap int
 }
 
 // WriteTo satisfies the io.WriterTo interface.
 func (ff FastaFormatter) WriteTo(w io.Writer) (int64, error) {
-	switch seq := ff.Seq.(type) {
+	switch seq := ff.seq.(type) {
 	case Fasta:
-		s := fmt.Sprintf(">%s\n%s\n", seq.Desc, wrap.Wrap(string(seq.Data), ff.Wrap))
+		s := fmt.Sprintf(">%s\n%s\n", seq.Desc, wrap.Wrap(string(seq.Data), ff.wrap))
 		n, err := io.WriteString(w, s)
 		return int64(n), err
 	case *Fasta:
-		return FastaFormatter{*seq, ff.Wrap}.WriteTo(w)
+		return FastaFormatter{*seq, ff.wrap}.WriteTo(w)
 	default:
 		switch info := seq.Info().(type) {
 		case string:
 			f := Fasta{info, seq.Bytes()}
-			return FastaFormatter{f, ff.Wrap}.WriteTo(w)
+			return FastaFormatter{f, ff.wrap}.WriteTo(w)
+		case fmt.Stringer:
+			f := Fasta{info.String(), seq.Bytes()}
+			return FastaFormatter{f, ff.wrap}.WriteTo(w)
 		default:
 			return 0, fmt.Errorf("gts does not know how to format a sequence with metadata type `%T` as FASTA", info)
 		}

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -63,8 +64,82 @@ func listQualifiers(f Feature) []QualifierIO {
 	return qfs
 }
 
+// Filter represents a filtering function for a Feature.
+type Filter func(f Feature) bool
+
+// TrueFilter always returns true.
+func TrueFilter(f Feature) bool { return true }
+
+// FalseFilter always return false.
+func FalseFilter(f Feature) bool { return false }
+
+// Key returns true if the key of a feature matches the given key string.
+func Key(key string) Filter {
+	if key == "" {
+		return TrueFilter
+	}
+	return func(f Feature) bool { return f.Key == key }
+}
+
+// Qualifier returns true if the value for the given qualifier name matches the
+// given regex expression.
+func Qualifier(name, query string) (Filter, error) {
+	re, err := regexp.Compile(query)
+	if err != nil {
+		return FalseFilter, err
+	}
+	return func(f Feature) bool {
+		if values, ok := f.Qualifiers[name]; ok {
+			for _, value := range values {
+				if re.MatchString(value) {
+					return true
+				}
+			}
+		}
+		return false
+	}, nil
+}
+
+// And creates a Filter which will return true if all of the filters given to
+// And return true for the Feature.
+func And(filters ...Filter) Filter {
+	return func(f Feature) bool {
+		for _, filter := range filters {
+			if !filter(f) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// Or creates a Filter which will return true if any of the filters given to
+// Or return true for the Feature.
+func Or(filters ...Filter) Filter {
+	return func(f Feature) bool {
+		for _, filter := range filters {
+			if filter(f) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 // FeatureTable represents a table of features.
 type FeatureTable []Feature
+
+// Filter returns a FeatureTable containing the features that match the given
+// Filter within this FeatureTable.
+func (ff FeatureTable) Filter(filter Filter) FeatureTable {
+	gg := FeatureTable{}
+	for _, f := range ff {
+		if filter(f) {
+			gg = append(gg, f)
+		}
+	}
+	return gg
+}
 
 // Format creates a FeatureTableFormatter object for the qualifier with the
 // given prefix and depth. If the Feature object was created by parsing some
