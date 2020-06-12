@@ -43,87 +43,98 @@ var locationAccessorTests = []struct {
 	in  Location
 	str string
 	len int
+	ss  []Span
 }{
-	{Between(0), "0^1", 0},
-	{Point(0), "1", 1},
-	{Range(0, 2), "1..2", 2},
+	{Between(0), "0^1", 0, []Span{{0, 0}}},
+	{Point(0), "1", 1, []Span{{0, 1}}},
+	{Range(0, 2), "1..2", 2, []Span{{0, 2}}},
 
-	{PartialRange(0, 2, Complete), "1..2", 2},
-	{PartialRange(0, 2, Partial5), "<1..2", 2},
-	{PartialRange(0, 2, Partial3), "1..>2", 2},
-	{PartialRange(0, 2, PartialBoth), "<1..>2", 2},
+	{PartialRange(0, 2, Complete), "1..2", 2, []Span{{0, 2}}},
+	{PartialRange(0, 2, Partial5), "<1..2", 2, []Span{{0, 2}}},
+	{PartialRange(0, 2, Partial3), "1..>2", 2, []Span{{0, 2}}},
+	{PartialRange(0, 2, PartialBoth), "<1..>2", 2, []Span{{0, 2}}},
 
-	{Join(Range(0, 2), Range(3, 5)), "join(1..2,4..5)", 4},
-	{Join(Range(0, 2), Join(Range(3, 5), Range(6, 8))), "join(1..2,4..5,7..8)", 6},
-	{Join(Point(0), Point(2)), "join(1,3)", 2},
+	{Join(Range(0, 2), Range(3, 5)), "join(1..2,4..5)", 4, []Span{{0, 2}, {3, 5}}},
+	{Join(Range(0, 2), Join(Range(3, 5), Range(6, 8))), "join(1..2,4..5,7..8)", 6, []Span{{0, 2}, {3, 5}, {6, 8}}},
+	{Join(Point(0), Point(2)), "join(1,3)", 2, []Span{{0, 1}, {2, 1}}},
 
-	{Ambiguous{0, 2}, "1.2", 1},
+	{Ambiguous{0, 2}, "1.2", 1, []Span{{0, 1}, {1, 1}}},
 
-	{Order(Range(0, 2), Range(2, 4)), "order(1..2,3..4)", 4},
-	{Order(Range(0, 2), Order(Range(2, 4), Range(4, 6))), "order(1..2,3..4,5..6)", 6},
-	{Order(Point(0), Point(2)), "order(1,3)", 2},
+	{Order(Range(0, 2), Range(2, 4)), "order(1..2,3..4)", 4, []Span{{0, 2}, {2, 4}}},
+	{Order(Range(0, 2), Order(Range(2, 4), Range(4, 6))), "order(1..2,3..4,5..6)", 6, []Span{{0, 2}, {2, 4}, {4, 6}}},
+	{Order(Point(0), Point(2)), "order(1,3)", 2, []Span{{0, 1}, {2, 1}}},
 }
 
 func TestLocationAccessors(t *testing.T) {
 	for _, tt := range locationAccessorTests {
-		if tt.in.String() != tt.str {
-			t.Errorf("%s.String() = %q, want %q", locRep(tt.in), tt.in.String(), tt.str)
-		}
-		if tt.in.Len() != tt.len {
-			t.Errorf("%s.Len() = %d, want %d", locRep(tt.in), tt.in.Len(), tt.len)
-		}
+		t.Run(tt.in.String(), func(t *testing.T) {
+			if tt.in.String() != tt.str {
+				t.Errorf("%s.String() = %q, want %q", locRep(tt.in), tt.in.String(), tt.str)
+			}
+			if tt.in.Len() != tt.len {
+				t.Errorf("%s.Len() = %d, want %d", locRep(tt.in), tt.in.Len(), tt.len)
+			}
+			testutils.Equals(t, tt.in.Regions(), tt.ss)
+			if c, ok := tt.in.(Locatable); ok {
+				in := c.Complement()
+				if in.Len() != tt.len {
+					t.Errorf("%s.Len() = %d, want %d", locRep(in), in.Len(), tt.len)
+				}
+				testutils.Equals(t, in.Regions(), tt.ss)
+			}
+		})
 	}
 }
 
 var locationShiftTests = []struct {
 	in, out Location
-	i, n    int
+	span    Span
 }{
-	{Between(0), Between(0), 0, 1},
-	{Between(0), Between(0), 0, -1},
-	{Between(1), Between(2), 0, 1},
-	{Between(1), Between(0), 0, -1},
+	{Between(0), Between(0), Span{0, 1}},
+	{Between(0), Between(0), Span{0, -1}},
+	{Between(1), Between(2), Span{0, 1}},
+	{Between(1), Between(0), Span{0, -1}},
 
-	{Point(0), Point(1), 0, 1},
-	{Point(0), Between(0), 0, -1},
-	{Point(0), Point(0), 1, 1},
-	{Point(0), Point(0), 1, -1},
-	{Point(1), Point(2), 0, 1},
-	{Point(1), Point(0), 0, -1},
+	{Point(0), Point(1), Span{0, 1}},
+	{Point(0), Between(0), Span{0, -1}},
+	{Point(0), Point(0), Span{1, 1}},
+	{Point(0), Point(0), Span{1, -1}},
+	{Point(1), Point(2), Span{0, 1}},
+	{Point(1), Point(0), Span{0, -1}},
 
-	{Range(0, 2), Range(1, 3), 0, 1},
+	{Range(0, 2), Range(1, 3), Span{0, 1}},
 	// DISCUSS: should a complete, one base range be reduced to a Point?
 	// {Range(0, 2), Point(0), 0, -1},
-	{Range(0, 2), Range(0, 1), 0, -1},
-	{Range(0, 2), Between(0), 0, -2},
-	{Range(1, 3), Range(0, 2), 0, -1},
-	{Range(0, 2), Range(0, 2), 2, 1},
-	{Range(0, 2), Range(0, 2), 2, -1},
+	{Range(0, 2), Range(0, 1), Span{0, -1}},
+	{Range(0, 2), Between(0), Span{0, -2}},
+	{Range(1, 3), Range(0, 2), Span{0, -1}},
+	{Range(0, 2), Range(0, 2), Span{2, 1}},
+	{Range(0, 2), Range(0, 2), Span{2, -1}},
 
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(1, 3), Range(4, 6)), 0, 1},
+	{Join(Range(0, 2), Range(3, 5)), Join(Range(1, 3), Range(4, 6)), Span{0, 1}},
 	// DISCUSS: should a complete, one base range be reduced to a Point?
 	// {Join(Range(0, 2), Range(3, 5)), Join(Point(0), Range(2, 4)), 0, -1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 1), Range(2, 4)), 0, -1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(4, 6)), 2, 1},
-	{Join(Range(0, 2), Range(3, 5)), Range(0, 4), 2, -1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), 5, 1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), 5, -1},
+	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 1), Range(2, 4)), Span{0, -1}},
+	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(4, 6)), Span{2, 1}},
+	{Join(Range(0, 2), Range(3, 5)), Range(0, 4), Span{2, -1}},
+	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), Span{5, 1}},
+	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), Span{5, -1}},
 
-	{Ambiguous{0, 2}, Ambiguous{1, 3}, 0, 1},
-	{Ambiguous{0, 2}, Ambiguous{0, 1}, 0, -1},
-	{Ambiguous{0, 2}, Between(0), 0, -2},
-	{Ambiguous{1, 3}, Ambiguous{0, 2}, 0, -1},
-	{Ambiguous{0, 2}, Ambiguous{0, 2}, 2, 1},
-	{Ambiguous{0, 2}, Ambiguous{0, 2}, 2, -1},
+	{Ambiguous{0, 2}, Ambiguous{1, 3}, Span{0, 1}},
+	{Ambiguous{0, 2}, Ambiguous{0, 1}, Span{0, -1}},
+	{Ambiguous{0, 2}, Between(0), Span{0, -2}},
+	{Ambiguous{1, 3}, Ambiguous{0, 2}, Span{0, -1}},
+	{Ambiguous{0, 2}, Ambiguous{0, 2}, Span{2, 1}},
+	{Ambiguous{0, 2}, Ambiguous{0, 2}, Span{2, -1}},
 
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(1, 3), Range(4, 6)), 0, 1},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(1, 3), Range(4, 6)), Span{0, 1}},
 	// DISCUSS: should a complete, one base range be reduced to a Point?
 	// {Order(Range(0, 2), Range(3, 5)), Order(Point(0), Range(2, 4)), 0, -1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 1), Range(2, 4)), 0, -1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(4, 6)), 2, 1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(2, 4)), 2, -1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), 5, 1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), 5, -1},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 1), Range(2, 4)), Span{0, -1}},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(4, 6)), Span{2, 1}},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(2, 4)), Span{2, -1}},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), Span{5, 1}},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), Span{5, -1}},
 }
 
 func areLocatable(locs ...Location) bool {
@@ -137,23 +148,23 @@ func areLocatable(locs ...Location) bool {
 
 func TestLocationShift(t *testing.T) {
 	for _, tt := range locationShiftTests {
-		if !reflect.DeepEqual(tt.in.Shift(tt.i, tt.n), tt.out) {
+		if !reflect.DeepEqual(tt.in.Shift(tt.span), tt.out) {
 			t.Errorf(
-				"%s.Shift(%d, %d) = %s, want %s",
-				locRep(tt.in), tt.i, tt.n,
-				locRep(tt.in.Shift(tt.i, tt.n)),
+				"%s.Shift(Span{%d, %d}) = %s, want %s",
+				locRep(tt.in), tt.span.Pos, tt.span.Len,
+				locRep(tt.in.Shift(tt.span)),
 				locRep(tt.out),
 			)
 		}
 		if areLocatable(tt.in, tt.out) {
 			if !reflect.DeepEqual(
-				tt.in.(Locatable).Complement().Shift(tt.i, tt.n),
+				tt.in.(Locatable).Complement().Shift(tt.span),
 				tt.out.(Locatable).Complement(),
 			) {
 				t.Errorf(
 					"%s.Shift(%d, %d) = %s, want %s",
-					locRep(tt.in.(Locatable).Complement()), tt.i, tt.n,
-					locRep(tt.in.(Locatable).Complement().Shift(tt.i, tt.n)),
+					locRep(tt.in.(Locatable).Complement()), tt.span.Pos, tt.span.Len,
+					locRep(tt.in.(Locatable).Complement().Shift(tt.span)),
 					locRep(tt.out.(Locatable).Complement()),
 				)
 			}
@@ -171,7 +182,11 @@ func (null NullLocation) Len() int {
 	return 0
 }
 
-func (null NullLocation) Shift(i, j int) Location {
+func (null NullLocation) Regions() []Span {
+	return []Span{{int(null), 0}}
+}
+
+func (null NullLocation) Shift(span Span) Location {
 	return null
 }
 
