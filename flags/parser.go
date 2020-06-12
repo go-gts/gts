@@ -68,7 +68,7 @@ func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 				case *BoolValue:
 					*v = BoolValue(true)
 				case SliceValue:
-					for len(args) > 0 && TypeOf(args[0]) == ValueType {
+					for len(args) > len(pos.Order) && TypeOf(args[0]) == ValueType {
 						head, args = shift(args)
 						if err := v.Set(head); err != nil {
 							return nil, fmt.Errorf("while setting value for flag %q: %v", long, err)
@@ -115,7 +115,7 @@ func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 				case *BoolValue:
 					*v = BoolValue(true)
 				case SliceValue:
-					for len(args) > 0 && TypeOf(args[0]) == ValueType {
+					for len(args) > len(pos.Order) && TypeOf(args[0]) == ValueType {
 						head, args = shift(args)
 						if err := v.Set(head); err != nil {
 							return nil, fmt.Errorf("while setting value for flag %q: %v", name, err)
