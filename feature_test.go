@@ -133,6 +133,7 @@ func TestFeature(t *testing.T) {
 
 var sampleSourceFeature = Feature{"source", Range(0, 5386), Values{"mol_type": []string{"Genomic DNA"}}, nil}
 var sampleGeneFeature = Feature{"gene", Range(51, 221), Values{"locus_tag": []string{"phiX174p04"}}, nil}
+var sampleCDSFeature = Feature{"CDS", Range(133, 393), Values{"locus_tag": []string{"phiX174p05"}}, nil}
 var sampleFeatureTable = FeatureTable{
 	sampleSourceFeature,
 	sampleGeneFeature,
@@ -190,4 +191,14 @@ func TestFeatureQualifierFilter(t *testing.T) {
 	testutils.Panics(t, func() {
 		selectorFilter("/mol_type=[")
 	})
+}
+
+func TestFeatureInsert(t *testing.T) {
+	ff := FeatureTable{}
+	ff = ff.Insert(sampleCDSFeature)
+	testutils.Equals(t, ff, FeatureTable{sampleCDSFeature})
+	ff = ff.Insert(sampleSourceFeature)
+	testutils.Equals(t, ff, FeatureTable{sampleSourceFeature, sampleCDSFeature})
+	ff = ff.Insert(sampleGeneFeature)
+	testutils.Equals(t, ff, FeatureTable{sampleSourceFeature, sampleGeneFeature, sampleCDSFeature})
 }

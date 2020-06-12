@@ -189,6 +189,26 @@ func (ff FeatureTable) Filter(filter Filter) FeatureTable {
 	return gg
 }
 
+// Insert takes the given Feature and inserts it into the sorted position in
+// the FeatureTable.
+func (ff FeatureTable) Insert(f Feature) FeatureTable {
+	i := 0
+	for i < len(ff) && ff[i].Key == "source" {
+		i++
+	}
+	if f.Key != "source" {
+		i += sort.Search(len(ff[i:]), func(j int) bool {
+			return f.Location.Less(ff[i+j].Location)
+		})
+	}
+
+	ff = append(ff, Feature{})
+	copy(ff[i+1:], ff[i:])
+	ff[i] = f
+
+	return ff
+}
+
 // Format creates a FeatureTableFormatter object for the qualifier with the
 // given prefix and depth. If the Feature object was created by parsing some
 // input, the qualifier values will be in the same order as in the input
