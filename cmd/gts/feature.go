@@ -18,6 +18,7 @@ func init() {
 	flags.Register("select", "select features using the given feature selector(s)", featureSelect)
 	flags.Register("merge", "merge features from a feature list file into a sequence", featureMerge)
 	flags.Register("extract", "extract information from the given sequence", featureExtract)
+	flags.Register("seq", "retrieve the feature sequences from the given record", featureSeq)
 }
 
 func featureClear(ctx *flags.Context) error {
@@ -28,7 +29,7 @@ func featureClear(ctx *flags.Context) error {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
-	seqoutPath := opt.String('o', "output", "-", "file to output (specifying `-` will force standard output)")
+	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
@@ -89,7 +90,7 @@ func featureSelect(ctx *flags.Context) error {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
-	seqoutPath := opt.String('o', "output", "-", "file to output (specifying `-` will force standard output)")
+	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
 	invert := opt.Switch('v', "invert-match", "select features that do not match the given criteria")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
@@ -160,7 +161,7 @@ func featureMerge(ctx *flags.Context) error {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
-	seqoutPath := opt.String('o', "output", "-", "file to output (specifying `-` will force standard output)")
+	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
@@ -231,7 +232,7 @@ func featureExtract(ctx *flags.Context) error {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
-	fileoutPath := opt.String('o', "output", "-", "file to output (specifying `-` will force standard output)")
+	fileoutPath := opt.String('o', "output", "-", "output table file (specifying `-` will force standard output)")
 	names := opt.StringSlice('n', "name", nil, "qualifier name(s) to select")
 	delim := opt.String('d', "delimiter", "\t", "string to insert between columns")
 	sep := opt.String('t', "separator", ",", "string to insert between qualifier values")
@@ -305,6 +306,72 @@ func featureExtract(ctx *flags.Context) error {
 				if err != nil {
 					return ctx.Raise(err)
 				}
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))
+	}
+
+	return nil
+}
+
+func featureSeq(ctx *flags.Context) error {
+	pos, opt := flags.Flags()
+
+	var seqinPath *string
+	if isTerminal(os.Stdin.Fd()) {
+		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
+	}
+
+	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
+	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
+
+	if err := ctx.Parse(pos, opt); err != nil {
+		return err
+	}
+
+	seqin := os.Stdin
+	if seqinPath != nil && *seqinPath != "-" {
+		f, err := os.Open(*seqinPath)
+		if err != nil {
+			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
+		}
+		seqin = f
+		defer seqin.Close()
+	}
+
+	seqout := os.Stdout
+	if *seqoutPath != "-" {
+		f, err := os.Create(*seqoutPath)
+		if err != nil {
+			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
+		}
+		seqout = f
+		defer seqout.Close()
+	}
+
+	filetype := seqio.Detect(*seqoutPath)
+	if *format != "" {
+		filetype = seqio.ToFileType(*format)
+	}
+
+	scanner := seqio.NewAutoScanner(seqin)
+	for scanner.Scan() {
+		seq := scanner.Value()
+		ff := seq.Features().Filter(gts.Not(gts.Key("source")))
+		for _, f := range ff {
+			spans := f.Location.Regions()
+			slices := make([]gts.Sequence, len(spans))
+			for i, span := range spans {
+				slices[i] = gts.Slice(seq, span.Pos, span.Pos+span.Len)
+			}
+			out := gts.Concat(slices...)
+			w := seqio.NewFormatter(out, filetype)
+			_, err := w.WriteTo(seqout)
+			if err != nil {
+				return ctx.Raise(err)
 			}
 		}
 	}
