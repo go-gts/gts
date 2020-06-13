@@ -56,9 +56,10 @@ func NewGenBank(info GenBankFields, ff []gts.Feature, p []byte) GenBank {
 		for j := 0; j < 60 && i+j < len(p); j += 10 {
 			start := i + j
 			end := min(start+10, len(p))
-			w.Write([]byte{' '})
+			io.WriteString(w, " ")
 			w.Write(p[start:end])
 		}
+		io.WriteString(w, "\n")
 	}
 	w.Flush()
 	return GenBank{info, ff, buf.Bytes()}
