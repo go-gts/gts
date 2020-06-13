@@ -36,7 +36,9 @@ func Len(seq Sequence) int {
 
 // Equal tests if the given sequences are identical.
 func Equal(a, b Sequence) bool {
-	return reflect.DeepEqual(a.Info(), b.Info()) && bytes.Equal(a.Bytes(), b.Bytes())
+	return reflect.DeepEqual(a.Info(), b.Info()) &&
+		reflect.DeepEqual(a.Features(), b.Features()) &&
+		bytes.Equal(a.Bytes(), b.Bytes())
 }
 
 // BasicSequence represents the most basic Sequence object.
@@ -115,7 +117,40 @@ func WithBytes(seq Sequence, p []byte) Sequence {
 func Slice(seq Sequence, start, end int) BasicSequence {
 	p := make([]byte, end-start)
 	copy(p, seq.Bytes()[start:end])
+	before, after := Span{0, -start}, Span{end, end - Len(seq)}
+	ff := make([]Feature, 0)
+	for _, f := range seq.Features() {
+		loc := f.Location.Shift(before).Shift(after)
+		if !isBetween(loc) || isBetween(f.Location) {
+			f.Location = loc
+			ff = append(ff, f)
+		}
+	}
 	return New(seq.Info(), seq.Features(), p)
+}
+
+// Concat takes the given Sequences and concatenates them into a single
+// Sequence.
+func Concat(ss ...Sequence) Sequence {
+	switch len(ss) {
+	case 0:
+		return New(nil, nil, nil)
+	case 1:
+		return ss[0]
+	default:
+		head, tail := ss[0], ss[1:]
+		ff, p := head.Features(), head.Bytes()
+		for _, seq := range tail {
+			for _, f := range seq.Features() {
+				f.Location = f.Location.Shift(Span{0, len(p)})
+				ff = ff.Insert(f)
+			}
+			p = append(p, seq.Bytes()...)
+		}
+		head = WithFeatures(head, ff)
+		head = WithBytes(head, p)
+		return head
+	}
 }
 
 // Reverse returns a Sequence object with the byte representation in the

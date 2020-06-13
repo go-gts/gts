@@ -44,11 +44,24 @@ func TestSequence(t *testing.T) {
 }
 
 func TestSlice(t *testing.T) {
-	p := []byte("atatexpcgc")
-	in := New(nil, nil, p)
+	p := []byte(strings.Repeat("atgc", 2))
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	loc := Range(0, len(p))
+	ff := []Feature{
+		{
+			Key:        "source",
+			Location:   loc,
+			Qualifiers: qfs,
+		},
+	}
+	info := "info"
+	in := New(info, ff, p)
+
 	for i := 0; i < len(p); i++ {
 		for j := i; j < len(p); j++ {
-			out, exp := Slice(in, i, j), New(nil, nil, p[i:j])
+			out, exp := Slice(in, i, j), New(info, ff, p[i:j])
 			if !Equal(out, exp) {
 				t.Errorf(
 					"Slice(%q, %d, %d) = %q, want %q",
@@ -58,6 +71,46 @@ func TestSlice(t *testing.T) {
 				)
 			}
 		}
+	}
+}
+
+func TestConcat(t *testing.T) {
+	out := Concat()
+	exp := New(nil, nil, nil)
+	if !Equal(out, exp) {
+		t.Errorf("Concat() = %v, want %v", out, exp)
+	}
+
+	p := []byte(strings.Repeat("atgc", 2))
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	loc := Range(0, len(p))
+	f := Feature{
+		Key:        "source",
+		Location:   loc,
+		Qualifiers: qfs,
+	}
+
+	ff := []Feature{f}
+	info := "info"
+	seq := New(info, ff, p)
+
+	out = Concat(seq)
+	exp = seq
+	if !Equal(out, exp) {
+		t.Errorf("Concat() = %v, want %v", out, exp)
+	}
+
+	out = Concat(seq, seq)
+	g := Feature{
+		Key:        f.Key,
+		Location:   f.Location.Shift(Span{0, Len(seq)}),
+		Qualifiers: qfs,
+	}
+	exp = New(info, append(ff, g), append(p, p...))
+	if !Equal(out, exp) {
+		t.Errorf("Concat() = %v, want %v", out, exp)
 	}
 }
 

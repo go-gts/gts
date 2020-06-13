@@ -77,6 +77,11 @@ func shift(pos, i, n int, closed bool) int {
 // sense if the start and end positions are directly adjacent.
 type Between int
 
+func isBetween(loc Location) bool {
+	_, ok := loc.(Between)
+	return ok
+}
+
 // String satisfies the fmt.Stringer interface.
 func (between Between) String() string {
 	return fmt.Sprintf("%d^%d", between, between+1)
@@ -318,11 +323,11 @@ func (ranged Ranged) Len() int {
 
 // Shift the location beyond the given position i by n.
 func (ranged Ranged) Shift(span Span) Location {
-	if span.Len < 0 && span.Pos <= ranged.Start && ranged.End <= span.Pos-span.Len {
-		return Between(span.Pos)
-	}
 	start, end := shift(ranged.Start, span.Pos, span.Len, true), shift(ranged.End, span.Pos, span.Len, false)
-	return PartialRange(start, end, ranged.Partial)
+	if start < end {
+		return PartialRange(start, end, ranged.Partial)
+	}
+	return Between(start)
 }
 
 // Less returns true if the location is less than the given location.
@@ -794,13 +799,11 @@ func (ambiguous Ambiguous) Regions() []Span {
 
 // Shift the location beyond the given position i by n.
 func (ambiguous Ambiguous) Shift(span Span) Location {
-	if span.Len < 0 && span.Pos <= ambiguous[0] && ambiguous[1] <= span.Pos-span.Len {
-		return Between(span.Pos)
+	start, end := shift(ambiguous[0], span.Pos, span.Len, true), shift(ambiguous[1], span.Pos, span.Len, false)
+	if start < end {
+		return Ambiguous{start, end}
 	}
-	return Ambiguous{
-		shift(ambiguous[0], span.Pos, span.Len, true),
-		shift(ambiguous[1], span.Pos, span.Len, false),
-	}
+	return Between(start)
 }
 
 // Less returns true if the location is less than the given location.
