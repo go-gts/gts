@@ -79,7 +79,10 @@ func (s *Scanner) Scan() bool {
 
 // Value returns the most recently scanned sequence value.
 func (s Scanner) Value() gts.Sequence {
-	return s.res.Value.(gts.Sequence)
+	if seq, ok := s.res.Value.(gts.Sequence); ok {
+		return seq
+	}
+	return nil
 }
 
 // Err returns the first non-EOF error that was encountered by the scanner.

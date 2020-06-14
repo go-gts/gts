@@ -1,10 +1,12 @@
 package gts
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/go-gts/gts/testutils"
+	"github.com/go-test/deep"
 )
 
 type LenObj []byte
@@ -43,8 +45,68 @@ func TestSequence(t *testing.T) {
 	}
 }
 
+func TestInsert(t *testing.T) {
+	p := []byte("atgcatgc")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	info := "info"
+	in := New(info, ff, p)
+	out := Insert(in, 2, in)
+
+	q := []byte("atatgcatgcgcatgc")
+	gg := []Feature{
+		{"source", Join(Range(0, 2), Range(2+len(p), len(q))), qfs, nil},
+		{"source", Range(2, 2+len(p)), qfs, nil},
+	}
+	exp := New(info, gg, q)
+
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Insert(seq, 2, seq).Info() = %v, want %v", out.Info(), exp.Info())
+	}
+
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Insert(seq, 2, seq).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Insert(seq, 2, seq).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+	}
+}
+
+func TestEmbed(t *testing.T) {
+	p := []byte("atgcatgc")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	info := "info"
+	in := New(info, ff, p)
+	out := Embed(in, 2, in)
+
+	q := []byte("atatgcatgcgcatgc")
+	gg := []Feature{
+		{"source", Range(0, len(q)), qfs, nil},
+		{"source", Range(2, 2+len(p)), qfs, nil},
+	}
+	exp := New(info, gg, q)
+
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Embed(seq, 2, seq).Info() = %v, want %v", out.Info(), exp.Info())
+	}
+
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Embed(seq, 2, seq).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Embed(seq, 2, seq).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+	}
+}
+
 func TestSlice(t *testing.T) {
-	p := []byte(strings.Repeat("atgc", 2))
+	p := []byte("atgcatgc")
 	qfs := Values{}
 	qfs.Add("organism", "Genus species")
 	qfs.Add("mol_type", "Genomic DNA")
@@ -81,7 +143,7 @@ func TestConcat(t *testing.T) {
 		t.Errorf("Concat() = %v, want %v", out, exp)
 	}
 
-	p := []byte(strings.Repeat("atgc", 2))
+	p := []byte("atgcatgc")
 	qfs := Values{}
 	qfs.Add("organism", "Genus species")
 	qfs.Add("mol_type", "Genomic DNA")
@@ -105,7 +167,7 @@ func TestConcat(t *testing.T) {
 	out = Concat(seq, seq)
 	g := Feature{
 		Key:        f.Key,
-		Location:   f.Location.Shift(Span{0, Len(seq)}),
+		Location:   f.Location.Shift(0, Len(seq), false),
 		Qualifiers: qfs,
 	}
 	exp = New(info, append(ff, g), append(p, p...))

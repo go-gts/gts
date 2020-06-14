@@ -88,53 +88,56 @@ func TestLocationAccessors(t *testing.T) {
 
 var locationShiftTests = []struct {
 	in, out Location
-	span    Span
+	i, n    int
+	expand  bool
 }{
-	{Between(0), Between(0), Span{0, 1}},
-	{Between(0), Between(0), Span{0, -1}},
-	{Between(1), Between(2), Span{0, 1}},
-	{Between(1), Between(0), Span{0, -1}},
+	{Between(0), Between(0), 0, 1, true},
+	{Between(0), Between(0), 0, -1, true},
+	{Between(1), Between(2), 0, 1, true},
+	{Between(1), Between(0), 0, -1, true},
 
-	{Point(0), Point(1), Span{0, 1}},
-	{Point(0), Between(0), Span{0, -1}},
-	{Point(0), Point(0), Span{1, 1}},
-	{Point(0), Point(0), Span{1, -1}},
-	{Point(1), Point(2), Span{0, 1}},
-	{Point(1), Point(0), Span{0, -1}},
+	{Point(0), Point(1), 0, 1, true},
+	{Point(0), Between(0), 0, -1, true},
+	{Point(0), Point(0), 1, 1, true},
+	{Point(0), Point(0), 1, -1, true},
+	{Point(1), Point(2), 0, 1, true},
+	{Point(1), Point(0), 0, -1, true},
 
-	{Range(0, 2), Range(1, 3), Span{0, 1}},
+	{Range(0, 2), Range(1, 3), 0, 1, true},
 	// DISCUSS: should a complete, one base range be reduced to a Point?
-	// {Range(0, 2), Point(0), 0, -1},
-	{Range(0, 2), Range(0, 1), Span{0, -1}},
-	{Range(0, 2), Between(0), Span{0, -2}},
-	{Range(1, 3), Range(0, 2), Span{0, -1}},
-	{Range(0, 2), Range(0, 2), Span{2, 1}},
-	{Range(0, 2), Range(0, 2), Span{2, -1}},
+	// {Range(0, 2), Point(0), 0, -1, true},
+	{Range(0, 2), Range(0, 1), 0, -1, true},
+	{Range(0, 2), Between(0), 0, -2, true},
+	{Range(1, 3), Range(0, 2), 0, -1, true},
+	{Range(0, 2), Range(0, 2), 2, 1, true},
+	{Range(0, 2), Range(0, 2), 2, -1, true},
+	{PartialRange(0, 4, PartialBoth), Join(PartialRange(0, 2, Partial5), PartialRange(3, 5, Partial3)), 2, 1, false},
 
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(1, 3), Range(4, 6)), Span{0, 1}},
+	{Join(Range(0, 2), Range(3, 5)), Join(Range(1, 3), Range(4, 6)), 0, 1, true},
 	// DISCUSS: should a complete, one base range be reduced to a Point?
 	// {Join(Range(0, 2), Range(3, 5)), Join(Point(0), Range(2, 4)), 0, -1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 1), Range(2, 4)), Span{0, -1}},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(4, 6)), Span{2, 1}},
-	{Join(Range(0, 2), Range(3, 5)), Range(0, 4), Span{2, -1}},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), Span{5, 1}},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), Span{5, -1}},
+	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 1), Range(2, 4)), 0, -1, true},
+	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(4, 6)), 2, 1, true},
+	{Join(Range(0, 2), Range(3, 5)), Range(0, 4), 2, -1, true},
+	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), 5, 1, true},
+	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), 5, -1, true},
 
-	{Ambiguous{0, 2}, Ambiguous{1, 3}, Span{0, 1}},
-	{Ambiguous{0, 2}, Ambiguous{0, 1}, Span{0, -1}},
-	{Ambiguous{0, 2}, Between(0), Span{0, -2}},
-	{Ambiguous{1, 3}, Ambiguous{0, 2}, Span{0, -1}},
-	{Ambiguous{0, 2}, Ambiguous{0, 2}, Span{2, 1}},
-	{Ambiguous{0, 2}, Ambiguous{0, 2}, Span{2, -1}},
+	{Ambiguous{0, 2}, Ambiguous{1, 3}, 0, 1, true},
+	{Ambiguous{0, 2}, Ambiguous{0, 1}, 0, -1, true},
+	{Ambiguous{0, 2}, Between(0), 0, -2, true},
+	{Ambiguous{1, 3}, Ambiguous{0, 2}, 0, -1, true},
+	{Ambiguous{0, 2}, Ambiguous{0, 2}, 2, 1, true},
+	{Ambiguous{0, 2}, Ambiguous{0, 2}, 2, -1, true},
+	{Ambiguous{0, 4}, Order(Ambiguous{0, 2}, Ambiguous{3, 5}), 2, 1, false},
 
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(1, 3), Range(4, 6)), Span{0, 1}},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(1, 3), Range(4, 6)), 0, 1, true},
 	// DISCUSS: should a complete, one base range be reduced to a Point?
 	// {Order(Range(0, 2), Range(3, 5)), Order(Point(0), Range(2, 4)), 0, -1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 1), Range(2, 4)), Span{0, -1}},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(4, 6)), Span{2, 1}},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(2, 4)), Span{2, -1}},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), Span{5, 1}},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), Span{5, -1}},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 1), Range(2, 4)), 0, -1, true},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(4, 6)), 2, 1, true},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(2, 4)), 2, -1, true},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), 5, 1, true},
+	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), 5, -1, true},
 }
 
 func areLocatable(locs ...Location) bool {
@@ -148,23 +151,23 @@ func areLocatable(locs ...Location) bool {
 
 func TestLocationShift(t *testing.T) {
 	for _, tt := range locationShiftTests {
-		if !reflect.DeepEqual(tt.in.Shift(tt.span), tt.out) {
+		if !reflect.DeepEqual(tt.in.Shift(tt.i, tt.n, tt.expand), tt.out) {
 			t.Errorf(
-				"%s.Shift(Span{%d, %d}) = %s, want %s",
-				locRep(tt.in), tt.span.Pos, tt.span.Len,
-				locRep(tt.in.Shift(tt.span)),
+				"%s.Shift(%d, %d, %t) = %s, want %s",
+				locRep(tt.in), tt.i, tt.n, tt.expand,
+				locRep(tt.in.Shift(tt.i, tt.n, tt.expand)),
 				locRep(tt.out),
 			)
 		}
 		if areLocatable(tt.in, tt.out) {
 			if !reflect.DeepEqual(
-				tt.in.(Locatable).Complement().Shift(tt.span),
+				tt.in.(Locatable).Complement().Shift(tt.i, tt.n, tt.expand),
 				tt.out.(Locatable).Complement(),
 			) {
 				t.Errorf(
-					"%s.Shift(%d, %d) = %s, want %s",
-					locRep(tt.in.(Locatable).Complement()), tt.span.Pos, tt.span.Len,
-					locRep(tt.in.(Locatable).Complement().Shift(tt.span)),
+					"%s.Shift(%d, %d, %t) = %s, want %s",
+					locRep(tt.in.(Locatable).Complement()), tt.i, tt.n, tt.expand,
+					locRep(tt.in.(Locatable).Complement().Shift(tt.i, tt.n, tt.expand)),
 					locRep(tt.out.(Locatable).Complement()),
 				)
 			}
@@ -186,7 +189,7 @@ func (null NullLocation) Regions() []Span {
 	return []Span{{int(null), 0}}
 }
 
-func (null NullLocation) Shift(span Span) Location {
+func (null NullLocation) Shift(i, n int, expand bool) Location {
 	return null
 }
 

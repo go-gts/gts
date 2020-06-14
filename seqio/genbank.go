@@ -51,6 +51,9 @@ func NewGenBank(info GenBankFields, ff []gts.Feature, p []byte) GenBank {
 	buf := &bytes.Buffer{}
 	w := bufio.NewWriter(buf)
 	for i := 0; i < len(p); i += 60 {
+		if i != 0 {
+			io.WriteString(w, "\n")
+		}
 		prefix := fmt.Sprintf("%10d", i+1)
 		w.Write([]byte(prefix))
 		for j := 0; j < 60 && i+j < len(p); j += 10 {
@@ -59,7 +62,6 @@ func NewGenBank(info GenBankFields, ff []gts.Feature, p []byte) GenBank {
 			io.WriteString(w, " ")
 			w.Write(p[start:end])
 		}
-		io.WriteString(w, "\n")
 	}
 	w.Flush()
 	return GenBank{info, ff, buf.Bytes()}

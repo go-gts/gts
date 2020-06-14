@@ -10,19 +10,13 @@ import (
 	"github.com/go-pars/pars"
 )
 
-// Span represents a region spanned by a location.
-type Span struct {
-	Pos int
-	Len int
-}
-
 // Location represents a location in a sequence as defined by the INSDC feature
 // table definition.
 type Location interface {
 	fmt.Stringer
 	Len() int
 	Regions() []Span
-	Shift(span Span) Location
+	Shift(i, n int, expand bool) Location
 	Less(loc Location) bool
 }
 
@@ -98,8 +92,8 @@ func (between Between) Regions() []Span {
 }
 
 // Shift the location beyond the given position i by n.
-func (between Between) Shift(span Span) Location {
-	return Between(shift(int(between), span.Pos, span.Len, false))
+func (between Between) Shift(i, n int, expand bool) Location {
+	return Between(shift(int(between), i, n, false))
 }
 
 // Less returns true if the location is less than the given location.
@@ -195,12 +189,12 @@ func (point Point) Regions() []Span {
 }
 
 // Shift the location beyond the given position i by n.
-func (point Point) Shift(span Span) Location {
+func (point Point) Shift(i, n int, expand bool) Location {
 	pos := int(point)
-	if span.Len < 0 && span.Pos <= pos && pos+1 <= span.Pos-span.Len {
-		return Between(span.Pos)
+	if n < 0 && i <= pos && pos+1 <= i-n {
+		return Between(pos)
 	}
-	return Point(shift(pos, span.Pos, span.Len, true))
+	return Point(shift(pos, i, n, true))
 }
 
 // Less returns true if the location is less than the given location.
@@ -279,7 +273,7 @@ type Ranged struct {
 // PartialRange returns the range between the start and end positions where the
 // specified ends are partial. They can be Complete, Partial5, Partial3, or
 // PartialBoth.
-func PartialRange(start, end int, partial Partial) Locatable {
+func PartialRange(start, end int, partial Partial) Ranged {
 	if end <= start {
 		panic(fmt.Errorf("Ranged bounds out of range [%d:%d]", start, end))
 	}
@@ -292,7 +286,7 @@ func PartialRange(start, end int, partial Partial) Locatable {
 }
 
 // Range returns the complete range between the start and end positions.
-func Range(start, end int) Locatable {
+func Range(start, end int) Ranged {
 	return PartialRange(start, end, Complete)
 }
 
@@ -322,12 +316,23 @@ func (ranged Ranged) Len() int {
 }
 
 // Shift the location beyond the given position i by n.
-func (ranged Ranged) Shift(span Span) Location {
-	start, end := shift(ranged.Start, span.Pos, span.Len, true), shift(ranged.End, span.Pos, span.Len, false)
-	if start < end {
+func (ranged Ranged) Shift(i, n int, expand bool) Location {
+	start, end := shift(ranged.Start, i, n, true), shift(ranged.End, i, n, false)
+	if end <= start {
+		return Between(start)
+	}
+	if expand || i <= start || end < i {
 		return PartialRange(start, end, ranged.Partial)
 	}
-	return Between(start)
+	left, right := Range(start, i), Range(i+n, end)
+	partial5, partial3 := ranged.Partial[0], ranged.Partial[1]
+	if partial5 {
+		left.Partial = Partial5
+	}
+	if partial3 {
+		right.Partial = Partial3
+	}
+	return Join(left, right)
 }
 
 // Less returns true if the location is less than the given location.
@@ -476,8 +481,8 @@ func (complement Complemented) Regions() []Span {
 }
 
 // Shift the location beyond the given position i by n.
-func (complement Complemented) Shift(span Span) Location {
-	return Complemented{complement[0].Shift(span).(Locatable)}
+func (complement Complemented) Shift(i, n int, expand bool) Location {
+	return Complemented{complement[0].Shift(i, n, expand).(Locatable)}
 }
 
 // Less returns true if the location is less than the given location.
@@ -598,7 +603,8 @@ func (ll *LocatableList) Push(loc Locatable) {
 			}
 		case Ranged:
 			if v.End == u.Start {
-				ll.Data = Ranged{v.Start, u.End, v.Partial}
+				partial := Partial{v.Partial[0], u.Partial[1]}
+				ll.Data = Ranged{v.Start, u.End, partial}
 				return
 			}
 		}
@@ -669,10 +675,10 @@ func (joined Joined) Len() int {
 }
 
 // Shift the location beyond the given position i by n.
-func (joined Joined) Shift(span Span) Location {
+func (joined Joined) Shift(i, n int, expand bool) Location {
 	locs := make([]Locatable, len(joined))
 	for j, loc := range joined {
-		locs[j] = loc.Shift(span).(Locatable)
+		locs[j] = loc.Shift(i, n, expand).(Locatable)
 	}
 	return Join(locs...)
 }
@@ -798,12 +804,15 @@ func (ambiguous Ambiguous) Regions() []Span {
 }
 
 // Shift the location beyond the given position i by n.
-func (ambiguous Ambiguous) Shift(span Span) Location {
-	start, end := shift(ambiguous[0], span.Pos, span.Len, true), shift(ambiguous[1], span.Pos, span.Len, false)
-	if start < end {
+func (ambiguous Ambiguous) Shift(i, n int, expand bool) Location {
+	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
+	if end <= start {
+		return Between(start)
+	}
+	if expand || i <= start || end < i {
 		return Ambiguous{start, end}
 	}
-	return Between(start)
+	return Order(Ambiguous{start, i}, Ambiguous{i + n, end})
 }
 
 // Less returns true if the location is less than the given location.
@@ -949,10 +958,10 @@ func (ordered Ordered) Regions() []Span {
 }
 
 // Shift the location beyond the given position i by n.
-func (ordered Ordered) Shift(span Span) Location {
+func (ordered Ordered) Shift(i, n int, expand bool) Location {
 	locs := make([]Location, len(ordered))
 	for j, loc := range ordered {
-		locs[j] = loc.Shift(span)
+		locs[j] = loc.Shift(i, n, expand)
 	}
 	return Order(locs...)
 }

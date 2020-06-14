@@ -16,9 +16,9 @@ import (
 func init() {
 	flags.Register("clear", "remove all features from the sequence (excluding source features)", featureClear)
 	flags.Register("select", "select features using the given feature selector(s)", featureSelect)
-	flags.Register("merge", "merge features from a feature list file into a sequence", featureMerge)
+	flags.Register("annotate", "merge features from a feature list file into a sequence", featureAnnotate)
 	flags.Register("extract", "extract information from the given sequence", featureExtract)
-	flags.Register("seq", "retrieve the feature sequences from the given record", featureSeq)
+	flags.Register("seq", "retrieve the sequences referenced by the features", featureSeq)
 }
 
 func featureClear(ctx *flags.Context) error {
@@ -36,24 +36,24 @@ func featureClear(ctx *flags.Context) error {
 		return err
 	}
 
-	seqin := os.Stdin
+	seqinFile := os.Stdin
 	if seqinPath != nil && *seqinPath != "-" {
 		f, err := os.Open(*seqinPath)
 		if err != nil {
 			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
 		}
-		seqin = f
-		defer seqin.Close()
+		seqinFile = f
+		defer seqinFile.Close()
 	}
 
-	seqout := os.Stdout
+	seqoutFile := os.Stdout
 	if *seqoutPath != "-" {
 		f, err := os.Create(*seqoutPath)
 		if err != nil {
 			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
 		}
-		seqout = f
-		defer seqout.Close()
+		seqoutFile = f
+		defer seqoutFile.Close()
 	}
 
 	filetype := seqio.Detect(*seqoutPath)
@@ -61,17 +61,21 @@ func featureClear(ctx *flags.Context) error {
 		filetype = seqio.ToFileType(*format)
 	}
 
-	scanner := seqio.NewAutoScanner(seqin)
+	w := bufio.NewWriter(seqoutFile)
+
+	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		ff := seq.Features().Filter(gts.Key("source"))
 		seq = gts.WithFeatures(seq, ff)
-		w := seqio.NewFormatter(seq, filetype)
-		_, err := w.WriteTo(seqout)
+		formatter := seqio.NewFormatter(seq, filetype)
+		_, err := formatter.WriteTo(w)
 		if err != nil {
 			return ctx.Raise(err)
 		}
 	}
+
+	w.Flush()
 
 	if err := scanner.Err(); err != nil {
 		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))
@@ -107,24 +111,24 @@ func featureSelect(ctx *flags.Context) error {
 	}
 	filter = gts.Or(gts.Key("source"), filter)
 
-	infile := os.Stdin
+	seqinFile := os.Stdin
 	if seqinPath != nil && *seqinPath != "-" {
 		f, err := os.Open(*seqinPath)
 		if err != nil {
 			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
 		}
-		infile = f
-		defer infile.Close()
+		seqinFile = f
+		defer seqinFile.Close()
 	}
 
-	outfile := os.Stdout
+	seqoutFile := os.Stdout
 	if *seqoutPath != "-" {
 		f, err := os.Create(*seqoutPath)
 		if err != nil {
 			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
 		}
-		outfile = f
-		defer outfile.Close()
+		seqoutFile = f
+		defer seqoutFile.Close()
 	}
 
 	filetype := seqio.Detect(*seqoutPath)
@@ -132,17 +136,21 @@ func featureSelect(ctx *flags.Context) error {
 		filetype = seqio.ToFileType(*format)
 	}
 
-	scanner := seqio.NewAutoScanner(infile)
+	w := bufio.NewWriter(seqoutFile)
+
+	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		ff := seq.Features().Filter(filter)
 		seq = gts.WithFeatures(seq, ff)
-		w := seqio.NewFormatter(seq, filetype)
-		_, err := w.WriteTo(outfile)
+		formatter := seqio.NewFormatter(seq, filetype)
+		_, err := formatter.WriteTo(w)
 		if err != nil {
 			return ctx.Raise(err)
 		}
 	}
+
+	w.Flush()
 
 	if err := scanner.Err(); err != nil {
 		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))
@@ -151,7 +159,7 @@ func featureSelect(ctx *flags.Context) error {
 	return nil
 }
 
-func featureMerge(ctx *flags.Context) error {
+func featureAnnotate(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
 	featinPath := pos.String("feature_table", "feature table file containing features to merge")
@@ -168,29 +176,29 @@ func featureMerge(ctx *flags.Context) error {
 		return err
 	}
 
-	seqin := os.Stdin
+	seqinFile := os.Stdin
 	if seqinPath != nil && *seqinPath != "-" {
 		f, err := os.Open(*seqinPath)
 		if err != nil {
 			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
 		}
-		seqin = f
-		defer seqin.Close()
+		seqinFile = f
+		defer seqinFile.Close()
 	}
 
-	featin, err := os.Open(*featinPath)
+	featinFile, err := os.Open(*featinPath)
 	if err != nil {
 		return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *featinPath, err))
 	}
 
-	seqout := os.Stdout
+	seqoutFile := os.Stdout
 	if *seqoutPath != "-" {
 		f, err := os.Create(*seqoutPath)
 		if err != nil {
 			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
 		}
-		seqout = f
-		defer seqout.Close()
+		seqoutFile = f
+		defer seqoutFile.Close()
 	}
 
 	filetype := seqio.Detect(*seqoutPath)
@@ -198,24 +206,28 @@ func featureMerge(ctx *flags.Context) error {
 		filetype = seqio.ToFileType(*format)
 	}
 
-	state := pars.NewState(featin)
+	state := pars.NewState(featinFile)
 	result, err := gts.FeatureTableParser("").Parse(state)
-	target := result.Value.(gts.FeatureTable)
+	featin := result.Value.(gts.FeatureTable)
 
-	scanner := seqio.NewAutoScanner(seqin)
+	w := bufio.NewWriter(seqoutFile)
+
+	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		ff := seq.Features()
-		for _, f := range target {
+		for _, f := range featin {
 			ff = ff.Insert(f)
 		}
 		seq = gts.WithFeatures(seq, ff)
-		w := seqio.NewFormatter(seq, filetype)
-		_, err := w.WriteTo(seqout)
+		formatter := seqio.NewFormatter(seq, filetype)
+		_, err := formatter.WriteTo(w)
 		if err != nil {
 			return ctx.Raise(err)
 		}
 	}
+
+	w.Flush()
 
 	if err := scanner.Err(); err != nil {
 		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))
@@ -232,7 +244,7 @@ func featureExtract(ctx *flags.Context) error {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
-	fileoutPath := opt.String('o', "output", "-", "output table file (specifying `-` will force standard output)")
+	outPath := opt.String('o', "output", "-", "output table file (specifying `-` will force standard output)")
 	names := opt.StringSlice('n', "name", nil, "qualifier name(s) to select")
 	delim := opt.String('d', "delimiter", "\t", "string to insert between columns")
 	sep := opt.String('t', "separator", ",", "string to insert between qualifier values")
@@ -244,27 +256,27 @@ func featureExtract(ctx *flags.Context) error {
 		return err
 	}
 
-	seqin := os.Stdin
+	seqinFile := os.Stdin
 	if seqinPath != nil && *seqinPath != "-" {
 		f, err := os.Open(*seqinPath)
 		if err != nil {
 			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
 		}
-		seqin = f
-		defer seqin.Close()
+		seqinFile = f
+		defer seqinFile.Close()
 	}
 
-	fileout := os.Stdout
-	if *fileoutPath != "-" {
-		f, err := os.Create(*fileoutPath)
+	outFile := os.Stdout
+	if *outPath != "-" {
+		f, err := os.Create(*outPath)
 		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *fileoutPath, err))
+			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *outPath, err))
 		}
-		fileout = f
-		defer fileout.Close()
+		outFile = f
+		defer outFile.Close()
 	}
 
-	w := bufio.NewWriter(fileout)
+	w := bufio.NewWriter(outFile)
 
 	fields := []string{}
 	if !*nokey {
@@ -280,7 +292,7 @@ func featureExtract(ctx *flags.Context) error {
 		return ctx.Raise(err)
 	}
 
-	scanner := seqio.NewAutoScanner(seqin)
+	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
 
@@ -310,6 +322,8 @@ func featureExtract(ctx *flags.Context) error {
 		}
 	}
 
+	w.Flush()
+
 	if err := scanner.Err(); err != nil {
 		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))
 	}
@@ -332,24 +346,24 @@ func featureSeq(ctx *flags.Context) error {
 		return err
 	}
 
-	seqin := os.Stdin
+	seqinFile := os.Stdin
 	if seqinPath != nil && *seqinPath != "-" {
 		f, err := os.Open(*seqinPath)
 		if err != nil {
 			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
 		}
-		seqin = f
-		defer seqin.Close()
+		seqinFile = f
+		defer seqinFile.Close()
 	}
 
-	seqout := os.Stdout
+	seqoutFile := os.Stdout
 	if *seqoutPath != "-" {
 		f, err := os.Create(*seqoutPath)
 		if err != nil {
 			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
 		}
-		seqout = f
-		defer seqout.Close()
+		seqoutFile = f
+		defer seqoutFile.Close()
 	}
 
 	filetype := seqio.Detect(*seqoutPath)
@@ -357,7 +371,9 @@ func featureSeq(ctx *flags.Context) error {
 		filetype = seqio.ToFileType(*format)
 	}
 
-	scanner := seqio.NewAutoScanner(seqin)
+	w := bufio.NewWriter(seqoutFile)
+
+	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		ff := seq.Features().Filter(gts.Not(gts.Key("source")))
@@ -368,13 +384,15 @@ func featureSeq(ctx *flags.Context) error {
 				slices[i] = gts.Slice(seq, span.Pos, span.Pos+span.Len)
 			}
 			out := gts.Concat(slices...)
-			w := seqio.NewFormatter(out, filetype)
-			_, err := w.WriteTo(seqout)
+			formatter := seqio.NewFormatter(out, filetype)
+			_, err := formatter.WriteTo(w)
 			if err != nil {
 				return ctx.Raise(err)
 			}
 		}
 	}
+
+	w.Flush()
 
 	if err := scanner.Err(); err != nil {
 		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))

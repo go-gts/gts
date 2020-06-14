@@ -112,15 +112,52 @@ func WithBytes(seq Sequence, p []byte) Sequence {
 	}
 }
 
+func insert(p []byte, pos int, q []byte) []byte {
+	return append(p[:pos], append(q, p[pos:]...)...)
+}
+
+// Insert a sequence at the given position.
+func Insert(host Sequence, pos int, guest Sequence) Sequence {
+	ff := FeatureTable{}
+	for _, f := range host.Features() {
+		f.Location = f.Location.Shift(pos, Len(guest), false)
+		ff = ff.Insert(f)
+	}
+	for _, f := range guest.Features() {
+		f.Location = f.Location.Shift(0, pos, true)
+		ff = ff.Insert(f)
+	}
+	p := insert(host.Bytes(), pos, guest.Bytes())
+	ret := WithFeatures(host, ff)
+	ret = WithBytes(ret, p)
+	return ret
+}
+
+// Embed a sequence at the given position.
+func Embed(host Sequence, pos int, guest Sequence) Sequence {
+	ff := FeatureTable{}
+	for _, f := range host.Features() {
+		f.Location = f.Location.Shift(pos, Len(guest), true)
+		ff = ff.Insert(f)
+	}
+	for _, f := range guest.Features() {
+		f.Location = f.Location.Shift(0, pos, true)
+		ff = ff.Insert(f)
+	}
+	p := insert(host.Bytes(), pos, guest.Bytes())
+	ret := WithFeatures(host, ff)
+	ret = WithBytes(ret, p)
+	return ret
+}
+
 // Slice returns a subsequence of the given sequence starting at start and up
 // to end. The target sequence region is copied.
 func Slice(seq Sequence, start, end int) BasicSequence {
 	p := make([]byte, end-start)
 	copy(p, seq.Bytes()[start:end])
-	before, after := Span{0, -start}, Span{end, end - Len(seq)}
 	ff := make([]Feature, 0)
 	for _, f := range seq.Features() {
-		loc := f.Location.Shift(before).Shift(after)
+		loc := f.Location.Shift(0, -start, true).Shift(end, end-Len(seq), true)
 		if !isBetween(loc) || isBetween(f.Location) {
 			f.Location = loc
 			ff = append(ff, f)
@@ -142,7 +179,7 @@ func Concat(ss ...Sequence) Sequence {
 		ff, p := head.Features(), head.Bytes()
 		for _, seq := range tail {
 			for _, f := range seq.Features() {
-				f.Location = f.Location.Shift(Span{0, len(p)})
+				f.Location = f.Location.Shift(0, len(p), true)
 				ff = ff.Insert(f)
 			}
 			p = append(p, seq.Bytes()...)

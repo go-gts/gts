@@ -1,15 +1,20 @@
 package seqio
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/go-gts/gts/testutils"
-	"github.com/go-pars/pars"
 )
 
 func TestScannerGenBank(t *testing.T) {
 	in := testutils.ReadTestfile(t, "NC_001422.gb")
-	s := NewScanner(GenBankParser, pars.FromString(in))
+	s := NewScanner(GenBankParser, strings.NewReader(in))
+
+	if s.Value() != nil {
+		t.Error("First scan should be empty")
+	}
+
 	if !s.Scan() {
 		if s.Err() == nil {
 			t.Error("Scan failed but returned nil error")
@@ -29,7 +34,7 @@ func TestScannerGenBank(t *testing.T) {
 
 func TestScannerGenBankFail(t *testing.T) {
 	in := testutils.ReadTestfile(t, "NC_001422.fasta")
-	s := NewScanner(GenBankParser, pars.FromString(in))
+	s := NewScanner(GenBankParser, strings.NewReader(in))
 	if s.Scan() {
 		t.Error("GenBank Scanner should fail for FASTA file")
 		return
@@ -46,7 +51,7 @@ func TestScannerGenBankFail(t *testing.T) {
 
 func TestAutoScanner(t *testing.T) {
 	in := testutils.ReadTestfile(t, "NC_001422.fasta")
-	s := NewAutoScanner(pars.FromString(in))
+	s := NewAutoScanner(strings.NewReader(in))
 	if !s.Scan() {
 		if s.Err() == nil {
 			t.Error("Scan failed but returned nil error")
@@ -66,7 +71,7 @@ func TestAutoScanner(t *testing.T) {
 
 func TestAutoScannerFail(t *testing.T) {
 	in := "LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018"
-	s := NewAutoScanner(pars.FromString(in))
+	s := NewAutoScanner(strings.NewReader(in))
 	if s.Scan() {
 		t.Error("Auto Scanner should fail")
 		return
