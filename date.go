@@ -4,9 +4,9 @@ import "time"
 
 // Date represents a date stamp for record entries.
 type Date struct {
-	Year  int        `json:"year" yaml:"year" msgpack:"year"`
-	Month time.Month `json:"month" yaml:"month" msgpack:"month"`
-	Day   int        `json:"day" yaml:"day" msgpack:"day"`
+	Year  int
+	Month time.Month
+	Day   int
 }
 
 // FromTime creates a Date from a time.Time object.

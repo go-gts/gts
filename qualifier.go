@@ -7,8 +7,8 @@ import (
 	"sort"
 	"strings"
 
-	ascii "gopkg.in/ascii.v1"
-	pars "gopkg.in/pars.v2"
+	"github.com/go-ascii/ascii"
+	"github.com/go-pars/pars"
 )
 
 // QualifierIO represents a single qualifier name-value pair.
@@ -241,10 +241,7 @@ func literalQualifierParser(prefix string) pars.Parser {
 			return pars.NewError("expected `=`", state.Position())
 		}
 		state.Advance()
-		if err := literal(state, result); err != nil {
-			state.Pop()
-			return err
-		}
+		literal(state, result) // Will not fail by definition.
 		state.Drop()
 		token := result.Token
 		i := bytes.Index(token, p)
@@ -283,8 +280,6 @@ func QualifierParser(prefix string) pars.Parser {
 				RegisterLiteralQualifier(name)
 			case toggleParser(state, result) == nil:
 				RegisterToggleQualifier(name)
-			default:
-				return pars.NewError("unable to parse qualifier", state.Position())
 			}
 		default:
 			if err := valueParsers[qtype](state, result); err != nil {

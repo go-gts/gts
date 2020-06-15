@@ -11,16 +11,16 @@ import (
 	"path/filepath"
 	"strings"
 
-	flags "gopkg.in/flags.v1"
-	gts "gopkg.in/gts.v0"
+	"github.com/go-gts/gts/flags"
 )
 
-type URL = url.URL
-
+// Host is the togows host url.
 const Host = "togows.org"
 
+// LastByte stores the last byte of a io.Writer Write.
 type LastByte byte
 
+// Write satisfies the io.Writer interface.
 func (c *LastByte) Write(p []byte) (int, error) {
 	if len(p) > 0 {
 		*c = LastByte(p[len(p)-1])
@@ -28,12 +28,12 @@ func (c *LastByte) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func cacheFile(url URL, open func(string) (*os.File, error)) (*os.File, bool) {
-	dir, err := gts.UserCacheDir()
+func cacheFile(addr url.URL, open func(string) (*os.File, error)) (*os.File, bool) {
+	dir, err := os.UserCacheDir()
 	if err != nil {
 		return nil, false
 	}
-	path := filepath.Join(dir, url.Host, filepath.FromSlash(url.Path))
+	path := filepath.Join(dir, addr.Host, filepath.FromSlash(addr.Path))
 	if os.MkdirAll(filepath.Dir(path), 0755) != nil {
 		return nil, false
 	}
@@ -41,11 +41,14 @@ func cacheFile(url URL, open func(string) (*os.File, error)) (*os.File, bool) {
 	if err != nil {
 		return nil, false
 	}
+	if err != nil {
+		return nil, false
+	}
 	return f, true
 }
 
-func download(url URL, w io.Writer) error {
-	res, err := http.Get(url.String())
+func download(addr url.URL, w io.Writer) error {
+	res, err := http.Get(addr.String())
 	if err != nil {
 		return err
 	}
@@ -56,7 +59,7 @@ func download(url URL, w io.Writer) error {
 		}
 		return fmt.Errorf("%s\n%s", res.Status, string(p))
 	}
-	if f, ok := cacheFile(url, os.Create); ok {
+	if f, ok := cacheFile(addr, os.Create); ok {
 		defer f.Close()
 		w = io.MultiWriter(w, f)
 	}
@@ -72,37 +75,46 @@ func download(url URL, w io.Writer) error {
 	return err
 }
 
-func call(url URL, w io.Writer, cache bool) error {
+func call(addr url.URL, w io.Writer, cache bool) error {
 	if cache {
-		if f, ok := cacheFile(url, os.Open); ok {
+		if f, ok := cacheFile(addr, os.Open); ok {
 			defer f.Close()
 			_, err := io.Copy(w, f)
 			return err
 		}
 	}
-	return download(url, w)
+	return download(addr, w)
 }
 
 func init() {
-	flags.Add("entry", "download data through the TogoWS REST service", Entry)
-	flags.Add("search", "search data through the TogoWS REST service", Search)
-	flags.Add("listdb", "list the available databases for entry or search", ListDB)
+	flags.Register("entry", "download database entries through the TogoWS REST service", entry)
+	flags.Register("search", "search for database entries through the TogoWS REST service", search)
+	flags.Register("listdb", "list databases available for access with entry or search", listdb)
 }
 
-func Entry(ctx *flags.Context) error {
-	pos, opt := flags.Args()
+func entry(ctx *flags.Context) error {
+	pos, opt := flags.Flags()
 
-	outfile := pos.Output("output file")
-	db := pos.String("database", "the database name (or alias) to access")
-	id := pos.String("identifier", "the identifier of the data to download")
+	db := pos.String("database", "database name (or alias) to access")
+	id := pos.String("identifier", "identifier of entry to download")
 
-	idlist := opt.StringSlice('a', "and", nil, "additional identifier(s)")
-	fields := opt.StringSlice('f', "field", nil, "name of field to extract")
+	outpath := opt.String('o', "output", "-", "file to output (specifying `-` will force standard output)")
+	idlist := opt.StringSlice('a', "and", nil, "additional identifier(s) to download")
+	fields := opt.StringSlice('f', "field", nil, "name of field(s) to extract")
 	format := opt.String('F', "format", "", "output data format")
-	nocache := opt.Switch(0, "no-cache", "do not use local cache")
+	nocache := opt.Switch(0, "no-cache", "ignore local cache files")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
+	}
+
+	outfile := os.Stdout
+	if *outpath != "-" {
+		f, err := os.Create(*outpath)
+		if err != nil {
+			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *outpath, err))
+		}
+		outfile = f
 	}
 
 	ext := path.Ext(outfile.Name())
@@ -110,34 +122,46 @@ func Entry(ctx *flags.Context) error {
 		*format = ext[1:]
 	}
 
-	ids := strings.Join(append([]string{*id}, *idlist...), ",")
-	url := URL{
+	*idlist = append([]string{*id}, *idlist...)
+	ids := strings.Join(*idlist, ",")
+	parts := append([]string{"entry", *db, ids}, *fields...)
+	pth := path.Join(parts...)
+	if *format != "" {
+		pth = fmt.Sprintf("%s.%s", pth, *format)
+	}
+
+	addr := url.URL{
 		Scheme: "http",
 		Host:   Host,
-		Path:   path.Join(append([]string{"entry", *db, ids}, *fields...)...),
-	}
-	if *format != "" {
-		url.Path += "." + *format
+		Path:   pth,
 	}
 
-	return ctx.Raise(call(url, outfile, !*nocache))
+	return ctx.Raise(call(addr, outfile, !*nocache))
 }
 
-func Search(ctx *flags.Context) error {
-	pos, opt := flags.Args()
+func search(ctx *flags.Context) error {
+	pos, opt := flags.Flags()
 
-	outfile := pos.Output("output file")
-	db := pos.String("database", "the database name (or alias) to access")
+	db := pos.String("database", "database name (or alias) to access")
 	query := pos.String("query", "search query string")
 
+	outpath := opt.String('o', "output", "-", "file to output (specifying `-` will force standard output)")
 	offset := opt.Int('s', "offset", 1, "pagination offset position")
 	limit := opt.Int('n', "limit", 100, "pagination result limit")
 	count := opt.Switch('c', "count", "report the number of total search results")
 	format := opt.String('F', "format", "", "output data format")
-	nocache := opt.Switch(0, "no-cache", "do not use local cache")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
+	}
+
+	outfile := os.Stdout
+	if *outpath != "-" {
+		f, err := os.Create(*outpath)
+		if err != nil {
+			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *outpath, err))
+		}
+		outfile = f
 	}
 
 	ext := path.Ext(outfile.Name())
@@ -145,34 +169,50 @@ func Search(ctx *flags.Context) error {
 		*format = ext[1:]
 	}
 
-	url := URL{
-		Scheme: "http",
-		Host:   Host,
-		Path:   path.Join("search", *db, *query),
-	}
-
+	pth := path.Join("search", *db, *query)
 	if *count {
-		url.Path = path.Join(url.Path, "count")
+		pth = path.Join(pth, "count")
 	} else {
-		url.Path = path.Join(url.Path, fmt.Sprintf("%d,%d", *offset, *limit))
+		pth = path.Join(pth, fmt.Sprintf("%d,%d", *offset, *limit))
 		if *format != "" {
-			url.Path += "." + *format
+			pth = fmt.Sprintf("%s.%s", pth, *format)
 		}
 	}
 
-	return ctx.Raise(call(url, outfile, !*nocache))
+	addr := url.URL{
+		Scheme: "http",
+		Host:   Host,
+		Path:   pth,
+	}
+
+	return ctx.Raise(download(addr, outfile))
 }
 
-func ListDB(ctx *flags.Context) error {
-	pos, opt := flags.Args()
+func listdb(ctx *flags.Context) error {
+	pos, opt := flags.Flags()
 
-	tool := pos.String("tool", "TogoWS tool name (entry or search)")
-	outfile := pos.Output("output file")
+	tool := pos.String("tool", "TogoWS tool name (entry or search")
+
+	outpath := opt.String('o', "output", "-", "file to output (specifying `-` will force standard output)")
 	format := opt.String('F', "format", "", "output data format")
-	nocache := opt.Switch(0, "no-cache", "do not use local cache")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
+	}
+
+	outfile := os.Stdout
+	if *outpath != "-" {
+		f, err := os.Create(*outpath)
+		if err != nil {
+			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *outpath, err))
+		}
+		outfile = f
+	}
+
+	switch *tool {
+	case "entry", "search":
+	default:
+		ctx.Raise(fmt.Errorf("unknown tool name: %s", *tool))
 	}
 
 	ext := path.Ext(outfile.Name())
@@ -180,12 +220,18 @@ func ListDB(ctx *flags.Context) error {
 		*format = ext[1:]
 	}
 
-	url := URL{Scheme: "http", Host: Host, Path: *tool}
+	pth := *tool
 	if *format != "" {
-		url.Path += "." + *format
+		pth = fmt.Sprintf("%s.%s", pth, *format)
 	}
 
-	return ctx.Raise(call(url, outfile, !*nocache))
+	addr := url.URL{
+		Scheme: "http",
+		Host:   Host,
+		Path:   pth,
+	}
+
+	return ctx.Raise(download(addr, outfile))
 }
 
 func main() {

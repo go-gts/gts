@@ -4,50 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"regexp"
 	"sort"
 	"strings"
 
-	ascii "gopkg.in/ascii.v1"
-	pars "gopkg.in/pars.v2"
-	msgpack "gopkg.in/vmihailenco/msgpack.v4"
-	yaml "gopkg.in/yaml.v3"
+	"github.com/go-ascii/ascii"
+	"github.com/go-pars/pars"
 )
-
-// FeatureIO represents a temporary object for reading and writing a Feature
-// struct using various serialization libraries.
-type FeatureIO struct {
-	Key        string        `json:"key" yaml:"key" msgpack:"key"`
-	Location   string        `json:"location" yaml:"location" msgpack:"location"`
-	Qualifiers []QualifierIO `json:"qualifiers,omitempty" yaml:"qualifiers,omitempty" msgpack:"qualifiers,omitempty"`
-}
-
-// NewFeatureIO creates a new FeatureIO object.
-func NewFeatureIO(f Feature) FeatureIO {
-	return FeatureIO{f.Key, f.Location.String(), listQualifiers(f)}
-}
-
-// SetFeature sets the fields of the given Feature pointer.
-func (fio FeatureIO) SetFeature(f *Feature) error {
-	loc, err := AsLocation(fio.Location)
-	if err != nil {
-		return err
-	}
-
-	f.Key = fio.Key
-	f.Location = loc
-	f.Qualifiers = Values{}
-	f.order = make(map[string]int)
-
-	for _, q := range fio.Qualifiers {
-		name, value := q.Unpack()
-		if _, ok := f.order[name]; !ok && name != "translation" {
-			f.order[name] = len(f.order)
-		}
-		f.Qualifiers.Add(name, value)
-	}
-
-	return nil
-}
 
 // Feature represents a single feature within a feature table.
 type Feature struct {
@@ -56,16 +19,6 @@ type Feature struct {
 	Qualifiers Values
 
 	order map[string]int
-	proxy SequenceProxy
-}
-
-// NewFeature creates a new feature.
-func NewFeature(key string, loc Location, qfs Values) Feature {
-	return Feature{
-		Key:        key,
-		Location:   loc,
-		Qualifiers: qfs,
-	}
 }
 
 func listQualifiers(f Feature) []QualifierIO {
@@ -111,239 +64,197 @@ func listQualifiers(f Feature) []QualifierIO {
 	return qfs
 }
 
-// EncodeWith satisfies the Encodable interface.
-func (f Feature) EncodeWith(enc Encoder) error {
-	return enc.Encode(NewFeatureIO(f))
-}
+// Filter represents a filtering function for a Feature.
+type Filter func(f Feature) bool
 
-// DecodeWith satisifes the Decodable interface.
-func (f *Feature) DecodeWith(dec Decoder) (err error) {
-	var fio FeatureIO
-	if err = dec.Decode(&fio); err != nil {
-		return
+// TrueFilter always returns true.
+func TrueFilter(f Feature) bool { return true }
+
+// FalseFilter always return false.
+func FalseFilter(f Feature) bool { return false }
+
+// Key returns true if the key of a feature matches the given key string.
+func Key(key string) Filter {
+	if key == "" {
+		return TrueFilter
 	}
-	return fio.SetFeature(f)
+	return func(f Feature) bool { return f.Key == key }
 }
 
-// MarshalJSON satisifes the json.Marshaler interface.
-func (f Feature) MarshalJSON() ([]byte, error) {
-	return EncodeJSON(f)
-}
-
-// UnmarshalJSON satisifes the json.Unmarshaler interface.
-func (f *Feature) UnmarshalJSON(data []byte) error {
-	return DecodeJSON(data, f)
-}
-
-// MarshalYAML satisfies the yaml.Marshaler interface.
-func (f Feature) MarshalYAML() (interface{}, error) {
-	return NewFeatureIO(f), nil
-}
-
-// UnmarshalYAML satisifes the yaml.Unmarshaler interface.
-func (f *Feature) UnmarshalYAML(value *yaml.Node) error {
-	return f.DecodeWith(value)
-}
-
-// EncodeMsgpack satisifes the msgpack.CustomEncoder interface.
-func (f Feature) EncodeMsgpack(enc *msgpack.Encoder) error {
-	return f.EncodeWith(enc)
-}
-
-// DecodeMsgpack satisifes the msgpack.CustomDecoder interface.
-func (f *Feature) DecodeMsgpack(dec *msgpack.Decoder) error {
-	return f.DecodeWith(dec)
-}
-
-// Info returns the metadata of the sequence.
-func (f Feature) Info() interface{} {
-	return f.Location.Locate(f.proxy).Info()
-}
-
-// Bytes returns the byte representation of the sequence.
-func (f Feature) Bytes() []byte {
-	return f.Location.Locate(f.proxy).Bytes()
-}
-
-// Insert a sequence at the specified position.
-func (f Feature) Insert(pos int, seq Sequence) error {
-	return f.Insert(f.Location.Map(pos), seq)
-}
-
-// Delete given number of bases from the specified position.
-func (f Feature) Delete(pos, cnt int) error {
-	return f.Delete(f.Location.Map(pos), cnt)
-}
-
-// Replace the bases from the specified position with the given sequence.
-func (f Feature) Replace(pos int, seq Sequence) error {
-	return f.Replace(f.Location.Map(pos), seq)
-}
-
-// Translation returns the translation of the feature if available. it will
-// return nil otherwise.
-func (f Feature) Translation() Sequence {
-	if values := f.Qualifiers.Get("translation"); len(values) != 0 {
-		s := values[0]
-		return Seq(strings.Replace(s, "\n", "", -1))
+// Qualifier returns true if the value for the given qualifier name matches the
+// given regex expression.
+func Qualifier(name, query string) (Filter, error) {
+	re, err := regexp.Compile(query)
+	if err != nil {
+		return FalseFilter, err
 	}
-	return nil
+	return func(f Feature) bool {
+		if values, ok := f.Qualifiers[name]; ok {
+			for _, value := range values {
+				if re.MatchString(value) {
+					return true
+				}
+			}
+		}
+		return false
+	}, nil
 }
 
-// Format creates a FeatureFormatter object for the qualifier with the given
-// prefix and depth. If the Feature object was created by parsing some input,
-// the qualifier values will be in the same order as in the input source. The
-// exception to this rule is the `translation` qualifier which will always be
-// written last. Qualifiers given during runtime will be sorted in ascending
-// alphabetical order and written after the qualifiers present in the source.
-func (f Feature) Format(prefix string, depth int) FeatureFormatter {
-	return FeatureFormatter{f, prefix, depth}
+// And creates a Filter which will return true if all of the filters given to
+// And return true for the Feature.
+func And(filters ...Filter) Filter {
+	return func(f Feature) bool {
+		for _, filter := range filters {
+			if !filter(f) {
+				return false
+			}
+		}
+		return true
+	}
 }
 
-// FeatureFormatter formats a Feature object with the given prefix and depth.
-type FeatureFormatter struct {
-	Feature Feature
-	Prefix  string
-	Depth   int
+// Or creates a Filter which will return true if any of the filters given to
+// Or return true for the Feature.
+func Or(filters ...Filter) Filter {
+	return func(f Feature) bool {
+		for _, filter := range filters {
+			if filter(f) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// Not creates a Filter which will return true if the given Filter does not
+// return true for the Feature.
+func Not(filter Filter) Filter {
+	return func(f Feature) bool {
+		return !filter(f)
+	}
+}
+
+func selectorShift(s string) (string, string) {
+	esc := false
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '\\':
+			esc = true
+		case '/':
+			if !esc {
+				return s[:i], s[i+1:]
+			}
+		default:
+			esc = false
+		}
+	}
+	return s, ""
+}
+
+func toQualifier(s string) (Filter, error) {
+	if i := strings.IndexByte(s, '='); i >= 0 {
+		return Qualifier(s[:i], s[i+1:])
+	}
+	return Qualifier(s, "")
+}
+
+// Selector creates a Filter which will return true if the Feature matches the
+// given selector string.
+func Selector(sel string) (Filter, error) {
+	head, tail := selectorShift(sel)
+	filter := Key(head)
+	for tail != "" {
+		head, tail = selectorShift(tail)
+		qfs, err := toQualifier(head)
+		if err != nil {
+			return FalseFilter, err
+		}
+		filter = And(filter, qfs)
+	}
+	return filter, nil
+}
+
+// FeatureTable represents a table of features.
+type FeatureTable []Feature
+
+// Filter returns a FeatureTable containing the features that match the given
+// Filter within this FeatureTable.
+func (ff FeatureTable) Filter(filter Filter) FeatureTable {
+	gg := FeatureTable{}
+	for _, f := range ff {
+		if filter(f) {
+			gg = append(gg, f)
+		}
+	}
+	return gg
+}
+
+// Insert takes the given Feature and inserts it into the sorted position in
+// the FeatureTable.
+func (ff FeatureTable) Insert(f Feature) FeatureTable {
+	i := 0
+	for i < len(ff) && ff[i].Key == "source" {
+		i++
+	}
+	if f.Key != "source" {
+		i += sort.Search(len(ff[i:]), func(j int) bool {
+			return f.Location.Less(ff[i+j].Location)
+		})
+	}
+
+	ff = append(ff, Feature{})
+	copy(ff[i+1:], ff[i:])
+	ff[i] = f
+
+	return ff
+}
+
+// Format creates a FeatureTableFormatter object for the qualifier with the
+// given prefix and depth. If the Feature object was created by parsing some
+// input, the qualifier values will be in the same order as in the input
+// source. The exception to this rule is the `translation` qualifier which will
+// always be written last. Qualifiers given during runtime will be sorted in
+// ascending alphabetical order and written after the qualifiers present in the
+// source.
+func (ff FeatureTable) Format(prefix string, depth int) FeatureTableFormatter {
+	return FeatureTableFormatter{ff, prefix, depth}
+}
+
+// FeatureTableFormatter formats a Feature object with the given prefix and depth.
+type FeatureTableFormatter struct {
+	Table  FeatureTable
+	Prefix string
+	Depth  int
 }
 
 // String satisfies the fmt.Stringer interface.
-func (ff FeatureFormatter) String() string {
+func (ftf FeatureTableFormatter) String() string {
 	builder := strings.Builder{}
-	builder.WriteString(ff.Prefix)
-	builder.WriteString(ff.Feature.Key)
+	for i, f := range ftf.Table {
+		if i != 0 {
+			builder.WriteByte('\n')
+		}
+		builder.WriteString(ftf.Prefix)
+		builder.WriteString(f.Key)
+		length := len(ftf.Prefix) + len(f.Key)
 
-	padding := strings.Repeat(" ", ff.Depth-builder.Len())
-	prefix := ff.Prefix + strings.Repeat(" ", ff.Depth-len(ff.Prefix))
+		padding := strings.Repeat(" ", ftf.Depth-length)
+		prefix := ftf.Prefix + strings.Repeat(" ", ftf.Depth-len(ftf.Prefix))
 
-	builder.WriteString(padding)
-	builder.WriteString(ff.Feature.Location.String())
+		builder.WriteString(padding)
+		builder.WriteString(f.Location.String())
 
-	for _, q := range listQualifiers(ff.Feature) {
-		builder.WriteByte('\n')
-		builder.WriteString(q.Format(prefix).String())
+		for _, q := range listQualifiers(f) {
+			builder.WriteByte('\n')
+			builder.WriteString(q.Format(prefix).String())
+		}
 	}
-
 	return builder.String()
 }
 
 // WriteTo satisfies the io.WriteTo interface.
-func (ff FeatureFormatter) WriteTo(w io.Writer) (int64, error) {
-	n, err := io.WriteString(w, ff.String())
-	return int64(n), err
-}
-
-// ByLocation implements sort.Interface for []Feature by location.
-type ByLocation []Feature
-
-// Len is the number of elements in the feature table.
-func (ff ByLocation) Len() int { return len(ff) }
-
-// Less reports whether the element with index i should sort before the element
-// with index j.
-func (ff ByLocation) Less(i, j int) bool {
-	a, b := ff[i], ff[j]
-	if a.Key == "source" && b.Key != "source" {
-		return true
-	}
-	if b.Key == "source" && a.Key != "source" {
-		return false
-	}
-	return LocationLess(ff[i].Location, ff[j].Location)
-}
-
-// Swap the elements with indices i and j.
-func (ff ByLocation) Swap(i, j int) {
-	ff[i], ff[j] = ff[j], ff[i]
-}
-
-// FeatureTable represents a feature table.
-type FeatureTable interface {
-	Filter(ss ...Filter) []Feature
-	Add(f Feature)
-}
-
-// FeatureList represents an INSDC feature table. The features are sorted by
-// Location in ascending order.
-type FeatureList []Feature
-
-// Format creates a FeatureFormatter object for the qualifier with the given
-// prefix and depth.
-func (ff FeatureList) Format(prefix string, depth int) FeatureListFormatter {
-	return FeatureListFormatter{ff, prefix, depth}
-}
-
-// Filter the features in the list matching the selector criteria.
-func (ff FeatureList) Filter(ss ...Filter) []Feature {
-	sel := And(ss...)
-	idx, n := make([]int, len(ff)), 0
-	for i, f := range ff {
-		if sel(f) {
-			idx[n] = i
-			n++
-		}
-	}
-
-	selected := make([]Feature, n)
-	for i, j := range idx[:n] {
-		selected[i] = ff[j]
-	}
-	return selected
-}
-
-// Insert the feature to the feature table at the given position. Note that
-// inserting a feature that disrupts the sortedness of the features will
-// inevitably lead to predictable yet unconventional behavior when the Add
-// method is called later. Use Add instead if this is not desired.
-func (ff *FeatureList) Insert(i int, f Feature) {
-	features := append(*ff, Feature{})
-	copy(features[i+1:], features[i:])
-	features[i] = f
-	*ff = features
-}
-
-// Add the feature to the feature table. The feature will be inserted in the
-// sorted position with the exception of sources.
-func (ff *FeatureList) Add(f Feature) {
-	n := 0
-	for n < len(*ff) && (*ff)[n].Key == "source" {
-		n++
-	}
-
-	switch f.Key {
-	case "source":
-		ff.Insert(n, f)
-	default:
-		i := sort.Search(len((*ff)[n:]), func(i int) bool {
-			return LocationLess(f.Location, (*ff)[n+i].Location)
-		})
-		ff.Insert(n+i, f)
-	}
-}
-
-// FeatureListFormatter formats a FeatureList object with the given prefix and
-// depth.
-type FeatureListFormatter struct {
-	FeatureList FeatureList
-	Prefix      string
-	Depth       int
-}
-
-// String satisfies the fmt.Stringer interface.
-func (ff FeatureListFormatter) String() string {
-	b := strings.Builder{}
-	for i, f := range ff.FeatureList {
-		if i != 0 {
-			b.WriteByte('\n')
-		}
-		f.Format(ff.Prefix, ff.Depth).WriteTo(&b)
-	}
-	return b.String()
-}
-
-// WriteTo satisfies the io.WriterTo interface.
-func (ff FeatureListFormatter) WriteTo(w io.Writer) (int64, error) {
-	n, err := io.WriteString(w, ff.String())
+func (ftf FeatureTableFormatter) WriteTo(w io.Writer) (int64, error) {
+	n, err := io.WriteString(w, ftf.String())
 	return int64(n), err
 }
 
@@ -391,8 +302,8 @@ func featureKeylineParser(prefix string, depth int) pars.Parser {
 	}
 }
 
-// FeatureListParser attempts to match an INSDC feature table.
-func FeatureListParser(prefix string) pars.Parser {
+// FeatureTableParser attempts to match an INSDC feature table.
+func FeatureTableParser(prefix string) pars.Parser {
 	firstParser := pars.Seq(
 		prefix, pars.Spaces,
 		pars.Word(ascii.IsSnake), pars.Spaces,
@@ -467,45 +378,7 @@ func FeatureListParser(prefix string) pars.Parser {
 			})
 		}
 
-		result.SetValue(ff)
+		result.SetValue(FeatureTable(ff))
 		return nil
 	}
-}
-
-func featureDecoderParser(ctor DecoderConstructor) pars.Parser {
-	return func(state *pars.State, result *pars.Result) error {
-		dec := ctor(state)
-		ff := new([]Feature)
-		state.Push()
-		if err := dec.Decode(ff); err != nil {
-			state.Pop()
-			return err
-		}
-		state.Drop()
-		result.SetValue(ff)
-		return nil
-	}
-}
-
-// FeatureTableParser attempts to parse a table of features.
-var FeatureTableParser = pars.Any(
-	RecordParser.Map(func(result *pars.Result) error {
-		rec := result.Value.(Record)
-		ft := rec.Filter()
-		result.SetValue(ft)
-		return nil
-	}),
-	featureDecoderParser(NewGobDecoder),
-	featureDecoderParser(NewMsgpackDecoder),
-	featureDecoderParser(NewYAMLDecoder),
-	featureDecoderParser(NewJSONDecoder),
-)
-
-// ReadFeatureTable attempts to read and parse a table of features.
-func ReadFeatureTable(r io.Reader) (FeatureList, error) {
-	result, err := FeatureTableParser.Parse(pars.NewState(r))
-	if err != nil {
-		return nil, err
-	}
-	return result.Value.(FeatureList), nil
 }

@@ -3,6 +3,7 @@ DEFINITION  Coliphage phi-X174, complete genome.
 ACCESSION   NC_001422
 VERSION     NC_001422.1
 DBLINK      BioProject: PRJNA14015
+            KEGG BRITE:  NC_001422
 KEYWORDS    RefSeq.
 SOURCE      Escherichia virus phiX174
   ORGANISM  Escherichia virus phiX174
@@ -13,6 +14,7 @@ REFERENCE   1  (bases 2380 to 2512; 2593 to 2786; 2788 to 2947)
             the influenza N2 virus neuraminidase
   JOURNAL   Virology 145 (2), 237-248 (1985)
    PUBMED   2411049
+  REMARK    Reference comment.
 REFERENCE   2  (bases 1064 to 1757)
   AUTHORS   Merville,M.P., Piette,J., Lopez,M., Decuyper,J. and van de Vorst,A.
   TITLE     Termination sites of the in vitro DNA synthesis on single-stranded

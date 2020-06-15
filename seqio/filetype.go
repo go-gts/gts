@@ -1,4 +1,4 @@
-package gts
+package seqio
 
 import "path/filepath"
 
@@ -8,10 +8,6 @@ type FileType int
 // Available file types in GTS.
 const (
 	DefaultFile FileType = iota
-	UnknownFile
-	JSONFile
-	YAMLFile
-	MsgpackFile
 	FastaFile
 	FastqFile
 	GenBankFile
@@ -30,14 +26,6 @@ func Detect(filename string) FileType {
 // ToFileType converts the file type name string to a FileType
 func ToFileType(name string) FileType {
 	switch name {
-	case "", "default":
-		return DefaultFile
-	case "json":
-		return JSONFile
-	case "yml", "yaml":
-		return YAMLFile
-	case "msgp", "msgpack":
-		return MsgpackFile
 	case "fasta":
 		return FastaFile
 	case "fastq":
@@ -47,6 +35,6 @@ func ToFileType(name string) FileType {
 	case "emb", "embl":
 		return EMBLFile
 	default:
-		return UnknownFile
+		return DefaultFile
 	}
 }

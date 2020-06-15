@@ -2,372 +2,231 @@ package gts
 
 import (
 	"bytes"
-	"fmt"
 	"reflect"
-	"strings"
 )
 
-type mutableByteSlice []byte
+// Molecule represents the sequence molecule type.
+type Molecule string
 
-func (p *mutableByteSlice) Insert(pos int, arg Sequence) error {
-	if len(*p) <= pos {
-		return fmt.Errorf(
-			"unable to insert at position [%d] for sequence of length [%d]",
-			pos, len(*p),
-		)
-	}
-	if n := Len(arg); n > 0 {
-		q := make([]byte, len(*p)+n)
-		copy(q, (*p)[:pos])
-		copy(q[pos:], arg.Bytes())
-		copy(q[pos+n:], (*p)[pos:])
-		*p = q
-	}
-	return nil
-}
+// Molecule constants for DNA, RNA, and amino acid (AA).
+const (
+	DNA Molecule = "DNA"
+	RNA Molecule = "RNA"
+	AA  Molecule = "AA"
+)
 
-func (p *mutableByteSlice) Delete(pos, arg int) error {
-	if len(*p) <= pos {
-		return fmt.Errorf(
-			"unable to delete from position [%d] for sequence of length [%d]",
-			pos, len(*p),
-		)
-	}
-	if len(*p) <= pos+arg {
-		return fmt.Errorf(
-			"unable to delete to position [%d] for sequence of length [%d]",
-			len(*p), pos+arg,
-		)
-	}
-	if arg > 0 {
-		*p = append((*p)[:pos], (*p)[pos+arg:]...)
-	}
-	return nil
-}
-
-func (p *mutableByteSlice) Replace(pos int, arg Sequence) error {
-	if len(*p) <= pos {
-		return fmt.Errorf(
-			"unable to replace from position [%d] for sequence of length [%d]",
-			pos, len(*p),
-		)
-	}
-	if len(*p) <= pos+Len(arg) {
-		return fmt.Errorf(
-			"unable to replace to position [%d] for sequence of length [%d]",
-			pos+Len(arg), len(*p),
-		)
-	}
-	if n := Len(arg); n > 0 {
-		copy((*p)[pos:], arg.Bytes())
-	}
-	return nil
-}
-
-// Sequence represents a sequence type. All Sequence types must be able to
-// generate a byte slice representation of itself.
+// Sequence represents a biological sequence. All sequences are expected to be
+// able to return its metadata and byte representation.
 type Sequence interface {
 	Info() interface{}
+	Features() FeatureTable
 	Bytes() []byte
 }
 
-// Len returns the length of a Sequence.
-func Len(seq Sequence) int { return len(seq.Bytes()) }
+// Len returns the length of the given Sequence.
+func Len(seq Sequence) int {
+	if v, ok := seq.(interface {
+		Len() int
+	}); ok {
+		return v.Len()
 
-// Equal tests if the given Sequences have equal byte slice representations.
-func Equal(a, b Sequence) bool { return bytes.Equal(a.Bytes(), b.Bytes()) }
-
-// Identical tests if the given Sequences have identical metadata values and
-// byte slice representations.
-func Identical(a, b Sequence) bool {
-	return reflect.DeepEqual(a.Info(), b.Info()) && Equal(a, b)
-}
-
-// MutableSequence is a sequence which can be manipulated in-place.
-type MutableSequence interface {
-	Insert(pos int, arg Sequence) error
-	Delete(pos, arg int) error
-	Replace(pos int, arg Sequence) error
-	Sequence
-}
-
-// GTS represents the most basic GTS sequence object.
-type GTS struct {
-	info interface{}
-	data []byte
-}
-
-// New creates a new GTS object.
-func New(info interface{}, data []byte) *GTS {
-	return &GTS{info, data}
-}
-
-// Seq converts an arbitrary value to a GTS object.
-func Seq(v interface{}) *GTS {
-	switch v := v.(type) {
-	case *GTS:
-		return v
-	case Sequence:
-		return New(v.Info(), v.Bytes())
-	case []byte:
-		return New(nil, v)
-	case string:
-		return Seq([]byte(v))
-	default:
-		panic(fmt.Sprintf("cannot interpret object of type `%T` as a sequence", v))
 	}
+	return len(seq.Bytes())
+}
+
+// Equal tests if the given sequences are identical.
+func Equal(a, b Sequence) bool {
+	return reflect.DeepEqual(a.Info(), b.Info()) &&
+		reflect.DeepEqual(a.Features(), b.Features()) &&
+		bytes.Equal(a.Bytes(), b.Bytes())
+}
+
+// BasicSequence represents the most basic Sequence object.
+type BasicSequence struct {
+	info  interface{}
+	table FeatureTable
+	data  []byte
+}
+
+// New returns a new Sequence object with the given values.
+func New(info interface{}, table FeatureTable, p []byte) BasicSequence {
+	return BasicSequence{info, table, p}
 }
 
 // Info returns the metadata of the sequence.
-func (seq GTS) Info() interface{} { return seq.info }
+func (seq BasicSequence) Info() interface{} {
+	return seq.info
+}
+
+// Features returns the feature table of the sequence.
+func (seq BasicSequence) Features() FeatureTable {
+	return seq.table
+}
 
 // Bytes returns the byte representation of the sequence.
-func (seq GTS) Bytes() []byte { return []byte(seq.data) }
-
-// Insert a sequence at the specified position.
-func (seq *GTS) Insert(pos int, arg Sequence) error {
-	return (*mutableByteSlice)(&(seq.data)).Insert(pos, arg)
+func (seq BasicSequence) Bytes() []byte {
+	return seq.data
 }
 
-// Delete given number of bases from the specified position.
-func (seq *GTS) Delete(pos, arg int) error {
-	return (*mutableByteSlice)(&(seq.data)).Delete(pos, arg)
+// Copy returns a shallow copy of the given sequence.
+func Copy(seq Sequence) BasicSequence {
+	return New(seq.Info(), seq.Features(), seq.Bytes())
 }
 
-// Replace the bases from the specified position with the given sequence.
-func (seq *GTS) Replace(pos int, arg Sequence) error {
-	return (*mutableByteSlice)(&(seq.data)).Replace(pos, arg)
+type withInterface interface {
+	WithInfo(info interface{}) Sequence
+	WithFeatures(ff FeatureTable) Sequence
+	WithBytes(p []byte) Sequence
 }
 
-// Slice returns a slice of the Sequnece.
+// WithInfo creates a shallow copy of the given Sequence object and swaps the
+// metadata with the given value.
+func WithInfo(seq Sequence, info interface{}) Sequence {
+	switch v := seq.(type) {
+	case withInterface:
+		return v.WithInfo(info)
+	default:
+		return New(info, seq.Features(), seq.Bytes())
+	}
+}
+
+// WithFeatures creates a shallow copy of the given Sequence object and swaps
+// the feature table with the given features.
+func WithFeatures(seq Sequence, ff []Feature) Sequence {
+	switch v := seq.(type) {
+	case withInterface:
+		return v.WithFeatures(ff)
+	default:
+		return New(seq.Info(), ff, seq.Bytes())
+	}
+}
+
+// WithBytes creates a shallow copy of the given Sequence object and swaps the
+// byte representation with the given byte slice.
+func WithBytes(seq Sequence, p []byte) Sequence {
+	switch v := seq.(type) {
+	case withInterface:
+		return v.WithBytes(p)
+	default:
+		return New(seq.Info(), seq.Features(), p)
+	}
+}
+
+func insert(p []byte, pos int, q []byte) []byte {
+	return append(p[:pos], append(q, p[pos:]...)...)
+}
+
+// Insert a sequence at the given position.
+func Insert(host Sequence, pos int, guest Sequence) Sequence {
+	var ff FeatureTable
+	for _, f := range host.Features() {
+		f.Location = f.Location.Shift(pos, Len(guest), false)
+		ff = ff.Insert(f)
+	}
+	for _, f := range guest.Features() {
+		f.Location = f.Location.Shift(0, pos, true)
+		ff = ff.Insert(f)
+	}
+	p := insert(host.Bytes(), pos, guest.Bytes())
+	return WithBytes(WithFeatures(host, ff), p)
+
+}
+
+// Embed a sequence at the given position.
+func Embed(host Sequence, pos int, guest Sequence) Sequence {
+	var ff FeatureTable
+	for _, f := range host.Features() {
+		f.Location = f.Location.Shift(pos, Len(guest), true)
+		ff = ff.Insert(f)
+	}
+	for _, f := range guest.Features() {
+		f.Location = f.Location.Shift(0, pos, true)
+		ff = ff.Insert(f)
+	}
+	p := insert(host.Bytes(), pos, guest.Bytes())
+	return WithBytes(WithFeatures(host, ff), p)
+}
+
+// Delete a region of the sequence at the given position and length.
+func Delete(seq Sequence, i, n int) Sequence {
+	ff := make([]Feature, len(seq.Features()))
+	for i, f := range seq.Features() {
+		ff[i].Key = f.Key
+		ff[i].Location = f.Location.Shift(i, -n, true)
+		ff[i].Qualifiers = f.Qualifiers
+	}
+	q := seq.Bytes()
+	p := make([]byte, len(q)-n)
+	copy(p[:i], q[:i])
+	copy(p[i:], q[i+n:])
+	return WithBytes(WithFeatures(seq, ff), p)
+}
+
+// Slice returns a subsequence of the given sequence starting at start and up
+// to end. The target sequence region is copied.
 func Slice(seq Sequence, start, end int) Sequence {
-	return New(seq.Info(), seq.Bytes()[start:end])
-}
-
-type modifier interface {
-	Apply(mut MutableSequence) error
-}
-
-type insertModifier struct {
-	Pos int
-	Seq Sequence
-}
-
-func (ins insertModifier) Apply(mut MutableSequence) error {
-	return mut.Insert(ins.Pos, ins.Seq)
-}
-
-type deleteModifier struct {
-	Pos int
-	Cnt int
-}
-
-func (del deleteModifier) Apply(mut MutableSequence) error {
-	return mut.Delete(del.Pos, del.Cnt)
-}
-
-type replaceModifier struct {
-	Pos int
-	Seq Sequence
-}
-
-func (rep replaceModifier) Apply(mut MutableSequence) error {
-	return mut.Replace(rep.Pos, rep.Seq)
-}
-
-type insArg struct {
-	Pos int
-	Seq Sequence
-}
-
-type delArg struct {
-	Pos int
-	Cnt int
-}
-
-type repArg struct {
-	Pos int
-	Seq Sequence
-}
-
-type seqRequest int
-
-const (
-	closeRequest seqRequest = iota
-	infoRequest
-	dataRequest
-)
-
-// SequenceProxy represents a mutable sequence that will send modification
-// requests to a SequenceServer.
-type SequenceProxy struct {
-	reqch  chan seqRequest
-	infoch chan interface{}
-	datach chan []byte
-	modch  chan modifier
-	errch  chan error
-}
-
-// Info satisfies the gts.Sequence interface.
-func (sp SequenceProxy) Info() interface{} {
-	sp.reqch <- infoRequest
-	return <-sp.infoch
-}
-
-// Bytes satisfies the gts.Sequence interface.
-func (sp SequenceProxy) Bytes() []byte {
-	sp.reqch <- dataRequest
-	return <-sp.datach
-}
-
-// Insert a sequence at the specified position.
-func (sp SequenceProxy) Insert(pos int, arg Sequence) error {
-	sp.modch <- insertModifier{pos, arg}
-	return <-sp.errch
-}
-
-// Delete given number of bases from the specified position.
-func (sp SequenceProxy) Delete(pos, arg int) error {
-	sp.modch <- deleteModifier{pos, arg}
-	return <-sp.errch
-}
-
-// Replace the bases from the specified position with the given sequence.
-func (sp SequenceProxy) Replace(pos int, arg Sequence) error {
-	sp.modch <- replaceModifier{pos, arg}
-	return <-sp.errch
-}
-
-// SequenceServer is a mutable sequence that can be modified by proxies.
-type SequenceServer struct {
-	mut    MutableSequence
-	reqch  chan seqRequest
-	infoch chan interface{}
-	datach chan []byte
-	modch  chan modifier
-	errch  chan error
-	spun   bool
-}
-
-// NewSequenceServer creates a new SequenceServer.
-func NewSequenceServer(seq Sequence) SequenceServer {
-	if mut, ok := seq.(MutableSequence); ok {
-		ss := SequenceServer{
-			mut:    mut,
-			reqch:  make(chan seqRequest),
-			infoch: make(chan interface{}),
-			datach: make(chan []byte),
-			modch:  make(chan modifier),
-			errch:  make(chan error),
-			spun:   false,
+	p := make([]byte, end-start)
+	copy(p, seq.Bytes()[start:end])
+	var ff []Feature
+	for _, f := range seq.Features() {
+		loc := f.Location.Shift(start, -start, true).Shift(end-1, end-Len(seq), true)
+		if !isBetween(loc) || isBetween(f.Location) {
+			f.Location = loc
+			ff = append(ff, f)
 		}
-		go ss.Spin()
-		return ss
 	}
-	return NewSequenceServer(New(seq.Info(), seq.Bytes()))
+	return WithBytes(WithFeatures(seq, ff), p)
 }
 
-// Spin prepares internal channels for recieving messages from the proxies
-// associated to this SequenceServer.
-func (ss *SequenceServer) Spin() {
-	if !ss.spun {
-		ss.spun = true
-		for ss.spun {
-			select {
-			case mod := <-ss.modch:
-				ss.errch <- mod.Apply(ss.mut)
-			case flag := <-ss.reqch:
-				switch flag {
-				case closeRequest:
-					ss.spun = false
-				case infoRequest:
-					ss.infoch <- ss.mut.Info()
-				case dataRequest:
-					ss.datach <- ss.mut.Bytes()
-				}
+// Concat takes the given Sequences and concatenates them into a single
+// Sequence.
+func Concat(ss ...Sequence) Sequence {
+	switch len(ss) {
+	case 0:
+		return New(nil, nil, nil)
+	case 1:
+		return ss[0]
+	default:
+		head, tail := ss[0], ss[1:]
+		ff, p := head.Features(), head.Bytes()
+		for _, seq := range tail {
+			for _, f := range seq.Features() {
+				f.Location = f.Location.Shift(0, len(p), true)
+				ff = ff.Insert(f)
 			}
+			p = append(p, seq.Bytes()...)
 		}
+		return WithBytes(WithFeatures(head, ff), p)
 	}
 }
 
-// Close deactivates the SequenceServer.
-func (ss *SequenceServer) Close() { ss.reqch <- closeRequest }
-
-// Proxy creates a proxy to the SequenceServer.
-func (ss SequenceServer) Proxy() SequenceProxy {
-	return SequenceProxy{ss.reqch, ss.infoch, ss.datach, ss.modch, ss.errch}
+// Reverse returns a Sequence object with the byte representation in the
+// reversed order.
+func Reverse(seq Sequence) Sequence {
+	var ff FeatureTable
+	for _, f := range seq.Features() {
+		ff = ff.Insert(Feature{f.Key, f.Location.Reverse(Len(seq)), f.Qualifiers, f.order})
+	}
+	p := make([]byte, Len(seq))
+	copy(p, seq.Bytes())
+	for l, r := 0, len(p)-1; l < r; l, r = l+1, r-1 {
+		p[l], p[r] = p[r], p[l]
+	}
+	return WithBytes(WithFeatures(seq, ff), p)
 }
 
-// Info satisfies the gts.Sequence interface.
-func (ss SequenceServer) Info() interface{} {
-	ss.reqch <- infoRequest
-	return <-ss.infoch
-}
-
-// Bytes satisfies the gts.Sequence interface.
-func (ss SequenceServer) Bytes() []byte {
-	ss.reqch <- dataRequest
-	return <-ss.datach
-}
-
-// Insert a sequence at the specified position.
-func (ss *SequenceServer) Insert(pos int, arg Sequence) error {
-	return ss.mut.Insert(pos, arg)
-}
-
-// Delete given number of bases from the specified position.
-func (ss *SequenceServer) Delete(pos, arg int) error {
-	return ss.mut.Delete(pos, arg)
-}
-
-// Replace the bases from the specified position with the given sequence.
-func (ss *SequenceServer) Replace(pos int, arg Sequence) error {
-	return ss.mut.Replace(pos, arg)
-}
-
-// Fragment returns a slice of Sequences containing all subsequences of the
-// given Sequence from position 0 separated by `slide` bytes and with length of
-// `window`.
-func Fragment(seq Sequence, window, slide int) []Sequence {
+// Rotate returns a Sequence object whose coordinates are shifted by the given
+// amount.
+func Rotate(seq Sequence, n int) Sequence {
+	for Len(seq) > 0 && n < 0 {
+		n += Len(seq)
+	}
+	var ff FeatureTable
+	for _, f := range seq.Features() {
+		loc := f.Location.Shift(0, n, true).Normalize(Len(seq))
+		ff = ff.Insert(Feature{f.Key, loc, f.Qualifiers, f.order})
+	}
 	p := seq.Bytes()
-	ret := make([]Sequence, 0)
-	for i := 0; i < len(p); i += slide {
-		j := i + window
-		if j > len(p) {
-			j = len(p)
-		}
-		ret = append(ret, Seq(p[i:j]))
-	}
-	return ret
-}
-
-// Composition computes the occurence of each byte within the Sequence.
-func Composition(seq Sequence) map[byte]int {
-	comp := make(map[byte]int)
-	for _, b := range seq.Bytes() {
-		if _, ok := comp[b]; !ok {
-			comp[b] = 0
-		}
-		comp[b]++
-	}
-	return comp
-}
-
-// Skew calculates the skewness of the Sequence. Where `n` is the number of
-// bytes in the given Sequence also appearing in the `nSet` string and `p`
-// is the number of bytes in the given Sequence also appearing in the `pSet`
-// string, the skewness of the Sequence is calculated as: (p - n) / (p + n).
-func Skew(seq Sequence, nSet, pSet string) float64 {
-	comp := Composition(seq)
-	nCnt, pCnt := 0., 0.
-	for b, n := range comp {
-		v := float64(n)
-		if strings.ContainsRune(nSet, rune(b)) {
-			nCnt += v
-		}
-		if strings.ContainsRune(pSet, rune(b)) {
-			pCnt += v
-		}
-	}
-	return (pCnt - nCnt) / (pCnt + nCnt)
+	p = append(p[n:], p[:n]...)
+	return WithBytes(WithFeatures(seq, ff), p)
 }

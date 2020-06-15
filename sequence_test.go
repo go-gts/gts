@@ -1,276 +1,299 @@
 package gts
 
-import "testing"
+import (
+	"reflect"
+	"strings"
+	"testing"
 
-type Stringer string
+	"github.com/go-gts/gts/testutils"
+	"github.com/go-test/deep"
+)
 
-func (s Stringer) String() string { return string(s) }
+type LenObj []byte
 
-func TestSeq(t *testing.T) {
-	s := "atgc"
-	p := []byte(s)
-
-	seqs := Seq(s)
-	seqp := Seq(p)
-	seq := Seq(seqs)
-
-	equals(t, seqs, seq)
-	equals(t, seqp, seq)
-
-	equals(t, Equal(seqs, seq), true)
-	equals(t, Equal(seqp, seq), true)
-
-	PanicTest(t, func() { Seq(0) })
+func (obj LenObj) Info() interface{} {
+	return nil
 }
 
-func TestBareSequence(t *testing.T) {
-	seq0 := Seq("atgc")
-	seq1 := Seq("atgc")
+func (obj LenObj) Features() FeatureTable {
+	return nil
+}
 
-	if err := seq0.Insert(2, seq1); err != nil {
-		t.Errorf(
-			"Seq(%q).Insert(2, Seq(%q)): %v",
-			string(seq0.Bytes()),
-			string(seq1.Bytes()),
-			err,
-		)
-	}
-	equals(t, seq0, Seq("atatgcgc"))
-	if err := seq0.Replace(2, Complement(seq1)); err != nil {
-		t.Errorf(
-			"Seq(%q).Replace(2, Complement(Seq(%q))): %v",
-			string(seq0.Bytes()),
-			string(seq1.Bytes()),
-			err,
-		)
-	}
-	equals(t, seq0, Seq("attacggc"))
-	if err := seq0.Delete(2, 4); err != nil {
-		t.Errorf(
-			"Seq(%q).Delete(2, 4): %v",
-			string(seq0.Bytes()),
-			err,
-		)
-	}
-	equals(t, seq0, seq1)
+func (obj LenObj) Bytes() []byte {
+	return obj
+}
 
-	if seq0.Insert(4, seq1) == nil {
-		t.Errorf(
-			"Seq(%q).Insert(4, Seq(%q)) = nil, want error",
-			string(seq0.Bytes()),
-			string(seq1.Bytes()),
-		)
-	}
-	equals(t, seq0, seq1)
+func (obj LenObj) Len() int {
+	return len(obj)
+}
 
-	if seq0.Delete(4, 4) == nil {
-		t.Errorf(
-			"Seq(%q).Delete(4, 4) = nil, want error",
-			string(seq0.Bytes()),
-		)
-	}
-	equals(t, seq0, seq1)
+func TestSequence(t *testing.T) {
+	info := "test sequence"
+	p := []byte("atgc")
+	seq := New(info, nil, p)
 
-	if seq0.Delete(1, 4) == nil {
-		t.Errorf(
-			"Seq(%q).Delete(1, 4) = nil, want error",
-			string(seq0.Bytes()),
-		)
-	}
-	equals(t, seq0, seq1)
+	testutils.Equals(t, seq.Info(), info)
+	testutils.Equals(t, seq.Bytes(), p)
 
-	if seq0.Replace(4, seq1) == nil {
-		t.Errorf(
-			"Seq(%q).Replace(4, Seq(%q)) = nil, want error",
-			string(seq0.Bytes()),
-			string(seq1.Bytes()),
-		)
-	}
-	equals(t, seq0, seq1)
+	cpy := Copy(seq)
 
-	if seq0.Replace(1, seq1) == nil {
-		t.Errorf(
-			"Seq(%q).Replace(1, Seq(%q)) = nil, want error",
-			string(seq0.Bytes()),
-			string(seq1.Bytes()),
-		)
+	testutils.Equals(t, seq.Info(), cpy.Info())
+	testutils.Equals(t, seq.Bytes(), cpy.Bytes())
+
+	if Len(seq) != Len(LenObj(p)) {
+		t.Errorf("Len(seq) = %d, want %d", Len(seq), len(p))
 	}
-	equals(t, seq0, seq1)
+}
+
+func TestInsert(t *testing.T) {
+	p := []byte("atgcatgc")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	info := "info"
+	in := New(info, ff, p)
+	out := Insert(in, 2, in)
+
+	q := []byte("atatgcatgcgcatgc")
+	gg := []Feature{
+		{"source", Join(Range(0, 2), Range(2+len(p), len(q))), qfs, nil},
+		{"source", Range(2, 2+len(p)), qfs, nil},
+	}
+	exp := New(info, gg, q)
+
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Insert(seq, 2, seq).Info() = %v, want %v", out.Info(), exp.Info())
+	}
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Insert(seq, 2, seq).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Insert(seq, 2, seq).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+	}
+}
+
+func TestEmbed(t *testing.T) {
+	p := []byte("atgcatgc")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	info := "info"
+	in := New(info, ff, p)
+	out := Embed(in, 2, in)
+
+	q := []byte("atatgcatgcgcatgc")
+	gg := []Feature{
+		{"source", Range(0, len(q)), qfs, nil},
+		{"source", Range(2, 2+len(p)), qfs, nil},
+	}
+	exp := New(info, gg, q)
+
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Embed(seq, 2, seq).Info() = %v, want %v", out.Info(), exp.Info())
+	}
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Embed(seq, 2, seq).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Embed(seq, 2, seq).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+	}
+}
+
+func TestDelete(t *testing.T) {
+	p := []byte("atgcatgc")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	info := "info"
+	in := New(info, ff, p)
+	out := Delete(in, 3, 2)
+
+	q := []byte("atgtgc")
+	gg := []Feature{{"source", Range(0, len(q)), qfs, nil}}
+	exp := New(info, gg, q)
+
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Delete(seq, 2, seq).Info() = %v, want %v", out.Info(), exp.Info())
+	}
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Delete(seq, 2, seq).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Delete(seq, 2, seq).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+	}
 }
 
 func TestSlice(t *testing.T) {
-	seq := Seq("atatgcgc")
-	e := Seq("atgc")
-	s := Slice(seq, 2, 6)
+	p := []byte("atgcatgc")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(3, 5), qfs, nil}}
+	info := "info"
+	in := New(info, ff, p)
 
-	equals(t, s, e)
-}
-
-func TestFragment(t *testing.T) {
-	seq := Seq("atgcatgc")
-
-	e44 := Seq("atgc")
-	f44 := Fragment(seq, 4, 4)
-
-	e24 := Seq("at")
-	f24 := Fragment(seq, 2, 4)
-
-	e42 := []Sequence{Seq("atgc"), Seq("gcat")}
-	f42 := Fragment(seq, 4, 2)
-
-	equals(t, f44[0], e44)
-	equals(t, f44[1], e44)
-
-	equals(t, f24[0], e24)
-	equals(t, f24[1], e24)
-
-	equals(t, f42[0], e42[0])
-	equals(t, f42[1], e42[1])
-}
-
-func TestComposition(t *testing.T) {
-	seq := Seq("atgcatgc")
-	c := Composition(seq)
-	e := map[byte]int{'a': 2, 't': 2, 'g': 2, 'c': 2}
-
-	equals(t, c, e)
-}
-
-func TestSkew(t *testing.T) {
-	seq := Seq("atgcatgc")
-
-	values := []struct {
-		nSet string
-		pSet string
-		skew float64
-	}{
-		{"g", "c", 0.0},
-		{"a", "t", 0.0},
-		{"g", "", -1.0},
-		{"", "g", 1.0},
+	gg := []Feature{{"source", Range(0, 4), qfs, nil}, {"gene", Range(1, 3), qfs, nil}}
+	out, exp := Slice(in, 2, 6), New(info, gg, p[2:6])
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
 	}
-
-	for _, value := range values {
-		nSet, pSet, skew := value.nSet, value.pSet, value.skew
-		out := Skew(seq, nSet, pSet)
-		if out != skew {
-			t.Errorf("Skew(%q, %q, %q) = %f, want %f", seq, nSet, pSet, out, skew)
-		}
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 2, 6, out.Features(), exp.Features())
+	}
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 2, 6, out.Bytes(), exp.Bytes())
 	}
 }
 
-func TestSequenceServer(t *testing.T) {
-	seq := Seq("atgc")
-
-	server := NewSequenceServer(Seq("atgc"))
-	defer server.Close()
-
-	proxy := server.Proxy()
-
-	if err := server.Insert(2, seq); err != nil {
-		t.Errorf(
-			"Seq(%q).Insert(2, Seq(%q)): %v",
-			string(server.Bytes()),
-			string(seq.Bytes()),
-			err,
-		)
+func TestConcat(t *testing.T) {
+	out := Concat()
+	exp := New(nil, nil, nil)
+	if !Equal(out, exp) {
+		t.Errorf("Concat() = %v, want %v", out, exp)
 	}
-	equals(t, server.Bytes(), Seq("atatgcgc").Bytes())
-	equals(t, proxy.Bytes(), Seq("atatgcgc").Bytes())
 
-	if err := server.Replace(2, Complement(seq)); err != nil {
-		t.Errorf(
-			"Seq(%q).Replace(2, Complement(Seq(%q))): %v",
-			string(server.Bytes()),
-			string(seq.Bytes()),
-			err,
-		)
-	}
-	equals(t, server.Bytes(), Seq("attacggc").Bytes())
-	equals(t, proxy.Bytes(), Seq("attacggc").Bytes())
+	p := []byte("atgcatgc")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	f := Feature{"source", Range(0, len(p)), qfs, nil}
 
-	if err := server.Delete(2, 4); err != nil {
-		t.Errorf(
-			"Seq(%q).Delete(2, 4): %v",
-			string(server.Bytes()),
-			err,
-		)
-	}
-	equals(t, server.Bytes(), seq.Bytes())
-	equals(t, proxy.Bytes(), seq.Bytes())
+	ff := []Feature{f}
+	info := "info"
+	seq := New(info, ff, p)
 
-	if err := proxy.Insert(2, seq); err != nil {
-		t.Errorf(
-			"Seq(%q).Insert(2, Seq(%q)): %v",
-			string(proxy.Bytes()),
-			string(seq.Bytes()),
-			err,
-		)
+	out = Concat(seq)
+	exp = seq
+	if !Equal(out, exp) {
+		t.Errorf("Concat() = %v, want %v", out, exp)
 	}
-	equals(t, server.Bytes(), Seq("atatgcgc").Bytes())
-	equals(t, proxy.Bytes(), Seq("atatgcgc").Bytes())
 
-	if err := proxy.Replace(2, Complement(seq)); err != nil {
-		t.Errorf(
-			"Seq(%q).Replace(2, Complement(Seq(%q))): %v",
-			string(proxy.Bytes()),
-			string(seq.Bytes()),
-			err,
-		)
+	out = Concat(seq, seq)
+	g := Feature{f.Key, f.Location.Shift(0, Len(seq), false), qfs, f.order}
+	exp = New(info, append(ff, g), append(p, p...))
+	if !Equal(out, exp) {
+		t.Errorf("Concat() = %v, want %v", out, exp)
 	}
-	equals(t, server.Bytes(), Seq("attacggc").Bytes())
-	equals(t, proxy.Bytes(), Seq("attacggc").Bytes())
+}
 
-	if err := proxy.Delete(2, 4); err != nil {
-		t.Errorf(
-			"Seq(%q).Delete(2, 4): %v",
-			string(proxy.Bytes()),
-			err,
-		)
-	}
-	equals(t, server.Bytes(), seq.Bytes())
-	equals(t, proxy.Bytes(), seq.Bytes())
+func TestReverse(t *testing.T) {
+	p, q := []byte("atgcatgc"), []byte("cgtacgta")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(2, 4), qfs, nil}}
+	gg := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(4, 6), qfs, nil}}
 
-	if proxy.Insert(4, seq) == nil {
-		t.Errorf(
-			"Seq(%q).Insert(4, Seq(%q)) = nil, want error",
-			string(proxy.Bytes()),
-			string(seq.Bytes()),
-		)
-	}
-	equals(t, proxy.Bytes(), seq.Bytes())
+	info := "info"
 
-	if proxy.Delete(4, 4) == nil {
-		t.Errorf(
-			"Seq(%q).Delete(4, 4) = nil, want error",
-			string(proxy.Bytes()),
-		)
+	in, exp := New(info, ff, p), New(info, gg, q)
+	out := Reverse(in)
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Reverse(in).Info() = %v, want %v", out.Info(), exp.Info())
 	}
-	equals(t, proxy.Bytes(), seq.Bytes())
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Reverse(in).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Reverse(in).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+	}
+}
 
-	if proxy.Delete(1, 4) == nil {
-		t.Errorf(
-			"Seq(%q).Delete(1, 4) = nil, want error",
-			string(proxy.Bytes()),
-		)
-	}
-	equals(t, proxy.Bytes(), seq.Bytes())
+func TestRotate(t *testing.T) {
+	p, q := []byte("atgcatgc"), []byte("gcatgcat")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(2, 4), qfs, nil}}
+	gg := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(4, 6), qfs, nil}}
 
-	if proxy.Replace(4, seq) == nil {
-		t.Errorf(
-			"Seq(%q).Replace(4, Seq(%q)) = nil, want error",
-			string(proxy.Bytes()),
-			string(seq.Bytes()),
-		)
-	}
-	equals(t, proxy.Bytes(), seq.Bytes())
+	info := "info"
 
-	if proxy.Replace(1, seq) == nil {
-		t.Errorf(
-			"Seq(%q).Replace(1, Seq(%q)) = nil, want error",
-			string(proxy.Bytes()),
-			string(seq.Bytes()),
-		)
+	in, exp := New(info, ff, p), New(info, gg, q)
+	out := Rotate(in, -6)
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Rotate(in, 2).Info() = %v, want %v", out.Info(), exp.Info())
 	}
-	equals(t, proxy.Bytes(), seq.Bytes())
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Rotate(in, 2).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Rotate(in, 2).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+	}
+}
+
+func TestWith(t *testing.T) {
+	p := []byte(strings.Repeat("atgc", 100))
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+
+	info := "info"
+
+	in := New(nil, nil, nil)
+	out := WithInfo(in, info)
+	testutils.Equals(t, out, New(info, nil, nil))
+
+	out = WithFeatures(in, ff)
+	testutils.Equals(t, out, New(nil, ff, nil))
+
+	out = WithBytes(in, p)
+	testutils.Equals(t, out, New(nil, nil, p))
+}
+
+type withTest struct {
+	info  interface{}
+	table FeatureTable
+	data  []byte
+}
+
+func newWithTest(info interface{}, table FeatureTable, p []byte) withTest {
+	return withTest{info, table, p}
+}
+
+func (wt withTest) Info() interface{} {
+	return wt.info
+}
+
+func (wt withTest) Features() FeatureTable {
+	return wt.table
+}
+
+func (wt withTest) Bytes() []byte {
+	return wt.data
+}
+
+func (wt withTest) WithInfo(info interface{}) Sequence {
+	return withTest{info, wt.table, wt.data}
+}
+
+func (wt withTest) WithFeatures(ff FeatureTable) Sequence {
+	return withTest{wt.info, ff, wt.data}
+}
+
+func (wt withTest) WithBytes(p []byte) Sequence {
+	return withTest{wt.info, wt.table, p}
+}
+
+func TestWithInterface(t *testing.T) {
+	p := []byte(strings.Repeat("atgc", 100))
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	info := "info"
+
+	in := newWithTest(nil, nil, nil)
+	out := WithInfo(in, info)
+	testutils.Equals(t, out, newWithTest(info, nil, nil))
+
+	out = WithFeatures(in, ff)
+	testutils.Equals(t, out, newWithTest(nil, ff, nil))
+
+	out = WithBytes(in, p)
+	testutils.Equals(t, out, newWithTest(nil, nil, p))
 }
