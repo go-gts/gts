@@ -101,6 +101,31 @@ func TestEmbed(t *testing.T) {
 	}
 }
 
+func TestDelete(t *testing.T) {
+	p := []byte("atgcatgc")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	info := "info"
+	in := New(info, ff, p)
+	out := Delete(in, 3, 2)
+
+	q := []byte("atgtgc")
+	gg := []Feature{{"source", Range(0, len(q)), qfs, nil}}
+	exp := New(info, gg, q)
+
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Delete(seq, 2, seq).Info() = %v, want %v", out.Info(), exp.Info())
+	}
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Delete(seq, 2, seq).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Delete(seq, 2, seq).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+	}
+}
+
 func TestSlice(t *testing.T) {
 	p := []byte("atgcatgc")
 	qfs := Values{}

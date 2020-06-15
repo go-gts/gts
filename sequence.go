@@ -118,7 +118,7 @@ func insert(p []byte, pos int, q []byte) []byte {
 
 // Insert a sequence at the given position.
 func Insert(host Sequence, pos int, guest Sequence) Sequence {
-	ff := FeatureTable{}
+	var ff FeatureTable
 	for _, f := range host.Features() {
 		f.Location = f.Location.Shift(pos, Len(guest), false)
 		ff = ff.Insert(f)
@@ -128,14 +128,13 @@ func Insert(host Sequence, pos int, guest Sequence) Sequence {
 		ff = ff.Insert(f)
 	}
 	p := insert(host.Bytes(), pos, guest.Bytes())
-	ret := WithFeatures(host, ff)
-	ret = WithBytes(ret, p)
-	return ret
+	return WithBytes(WithFeatures(host, ff), p)
+
 }
 
 // Embed a sequence at the given position.
 func Embed(host Sequence, pos int, guest Sequence) Sequence {
-	ff := FeatureTable{}
+	var ff FeatureTable
 	for _, f := range host.Features() {
 		f.Location = f.Location.Shift(pos, Len(guest), true)
 		ff = ff.Insert(f)
@@ -145,9 +144,22 @@ func Embed(host Sequence, pos int, guest Sequence) Sequence {
 		ff = ff.Insert(f)
 	}
 	p := insert(host.Bytes(), pos, guest.Bytes())
-	ret := WithFeatures(host, ff)
-	ret = WithBytes(ret, p)
-	return ret
+	return WithBytes(WithFeatures(host, ff), p)
+}
+
+// Delete a region of the sequence at the given position and length.
+func Delete(seq Sequence, i, n int) Sequence {
+	ff := make([]Feature, len(seq.Features()))
+	for i, f := range seq.Features() {
+		ff[i].Key = f.Key
+		ff[i].Location = f.Location.Shift(i, -n, true)
+		ff[i].Qualifiers = f.Qualifiers
+	}
+	q := seq.Bytes()
+	p := make([]byte, len(q)-n)
+	copy(p[:i], q[:i])
+	copy(p[i:], q[i+n:])
+	return WithBytes(WithFeatures(seq, ff), p)
 }
 
 // Slice returns a subsequence of the given sequence starting at start and up
