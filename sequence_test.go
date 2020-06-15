@@ -159,12 +159,7 @@ func TestConcat(t *testing.T) {
 	qfs := Values{}
 	qfs.Add("organism", "Genus species")
 	qfs.Add("mol_type", "Genomic DNA")
-	loc := Range(0, len(p))
-	f := Feature{
-		Key:        "source",
-		Location:   loc,
-		Qualifiers: qfs,
-	}
+	f := Feature{"source", Range(0, len(p)), qfs, nil}
 
 	ff := []Feature{f}
 	info := "info"
@@ -177,11 +172,7 @@ func TestConcat(t *testing.T) {
 	}
 
 	out = Concat(seq, seq)
-	g := Feature{
-		Key:        f.Key,
-		Location:   f.Location.Shift(0, Len(seq), false),
-		Qualifiers: qfs,
-	}
+	g := Feature{f.Key, f.Location.Shift(0, Len(seq), false), qfs, f.order}
 	exp = New(info, append(ff, g), append(p, p...))
 	if !Equal(out, exp) {
 		t.Errorf("Concat() = %v, want %v", out, exp)
@@ -189,15 +180,25 @@ func TestConcat(t *testing.T) {
 }
 
 func TestReverse(t *testing.T) {
-	in, exp := New(nil, nil, []byte("atgc")), New(nil, nil, []byte("cgta"))
+	p, q := []byte("atgcatgc"), []byte("cgtacgta")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(2, 4), qfs, nil}}
+	gg := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(4, 6), qfs, nil}}
+
+	info := "info"
+
+	in, exp := New(info, ff, p), New(info, gg, q)
 	out := Reverse(in)
-	if !Equal(out, exp) {
-		t.Errorf(
-			"Reverse(%q) = %q, want %q",
-			string(in.Bytes()),
-			string(out.Bytes()),
-			string(exp.Bytes()),
-		)
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Reverse(in).Info() = %v, want %v", out.Info(), exp.Info())
+	}
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Reverse(in).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Reverse(in).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
 	}
 }
 
@@ -206,14 +207,8 @@ func TestWith(t *testing.T) {
 	qfs := Values{}
 	qfs.Add("organism", "Genus species")
 	qfs.Add("mol_type", "Genomic DNA")
-	loc := Range(0, len(p))
-	ff := []Feature{
-		{
-			Key:        "source",
-			Location:   loc,
-			Qualifiers: qfs,
-		},
-	}
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+
 	info := "info"
 
 	in := New(nil, nil, nil)
@@ -266,14 +261,7 @@ func TestWithInterface(t *testing.T) {
 	qfs := Values{}
 	qfs.Add("organism", "Genus species")
 	qfs.Add("mol_type", "Genomic DNA")
-	loc := Range(0, len(p))
-	ff := []Feature{
-		{
-			Key:        "source",
-			Location:   loc,
-			Qualifiers: qfs,
-		},
-	}
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
 	info := "info"
 
 	in := newWithTest(nil, nil, nil)

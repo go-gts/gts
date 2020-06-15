@@ -196,9 +196,7 @@ func Concat(ss ...Sequence) Sequence {
 			}
 			p = append(p, seq.Bytes()...)
 		}
-		head = WithFeatures(head, ff)
-		head = WithBytes(head, p)
-		return head
+		return WithBytes(WithFeatures(head, ff), p)
 	}
 }
 
@@ -210,5 +208,9 @@ func Reverse(seq Sequence) Sequence {
 	for l, r := 0, len(p)-1; l < r; l, r = l+1, r-1 {
 		p[l], p[r] = p[r], p[l]
 	}
-	return New(seq.Info(), seq.Features(), p)
+	var ff FeatureTable
+	for _, f := range seq.Features() {
+		ff = ff.Insert(Feature{f.Key, f.Location.Reverse(Len(seq)), f.Qualifiers, f.order})
+	}
+	return WithBytes(WithFeatures(seq, ff), p)
 }

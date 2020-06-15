@@ -17,6 +17,7 @@ type Location interface {
 	Len() int
 	Shift(i, n int, expand bool) Location
 	Less(loc Location) bool
+	Reverse(length int) Location
 }
 
 // Locatable represents a location that can locate a region within a sequence.
@@ -128,6 +129,11 @@ func (between Between) Less(loc Location) bool {
 	}
 }
 
+// Reverse returns the reversed location for the given length sequence.
+func (between Between) Reverse(length int) Location {
+	return Between(length - 1 - int(between))
+}
+
 // Complement returns the complement location.
 func (between Between) Complement() Locatable {
 	return Complemented{between}
@@ -232,6 +238,11 @@ func (point Point) Less(loc Location) bool {
 	default:
 		return true
 	}
+}
+
+// Reverse returns the reversed location for the given length sequence.
+func (point Point) Reverse(length int) Location {
+	return Point(length - 1 - int(point))
 }
 
 // Complement returns the complement location.
@@ -401,6 +412,18 @@ func (ranged Ranged) Less(loc Location) bool {
 	}
 }
 
+// Reverse returns the reversed location for the given length sequence.
+func (ranged Ranged) Reverse(length int) Location {
+	ret := Ranged{length - ranged.End, length - ranged.Start, ranged.Partial}
+	switch ret.Partial {
+	case Partial5:
+		ret.Partial = Partial3
+	case Partial3:
+		ret.Partial = Partial5
+	}
+	return ret
+}
+
 // Complement returns the complement location.
 func (ranged Ranged) Complement() Locatable {
 	return Complemented{ranged}
@@ -488,6 +511,11 @@ func (complement Complemented) Shift(i, n int, expand bool) Location {
 // Less returns true if the location is less than the given location.
 func (complement Complemented) Less(loc Location) bool {
 	return complement[0].Less(loc)
+}
+
+// Reverse returns the reversed location for the given length sequence.
+func (complement Complemented) Reverse(length int) Location {
+	return Complemented{complement[0].Reverse(length).(Locatable)}
 }
 
 // Complement returns the complement location.
@@ -693,6 +721,16 @@ func (joined Joined) Less(loc Location) bool {
 	return false
 }
 
+// Reverse returns the reversed location for the given length sequence.
+func (joined Joined) Reverse(length int) Location {
+	ll := make([]Locatable, len(joined))
+	copy(ll, []Locatable(joined))
+	for l, r := 0, len(ll)-1; l < r; l, r = l+1, r-1 {
+		ll[l], ll[r] = ll[r].Reverse(length).(Locatable), ll[l].Reverse(length).(Locatable)
+	}
+	return Join(ll...)
+}
+
 // Complement returns the complement location.
 func (joined Joined) Complement() Locatable {
 	return Complemented{joined}
@@ -861,6 +899,11 @@ func (ambiguous Ambiguous) Less(loc Location) bool {
 	}
 }
 
+// Reverse returns the reversed location for the given length sequence.
+func (ambiguous Ambiguous) Reverse(length int) Location {
+	return Ambiguous{length - ambiguous[1], length - ambiguous[0]}
+}
+
 // AmbiguousParser attempts to parse a Ambiguous location.
 func AmbiguousParser(state *pars.State, result *pars.Result) error {
 	state.Push()
@@ -955,6 +998,16 @@ func (ordered Ordered) Less(loc Location) bool {
 		}
 	}
 	return false
+}
+
+// Reverse returns the reversed location for the given length sequence.
+func (ordered Ordered) Reverse(length int) Location {
+	ll := make([]Location, len(ordered))
+	copy(ll, []Location(ordered))
+	for l, r := 0, len(ll)-1; l < r; l, r = l+1, r-1 {
+		ll[l], ll[r] = ll[r].Reverse(length).(Location), ll[l].Reverse(length).(Location)
+	}
+	return Order(ll...)
 }
 
 func multipleLocationParser(state *pars.State, result *pars.Result) error {

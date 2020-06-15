@@ -195,6 +195,10 @@ func (null NullLocation) Less(loc Location) bool {
 	return false
 }
 
+func (null NullLocation) Reverse(length int) Location {
+	return null
+}
+
 var locationLessTests = []struct {
 	loc  Location
 	pass []Location
@@ -349,6 +353,29 @@ func TestLocationLess(t *testing.T) {
 		for _, loc := range tt.fail {
 			locationLessFailTest(t, tt.loc, loc)
 		}
+	}
+}
+
+var locationReverseTest = []struct {
+	in  Location
+	out Location
+}{
+	{Between(0), Between(9)},
+	{Point(0), Point(9)},
+	{Range(0, 3), Range(7, 10)},
+	{PartialRange(0, 3, Partial5), PartialRange(7, 10, Partial3)},
+	{PartialRange(0, 3, Partial3), PartialRange(7, 10, Partial5)},
+	{PartialRange(0, 3, PartialBoth), PartialRange(7, 10, PartialBoth)},
+	{Join(Range(0, 3), Range(5, 8)), Join(Range(2, 5), Range(7, 10))},
+	{Range(0, 3).Complement(), Range(7, 10).Complement()},
+	{Ambiguous{0, 3}, Ambiguous{7, 10}},
+	{Order(Range(0, 3), Range(5, 8)), Order(Range(2, 5), Range(7, 10))},
+}
+
+func TestLocationReverse(t *testing.T) {
+	for _, tt := range locationReverseTest {
+		out := tt.in.Reverse(10)
+		testutils.Equals(t, out, tt.out)
 	}
 }
 
