@@ -6,7 +6,5 @@ Assuming you have a working Go distribution installed, installing GTS is as
 simple as simply running the following command:
 
 ```sh
-go get gopkg.in/gts.v0/...
+go get github.com/go-gts/gts/...
 ```
-
-It is discouraged to go get from the GitHub repository.
