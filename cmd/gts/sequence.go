@@ -26,6 +26,7 @@ func sequenceInsert(ctx *flags.Context) error {
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
+	embed := opt.Switch('e', "embed", "extend existing feature locations when inserting instead of splitting them")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -71,7 +72,11 @@ func sequenceInsert(ctx *flags.Context) error {
 	scanner = seqio.NewAutoScanner(hostFile)
 	for scanner.Scan() {
 		host := scanner.Value()
-		host = gts.Insert(host, *n, guest)
+		if *embed {
+			host = gts.Embed(host, *n, guest)
+		} else {
+			host = gts.Insert(host, *n, guest)
+		}
 		w := seqio.NewFormatter(host, filetype)
 		_, err := w.WriteTo(seqoutFile)
 		if err != nil {

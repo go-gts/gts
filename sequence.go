@@ -152,18 +152,18 @@ func Embed(host Sequence, pos int, guest Sequence) Sequence {
 
 // Slice returns a subsequence of the given sequence starting at start and up
 // to end. The target sequence region is copied.
-func Slice(seq Sequence, start, end int) BasicSequence {
+func Slice(seq Sequence, start, end int) Sequence {
 	p := make([]byte, end-start)
 	copy(p, seq.Bytes()[start:end])
-	ff := make([]Feature, 0)
+	var ff []Feature
 	for _, f := range seq.Features() {
-		loc := f.Location.Shift(0, -start, true).Shift(end, end-Len(seq), true)
+		loc := f.Location.Shift(start, -start, true).Shift(end-1, end-Len(seq), true)
 		if !isBetween(loc) || isBetween(f.Location) {
 			f.Location = loc
 			ff = append(ff, f)
 		}
 	}
-	return New(seq.Info(), seq.Features(), p)
+	return WithBytes(WithFeatures(seq, ff), p)
 }
 
 // Concat takes the given Sequences and concatenates them into a single

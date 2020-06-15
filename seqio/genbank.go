@@ -39,42 +39,31 @@ func (gbf GenBankFields) String() string {
 	return fmt.Sprintf("%s %s", gbf.Version, gbf.Definition)
 }
 
-// GenBank represents a GenBank sequence record.
-type GenBank struct {
-	Fields GenBankFields
-	Table  gts.FeatureTable
-	Origin []byte
-}
-
-// NewGenBank creates a new GenBank object.
-func NewGenBank(info GenBankFields, ff []gts.Feature, p []byte) GenBank {
-	buf := &bytes.Buffer{}
-	w := bufio.NewWriter(buf)
-	for i := 0; i < len(p); i += 60 {
-		if i != 0 {
-			io.WriteString(w, "\n")
-		}
-		prefix := fmt.Sprintf("%10d", i+1)
-		w.Write([]byte(prefix))
-		for j := 0; j < 60 && i+j < len(p); j += 10 {
-			start := i + j
-			end := min(start+10, len(p))
-			io.WriteString(w, " ")
-			w.Write(p[start:end])
+func toOriginLength(length int) int {
+	lines := length / 60
+	lastLine := length % 60
+	blocks := lastLine / 10
+	lastBlock := lastLine % 10
+	ret := lines * 76
+	if lastLine != 0 {
+		ret += 10 + blocks*11
+		if lastBlock != 0 {
+			ret += lastBlock + 1
 		}
 	}
-	w.Flush()
-	return GenBank{info, ff, buf.Bytes()}
+	return ret
 }
 
-// Info returns the metadata of the sequence.
-func (gb GenBank) Info() interface{} {
-	return gb.Fields
-}
-
-// Features returns the feature table of the sequence.
-func (gb GenBank) Features() gts.FeatureTable {
-	return gb.Table
+func fromOriginLength(length int) int {
+	lines := length / 76
+	lastLine := length%76 - 10
+	blocks := lastLine / 11
+	lastBlock := lastLine % 11
+	ret := lines * 60
+	if lastLine != 0 {
+		ret += blocks*10 + lastBlock
+	}
+	return ret
 }
 
 type originIterator struct {
@@ -92,31 +81,76 @@ func (iter *originIterator) Next() (int, int) {
 	return i, j
 }
 
+// Origin represents a GenBank sequence origin value.
+type Origin []byte
+
+// NewOrigin formats a byte slice into GenBank sequence origin format.
+func NewOrigin(p []byte) Origin {
+	buf := &bytes.Buffer{}
+	w := bufio.NewWriter(buf)
+	for i := 0; i < len(p); i += 60 {
+		if i != 0 {
+			io.WriteString(w, "\n")
+		}
+		prefix := fmt.Sprintf("%9d", i+1)
+		io.WriteString(w, prefix)
+		for j := 0; j < 60 && i+j < len(p); j += 10 {
+			start := i + j
+			end := min(start+10, len(p))
+			io.WriteString(w, " ")
+			w.Write(p[start:end])
+		}
+	}
+	w.Flush()
+	return Origin(buf.Bytes())
+}
+
+// ToBytes converts the GenBank sequence origin into a byte slice.
+func (o Origin) ToBytes() []byte {
+	if len(o) < 10 {
+		return nil
+	}
+	p := make([]byte, fromOriginLength(len(o)))
+	iter := originIterator{}
+	i, j := iter.Next()
+	for i < len(o) {
+		n := min(10, len(o)-i)
+		copy(p[j:j+n], o[i:i+n])
+		i, j = iter.Next()
+	}
+	return p
+}
+
+// GenBank represents a GenBank sequence record.
+type GenBank struct {
+	Fields GenBankFields
+	Table  gts.FeatureTable
+	Origin Origin
+}
+
+// NewGenBank creates a new GenBank object.
+func NewGenBank(info GenBankFields, ff []gts.Feature, p []byte) GenBank {
+	return GenBank{info, ff, NewOrigin(p)}
+}
+
+// Info returns the metadata of the sequence.
+func (gb GenBank) Info() interface{} {
+	return gb.Fields
+}
+
+// Features returns the feature table of the sequence.
+func (gb GenBank) Features() gts.FeatureTable {
+	return gb.Table
+}
+
 // Len returns the length of the sequence.
 func (gb GenBank) Len() int {
-	iter := originIterator{0, 0}
-	i, _ := iter.Next()
-	length := 0
-	for i < len(gb.Origin) {
-		n :=
-			min(10, len(gb.Origin)-i)
-		length += n
-		i, _ = iter.Next()
-	}
-	return length
+	return fromOriginLength(len(gb.Origin))
 }
 
 // Bytes returns the byte representation of the sequence.
 func (gb GenBank) Bytes() []byte {
-	data := make([]byte, gb.Len())
-	iter := originIterator{0, 0}
-	i, j := iter.Next()
-	for i < len(gb.Origin) {
-		n := min(10, len(gb.Origin)-i)
-		copy(data[j:j+n], gb.Origin[i:i+n])
-		i, j = iter.Next()
-	}
-	return data
+	return gb.Origin.ToBytes()
 }
 
 // WithInfo creates a shallow copy of the given Sequence object and swaps the
@@ -139,7 +173,7 @@ func (gb GenBank) WithFeatures(ff gts.FeatureTable) gts.Sequence {
 // WithBytes creates a shallow copy of the given Sequence object and swaps the
 // byte representation with the given byte slice.
 func (gb GenBank) WithBytes(p []byte) gts.Sequence {
-	return GenBank{gb.Fields, gb.Table, p}
+	return GenBank{gb.Fields, gb.Table, NewOrigin(p)}
 }
 
 // String satisifes the fmt.Stringer interface.
@@ -295,21 +329,6 @@ func genbankFieldBodyParser(depth int) pars.Parser {
 		result.SetChildren(children)
 		return nil
 	}
-}
-
-func originLength(length int) int {
-	lines := length / 60
-	lastLine := length % 60
-	blocks := lastLine / 10
-	lastBlock := lastLine % 10
-	ret := lines * 76
-	if lastLine != 0 {
-		ret += 10 + blocks*11
-		if lastBlock != 0 {
-			ret += lastBlock + 1
-		}
-	}
-	return ret
 }
 
 // GenBankParser attempts to parse a single GenBank record.
@@ -519,7 +538,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 			pars.Line(state, result)
 
 			state.Push()
-			if err := state.Request(originLength(length)); err != nil {
+			if err := state.Request(toOriginLength(length)); err != nil {
 				return pars.NewError("not enough bytes in state", state.Position())
 			}
 			buffer := state.Buffer()

@@ -100,18 +100,18 @@ func TestGenBankWithInterface(t *testing.T) {
 		},
 	}
 
-	in := GenBank{GenBankFields{}, nil, nil}
+	in := GenBank{GenBankFields{}, nil, NewOrigin(nil)}
 	out := gts.WithInfo(in, info)
-	testutils.Equals(t, out, GenBank{info, nil, nil})
+	testutils.Equals(t, out, GenBank{info, nil, NewOrigin(nil)})
 
 	out = gts.WithFeatures(in, ff)
-	testutils.Equals(t, out, GenBank{GenBankFields{}, ff, nil})
+	testutils.Equals(t, out, GenBank{GenBankFields{}, ff, NewOrigin(nil)})
 
 	out = gts.WithBytes(in, p)
-	testutils.Equals(t, out, GenBank{GenBankFields{}, nil, p})
+	testutils.Equals(t, out, GenBank{GenBankFields{}, nil, NewOrigin(p)})
 
 	out = gts.WithInfo(in, "info")
-	testutils.Equals(t, out, gts.New("info", nil, nil))
+	testutils.Equals(t, out, gts.New("info", nil, NewOrigin(nil)))
 }
 
 func TestGenBankIO(t *testing.T) {
@@ -205,6 +205,7 @@ func TestGenBankIOFail(t *testing.T) {
 		state := pars.FromString(in)
 		if _, err := parser.Parse(state); err == nil {
 			t.Errorf("while parsing`\n%s\n`: expected error", in)
+			return
 		}
 	}
 
@@ -212,5 +213,6 @@ func TestGenBankIOFail(t *testing.T) {
 	n, err := GenBankFormatter{gts.New(nil, nil, nil)}.WriteTo(&w)
 	if n != 0 || err == nil {
 		t.Errorf("formatting an empty Sequence should return an error")
+		return
 	}
 }

@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-gts/gts/testutils"
 	"github.com/go-pars/pars"
+	"github.com/go-test/deep"
 )
 
 func locRep(loc Location) string {
@@ -43,26 +44,25 @@ var locationAccessorTests = []struct {
 	in  Location
 	str string
 	len int
-	ss  []Span
 }{
-	{Between(0), "0^1", 0, []Span{{0, 0}}},
-	{Point(0), "1", 1, []Span{{0, 1}}},
-	{Range(0, 2), "1..2", 2, []Span{{0, 2}}},
+	{Between(0), "0^1", 0},
+	{Point(0), "1", 1},
+	{Range(0, 2), "1..2", 2},
 
-	{PartialRange(0, 2, Complete), "1..2", 2, []Span{{0, 2}}},
-	{PartialRange(0, 2, Partial5), "<1..2", 2, []Span{{0, 2}}},
-	{PartialRange(0, 2, Partial3), "1..>2", 2, []Span{{0, 2}}},
-	{PartialRange(0, 2, PartialBoth), "<1..>2", 2, []Span{{0, 2}}},
+	{PartialRange(0, 2, Complete), "1..2", 2},
+	{PartialRange(0, 2, Partial5), "<1..2", 2},
+	{PartialRange(0, 2, Partial3), "1..>2", 2},
+	{PartialRange(0, 2, PartialBoth), "<1..>2", 2},
 
-	{Join(Range(0, 2), Range(3, 5)), "join(1..2,4..5)", 4, []Span{{0, 2}, {3, 5}}},
-	{Join(Range(0, 2), Join(Range(3, 5), Range(6, 8))), "join(1..2,4..5,7..8)", 6, []Span{{0, 2}, {3, 5}, {6, 8}}},
-	{Join(Point(0), Point(2)), "join(1,3)", 2, []Span{{0, 1}, {2, 1}}},
+	{Join(Range(0, 2), Range(3, 5)), "join(1..2,4..5)", 4},
+	{Join(Range(0, 2), Join(Range(3, 5), Range(6, 8))), "join(1..2,4..5,7..8)", 6},
+	{Join(Point(0), Point(2)), "join(1,3)", 2},
 
-	{Ambiguous{0, 2}, "1.2", 1, []Span{{0, 1}, {1, 1}}},
+	{Ambiguous{0, 2}, "1.2", 1},
 
-	{Order(Range(0, 2), Range(2, 4)), "order(1..2,3..4)", 4, []Span{{0, 2}, {2, 4}}},
-	{Order(Range(0, 2), Order(Range(2, 4), Range(4, 6))), "order(1..2,3..4,5..6)", 6, []Span{{0, 2}, {2, 4}, {4, 6}}},
-	{Order(Point(0), Point(2)), "order(1,3)", 2, []Span{{0, 1}, {2, 1}}},
+	{Order(Range(0, 2), Range(2, 4)), "order(1..2,3..4)", 4},
+	{Order(Range(0, 2), Order(Range(2, 4), Range(4, 6))), "order(1..2,3..4,5..6)", 6},
+	{Order(Point(0), Point(2)), "order(1,3)", 2},
 }
 
 func TestLocationAccessors(t *testing.T) {
@@ -74,13 +74,11 @@ func TestLocationAccessors(t *testing.T) {
 			if tt.in.Len() != tt.len {
 				t.Errorf("%s.Len() = %d, want %d", locRep(tt.in), tt.in.Len(), tt.len)
 			}
-			testutils.Equals(t, tt.in.Regions(), tt.ss)
 			if c, ok := tt.in.(Locatable); ok {
 				in := c.Complement()
 				if in.Len() != tt.len {
 					t.Errorf("%s.Len() = %d, want %d", locRep(in), in.Len(), tt.len)
 				}
-				testutils.Equals(t, in.Regions(), tt.ss)
 			}
 		})
 	}
@@ -377,25 +375,29 @@ func TestLocationReduction(t *testing.T) {
 var locatableTests = []struct {
 	in  Locatable
 	out Sequence
+	ss  []Span
 }{
-	{Between(0), New(nil, nil, []byte(""))},
-	{Point(0), New(nil, nil, []byte("a"))},
-	{Range(0, 2), New(nil, nil, []byte("at"))},
-	{Join(Range(0, 2), Range(3, 5)), New(nil, nil, []byte("atca"))},
+	{Between(0), New(nil, nil, []byte("")), []Span{{0, 0}}},
+	{Point(0), New(nil, nil, []byte("a")), []Span{{0, 1}}},
+	{Range(0, 2), New(nil, nil, []byte("at")), []Span{{0, 2}}},
+	{Join(Range(0, 2), Range(3, 5)), New(nil, nil, []byte("atca")), []Span{{0, 2}, {3, 2}}},
 }
 
 func TestLocatable(t *testing.T) {
 	seq := New(nil, nil, []byte("atgcatgc"))
 	for _, tt := range locatableTests {
-		out := tt.in.Locate(seq)
-		exp := tt.out
-		if !Equal(out, exp) {
-			t.Errorf(
-				"%s.Locate(%q) = %q, want %q",
-				locRep(tt.in), string(seq.Bytes()),
-				string(out.Bytes()), string(exp.Bytes()),
-			)
+		out, exp := tt.in.Locate(seq), tt.out
+		if !reflect.DeepEqual(out.Info(), exp.Info()) {
+			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
 		}
+		if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+			t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 2, 6, out.Features(), exp.Features())
+		}
+		if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 2, 6, out.Bytes(), exp.Bytes())
+		}
+
+		testutils.Equals(t, tt.in.Regions(), tt.ss)
 		cmp := tt.in.Complement()
 		cmpstr := fmt.Sprintf("complement(%s)", tt.in)
 		if cmp.String() != cmpstr {
@@ -419,6 +421,7 @@ func TestLocatable(t *testing.T) {
 				string(out.Bytes()), string(exp.Bytes()),
 			)
 		}
+		testutils.Equals(t, cmp.Regions(), tt.ss)
 	}
 }
 

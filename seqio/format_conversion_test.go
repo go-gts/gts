@@ -2,6 +2,7 @@ package seqio
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -10,29 +11,38 @@ import (
 	"github.com/go-pars/pars"
 )
 
-func TestFormatConversion(t *testing.T) {
-	in := testutils.ReadTestfile(t, "NC_001422.gb")
-	out := testutils.ReadTestfile(t, "NC_001422.fasta")
-
-	state := pars.FromString(in)
-	parser := pars.AsParser(GenBankParser)
-
+func parseString(parser pars.Parser, s string) (gts.Sequence, error) {
+	state := pars.FromString(s)
 	result, err := parser.Parse(state)
 	if err != nil {
-		t.Errorf("parser returned %v\nBuffer:\n%q", err, string(result.Token))
+		return GenBank{}, fmt.Errorf("parser returned %v\nBuffer:\n%q", err, string(result.Token))
+	}
+	return result.Value.(gts.Sequence), nil
+}
+
+func TestFormatConversion(t *testing.T) {
+	s1 := testutils.ReadTestfile(t, "NC_001422.gb")
+	s2 := testutils.ReadTestfile(t, "NC_001422.fasta")
+
+	seq1, err := parseString(GenBankParser, s1)
+	if err != nil {
+		t.Error(err)
 		return
 	}
 
-	gb := result.Value.(GenBank)
-	seq := gts.New(gb.Info(), gb.Features(), bytes.ToUpper(gb.Bytes()))
-
-	f := NewFormatter(seq, FastaFile)
-	builder := strings.Builder{}
-	n, err := f.WriteTo(&builder)
+	seq2, err := parseString(FastaParser, s2)
 	if err != nil {
-		t.Errorf("f.WriteTo = %d, %v", n, err)
+		t.Error(err)
+		return
 	}
 
-	s := builder.String()
-	testutils.Diff(t, s, out)
+	testutils.Equals(t, bytes.ToUpper(seq1.Bytes()), bytes.ToUpper(seq2.Bytes()))
+	formatter := NewFormatter(seq1, FastaFile)
+	builder := &strings.Builder{}
+	n, err := formatter.WriteTo(builder)
+	if int(n) != len(s2) || err != nil {
+		t.Errorf("formatter.WriteTo(builder) = (%d, %v), want (%d, nil)", n, err, len(s2))
+	}
+	out := builder.String()
+	testutils.Diff(t, strings.ToUpper(s2), strings.ToUpper(out))
 }

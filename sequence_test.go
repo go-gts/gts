@@ -65,11 +65,9 @@ func TestInsert(t *testing.T) {
 	if !reflect.DeepEqual(out.Info(), exp.Info()) {
 		t.Errorf("Insert(seq, 2, seq).Info() = %v, want %v", out.Info(), exp.Info())
 	}
-
 	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
 		t.Errorf("Insert(seq, 2, seq).Features() = %v, want %v", out.Features(), exp.Features())
 	}
-
 	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
 		t.Errorf("Insert(seq, 2, seq).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
 	}
@@ -95,11 +93,9 @@ func TestEmbed(t *testing.T) {
 	if !reflect.DeepEqual(out.Info(), exp.Info()) {
 		t.Errorf("Embed(seq, 2, seq).Info() = %v, want %v", out.Info(), exp.Info())
 	}
-
 	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
 		t.Errorf("Embed(seq, 2, seq).Features() = %v, want %v", out.Features(), exp.Features())
 	}
-
 	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
 		t.Errorf("Embed(seq, 2, seq).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
 	}
@@ -110,29 +106,20 @@ func TestSlice(t *testing.T) {
 	qfs := Values{}
 	qfs.Add("organism", "Genus species")
 	qfs.Add("mol_type", "Genomic DNA")
-	loc := Range(0, len(p))
-	ff := []Feature{
-		{
-			Key:        "source",
-			Location:   loc,
-			Qualifiers: qfs,
-		},
-	}
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(3, 5), qfs, nil}}
 	info := "info"
 	in := New(info, ff, p)
 
-	for i := 0; i < len(p); i++ {
-		for j := i; j < len(p); j++ {
-			out, exp := Slice(in, i, j), New(info, ff, p[i:j])
-			if !Equal(out, exp) {
-				t.Errorf(
-					"Slice(%q, %d, %d) = %q, want %q",
-					string(in.Bytes()), i, j,
-					string(out.Bytes()),
-					string(exp.Bytes()),
-				)
-			}
-		}
+	gg := []Feature{{"source", Range(0, 4), qfs, nil}, {"gene", Range(1, 3), qfs, nil}}
+	out, exp := Slice(in, 2, 6), New(info, gg, p[2:6])
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
+	}
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 2, 6, out.Features(), exp.Features())
+	}
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 2, 6, out.Bytes(), exp.Bytes())
 	}
 }
 

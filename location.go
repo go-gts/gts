@@ -15,7 +15,6 @@ import (
 type Location interface {
 	fmt.Stringer
 	Len() int
-	Regions() []Span
 	Shift(i, n int, expand bool) Location
 	Less(loc Location) bool
 }
@@ -23,6 +22,7 @@ type Location interface {
 // Locatable represents a location that can locate a region within a sequence.
 type Locatable interface {
 	Location
+	Regions() []Span
 	Complement() Locatable
 	Locate(seq Sequence) Sequence
 }
@@ -135,7 +135,7 @@ func (between Between) Complement() Locatable {
 
 // Locate the sequence region represented by the location.
 func (between Between) Locate(seq Sequence) Sequence {
-	return New(seq.Info(), nil, []byte{})
+	return Slice(seq, int(between), 0)
 }
 
 // BetweenParser will attempt to parse a Between loctation.
@@ -307,7 +307,7 @@ func (ranged Ranged) String() string {
 
 // Regions returns the regions spanned by the location.
 func (ranged Ranged) Regions() []Span {
-	return []Span{{int(ranged.Start), int(ranged.End)}}
+	return []Span{{int(ranged.Start), int(ranged.End - ranged.Start)}}
 }
 
 // Len returns the total length spanned by the location.
@@ -658,11 +658,11 @@ func (joined Joined) String() string {
 
 // Regions returns the regions spanned by the location.
 func (joined Joined) Regions() []Span {
-	ss := make([]Span, 0)
+	var spans []Span
 	for _, loc := range joined {
-		ss = append(ss, loc.Regions()...)
+		spans = append(spans, loc.Regions()...)
 	}
-	return ss
+	return spans
 }
 
 // Len returns the total length spanned by the location.
@@ -700,12 +700,12 @@ func (joined Joined) Complement() Locatable {
 
 // Locate the sequence region represented by the location.
 func (joined Joined) Locate(seq Sequence) Sequence {
-	p := make([]byte, joined.Len())
-	n := 0
-	for _, loc := range joined {
-		n += copy(p[n:], loc.Locate(seq).Bytes())
+	spans := joined.Regions()
+	slices := make([]Sequence, len(spans))
+	for i, span := range spans {
+		slices[i] = Slice(seq, span.Pos, span.Pos+span.Len)
 	}
-	return New(seq.Info(), nil, p)
+	return Concat(slices...)
 }
 
 func locationDelimiter(state *pars.State, result *pars.Result) bool {
@@ -791,16 +791,6 @@ func (ambiguous Ambiguous) String() string {
 // Len returns the total length spanned by the location.
 func (ambiguous Ambiguous) Len() int {
 	return 1
-}
-
-// Regions returns the regions spanned by the location.
-func (ambiguous Ambiguous) Regions() []Span {
-	start, end := ambiguous[0], ambiguous[1]
-	ss := make([]Span, end-start)
-	for i := 0; i < end-start; i++ {
-		ss[i] = Span{start + i, 1}
-	}
-	return ss
 }
 
 // Shift the location beyond the given position i by n.
@@ -946,15 +936,6 @@ func (ordered Ordered) Len() int {
 		n += loc.Len()
 	}
 	return n
-}
-
-// Regions returns the regions spanned by the location.
-func (ordered Ordered) Regions() []Span {
-	ss := make([]Span, 0)
-	for _, loc := range ordered {
-		ss = append(ss, loc.Regions()...)
-	}
-	return ss
 }
 
 // Shift the location beyond the given position i by n.
