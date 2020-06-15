@@ -203,14 +203,30 @@ func Concat(ss ...Sequence) Sequence {
 // Reverse returns a Sequence object with the byte representation in the
 // reversed order.
 func Reverse(seq Sequence) Sequence {
+	var ff FeatureTable
+	for _, f := range seq.Features() {
+		ff = ff.Insert(Feature{f.Key, f.Location.Reverse(Len(seq)), f.Qualifiers, f.order})
+	}
 	p := make([]byte, Len(seq))
 	copy(p, seq.Bytes())
 	for l, r := 0, len(p)-1; l < r; l, r = l+1, r-1 {
 		p[l], p[r] = p[r], p[l]
 	}
+	return WithBytes(WithFeatures(seq, ff), p)
+}
+
+// Rotate returns a Sequence object whose coordinates are shifted by the given
+// amount.
+func Rotate(seq Sequence, n int) Sequence {
+	for Len(seq) > 0 && n < 0 {
+		n += Len(seq)
+	}
 	var ff FeatureTable
 	for _, f := range seq.Features() {
-		ff = ff.Insert(Feature{f.Key, f.Location.Reverse(Len(seq)), f.Qualifiers, f.order})
+		loc := f.Location.Shift(0, n, true).Normalize(Len(seq))
+		ff = ff.Insert(Feature{f.Key, loc, f.Qualifiers, f.order})
 	}
+	p := seq.Bytes()
+	p = append(p[n:], p[:n]...)
 	return WithBytes(WithFeatures(seq, ff), p)
 }

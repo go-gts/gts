@@ -202,6 +202,29 @@ func TestReverse(t *testing.T) {
 	}
 }
 
+func TestRotate(t *testing.T) {
+	p, q := []byte("atgcatgc"), []byte("gcatgcat")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(2, 4), qfs, nil}}
+	gg := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(4, 6), qfs, nil}}
+
+	info := "info"
+
+	in, exp := New(info, ff, p), New(info, gg, q)
+	out := Rotate(in, -6)
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Rotate(in, 2).Info() = %v, want %v", out.Info(), exp.Info())
+	}
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Rotate(in, 2).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Rotate(in, 2).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+	}
+}
+
 func TestWith(t *testing.T) {
 	p := []byte(strings.Repeat("atgc", 100))
 	qfs := Values{}

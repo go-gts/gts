@@ -199,6 +199,10 @@ func (null NullLocation) Reverse(length int) Location {
 	return null
 }
 
+func (null NullLocation) Normalize(length int) Location {
+	return null
+}
+
 var locationLessTests = []struct {
 	loc  Location
 	pass []Location
@@ -375,6 +379,28 @@ var locationReverseTest = []struct {
 func TestLocationReverse(t *testing.T) {
 	for _, tt := range locationReverseTest {
 		out := tt.in.Reverse(10)
+		testutils.Equals(t, out, tt.out)
+	}
+}
+
+var locationNormalizeTest = []struct {
+	in  Location
+	out Location
+}{
+	{Between(10), Between(0)},
+	{Point(10), Point(0)},
+	{Range(10, 13), Range(0, 3)},
+	{Range(8, 12), Join(Range(8, 10), Range(0, 2))},
+	{PartialRange(8, 12, PartialBoth), Join(PartialRange(8, 10, Partial5), PartialRange(0, 2, Partial3))},
+	{Join(Range(10, 13), Range(5, 8)), Join(Range(0, 3), Range(5, 8))},
+	{Range(10, 13).Complement(), Range(0, 3).Complement()},
+	{Ambiguous{10, 13}, Ambiguous{0, 3}},
+	{Order(Range(10, 13), Range(5, 8)), Order(Range(0, 3), Range(5, 8))},
+}
+
+func TestLocationNormalize(t *testing.T) {
+	for _, tt := range locationNormalizeTest {
+		out := tt.in.Normalize(10)
 		testutils.Equals(t, out, tt.out)
 	}
 }
