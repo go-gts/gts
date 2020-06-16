@@ -142,9 +142,9 @@ func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 
 	for i, name := range pos.Order {
 		if len(extra) == 0 {
-			list := pos.Order[i:]
-			for i := range list {
-				list[i] = fmt.Sprintf("%q", list[i])
+			list := make([]string, len(pos.Order)-i)
+			for j, name := range pos.Order[i:] {
+				list[j] = fmt.Sprintf("%q", name)
 			}
 			missing := strings.Join(list, ", ")
 			return extra, fmt.Errorf("missing positional arguments(s): %s", missing)
