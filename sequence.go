@@ -120,11 +120,11 @@ func insert(p []byte, pos int, q []byte) []byte {
 func Insert(host Sequence, pos int, guest Sequence) Sequence {
 	var ff FeatureTable
 	for _, f := range host.Features() {
-		f.Location = f.Location.Shift(pos, Len(guest), false)
+		f.Location = f.Location.Shift(pos, Len(guest))
 		ff = ff.Insert(f)
 	}
 	for _, f := range guest.Features() {
-		f.Location = f.Location.Shift(0, pos, true)
+		f.Location = f.Location.Expand(0, pos)
 		ff = ff.Insert(f)
 	}
 	p := insert(host.Bytes(), pos, guest.Bytes())
@@ -136,11 +136,11 @@ func Insert(host Sequence, pos int, guest Sequence) Sequence {
 func Embed(host Sequence, pos int, guest Sequence) Sequence {
 	var ff FeatureTable
 	for _, f := range host.Features() {
-		f.Location = f.Location.Shift(pos, Len(guest), true)
+		f.Location = f.Location.Expand(pos, Len(guest))
 		ff = ff.Insert(f)
 	}
 	for _, f := range guest.Features() {
-		f.Location = f.Location.Shift(0, pos, true)
+		f.Location = f.Location.Expand(0, pos)
 		ff = ff.Insert(f)
 	}
 	p := insert(host.Bytes(), pos, guest.Bytes())
@@ -152,7 +152,7 @@ func Delete(seq Sequence, i, n int) Sequence {
 	ff := make([]Feature, len(seq.Features()))
 	for i, f := range seq.Features() {
 		ff[i].Key = f.Key
-		ff[i].Location = f.Location.Shift(i, -n, true)
+		ff[i].Location = f.Location.Expand(i, -n)
 		ff[i].Qualifiers = f.Qualifiers
 	}
 	q := seq.Bytes()
@@ -169,7 +169,7 @@ func Slice(seq Sequence, start, end int) Sequence {
 	copy(p, seq.Bytes()[start:end])
 	var ff []Feature
 	for _, f := range seq.Features() {
-		loc := f.Location.Shift(start, -start, true).Shift(end-1, end-Len(seq), true)
+		loc := f.Location.Expand(start, -start).Expand(end-1, end-Len(seq))
 		if !isBetween(loc) || isBetween(f.Location) {
 			f.Location = loc
 			ff = append(ff, f)
@@ -191,7 +191,7 @@ func Concat(ss ...Sequence) Sequence {
 		ff, p := head.Features(), head.Bytes()
 		for _, seq := range tail {
 			for _, f := range seq.Features() {
-				f.Location = f.Location.Shift(0, len(p), true)
+				f.Location = f.Location.Expand(0, len(p))
 				ff = ff.Insert(f)
 			}
 			p = append(p, seq.Bytes()...)
@@ -223,7 +223,7 @@ func Rotate(seq Sequence, n int) Sequence {
 	}
 	var ff FeatureTable
 	for _, f := range seq.Features() {
-		loc := f.Location.Shift(0, n, true).Normalize(Len(seq))
+		loc := f.Location.Expand(0, n).Normalize(Len(seq))
 		ff = ff.Insert(Feature{f.Key, loc, f.Qualifiers, f.order})
 	}
 	p := seq.Bytes()

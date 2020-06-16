@@ -172,7 +172,7 @@ func TestConcat(t *testing.T) {
 	}
 
 	out = Concat(seq, seq)
-	g := Feature{f.Key, f.Location.Shift(0, Len(seq), false), qfs, f.order}
+	g := Feature{f.Key, f.Location.Shift(0, Len(seq)), qfs, f.order}
 	exp = New(info, append(ff, g), append(p, p...))
 	if !Equal(out, exp) {
 		t.Errorf("Concat() = %v, want %v", out, exp)

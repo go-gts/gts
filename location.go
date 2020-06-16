@@ -15,7 +15,8 @@ import (
 type Location interface {
 	fmt.Stringer
 	Len() int
-	Shift(i, n int, expand bool) Location
+	Shift(i, n int) Location
+	Expand(i, n int) Location
 	Less(loc Location) bool
 	Reverse(length int) Location
 	Normalize(length int) Location
@@ -94,7 +95,12 @@ func (between Between) Regions() []Span {
 }
 
 // Shift the location beyond the given position i by n.
-func (between Between) Shift(i, n int, expand bool) Location {
+func (between Between) Shift(i, n int) Location {
+	return between.Expand(i, n)
+}
+
+// Expand the location beyond the given position i by n.
+func (between Between) Expand(i, n int) Location {
 	return Between(shift(int(between), i, n, false))
 }
 
@@ -201,7 +207,12 @@ func (point Point) Regions() []Span {
 }
 
 // Shift the location beyond the given position i by n.
-func (point Point) Shift(i, n int, expand bool) Location {
+func (point Point) Shift(i, n int) Location {
+	return point.Expand(i, n)
+}
+
+// Expand the location beyond the given position i by n.
+func (point Point) Expand(i, n int) Location {
 	pos := int(point)
 	if n < 0 && i <= pos && pos+1 <= i-n {
 		return Between(pos)
@@ -338,12 +349,12 @@ func (ranged Ranged) Len() int {
 }
 
 // Shift the location beyond the given position i by n.
-func (ranged Ranged) Shift(i, n int, expand bool) Location {
+func (ranged Ranged) Shift(i, n int) Location {
 	start, end := shift(ranged.Start, i, n, true), shift(ranged.End, i, n, false)
 	if end <= start {
 		return Between(start)
 	}
-	if expand || i <= start || end < i {
+	if i <= start || end <= i {
 		return PartialRange(start, end, ranged.Partial)
 	}
 	left, right := Range(start, i), Range(i+n, end)
@@ -355,6 +366,15 @@ func (ranged Ranged) Shift(i, n int, expand bool) Location {
 		right.Partial = Partial3
 	}
 	return Join(left, right)
+}
+
+// Expand the location beyond the given position i by n.
+func (ranged Ranged) Expand(i, n int) Location {
+	start, end := shift(ranged.Start, i, n, true), shift(ranged.End, i, n, false)
+	if end <= start {
+		return Between(start)
+	}
+	return PartialRange(start, end, ranged.Partial)
 }
 
 // Less returns true if the location is less than the given location.
@@ -438,7 +458,7 @@ func (ranged Ranged) Reverse(length int) Location {
 // Normalize returns a location normalized for the given length sequence.
 func (ranged Ranged) Normalize(length int) Location {
 	if ranged.Len() == length {
-		return ranged.Shift(0, -ranged.Start, true)
+		return ranged.Expand(0, -ranged.Start)
 	}
 	start, end := ranged.Start%length, ranged.End%length
 	if start < end {
@@ -534,8 +554,13 @@ func (complement Complemented) Regions() []Span {
 }
 
 // Shift the location beyond the given position i by n.
-func (complement Complemented) Shift(i, n int, expand bool) Location {
-	return Complemented{complement[0].Shift(i, n, expand).(Locatable)}
+func (complement Complemented) Shift(i, n int) Location {
+	return Complemented{complement[0].Shift(i, n).(Locatable)}
+}
+
+// Expand the location beyond the given position i by n.
+func (complement Complemented) Expand(i, n int) Location {
+	return Complemented{complement[0].Expand(i, n).(Locatable)}
 }
 
 // Less returns true if the location is less than the given location.
@@ -738,10 +763,19 @@ func (joined Joined) Len() int {
 }
 
 // Shift the location beyond the given position i by n.
-func (joined Joined) Shift(i, n int, expand bool) Location {
+func (joined Joined) Shift(i, n int) Location {
 	locs := make([]Locatable, len(joined))
 	for j, loc := range joined {
-		locs[j] = loc.Shift(i, n, expand).(Locatable)
+		locs[j] = loc.Shift(i, n).(Locatable)
+	}
+	return Join(locs...)
+}
+
+// Expand the location beyond the given position i by n.
+func (joined Joined) Expand(i, n int) Location {
+	locs := make([]Locatable, len(joined))
+	for j, loc := range joined {
+		locs[j] = loc.Expand(i, n).(Locatable)
 	}
 	return Join(locs...)
 }
@@ -876,15 +910,24 @@ func (ambiguous Ambiguous) Len() int {
 }
 
 // Shift the location beyond the given position i by n.
-func (ambiguous Ambiguous) Shift(i, n int, expand bool) Location {
+func (ambiguous Ambiguous) Shift(i, n int) Location {
 	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
 	if end <= start {
 		return Between(start)
 	}
-	if expand || i <= start || end < i {
+	if i <= start || end <= i {
 		return Ambiguous{start, end}
 	}
 	return Order(Ambiguous{start, i}, Ambiguous{i + n, end})
+}
+
+// Expand the location beyond the given position i by n.
+func (ambiguous Ambiguous) Expand(i, n int) Location {
+	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
+	if end <= start {
+		return Between(start)
+	}
+	return Ambiguous{start, end}
 }
 
 // Less returns true if the location is less than the given location.
@@ -1031,10 +1074,19 @@ func (ordered Ordered) Len() int {
 }
 
 // Shift the location beyond the given position i by n.
-func (ordered Ordered) Shift(i, n int, expand bool) Location {
+func (ordered Ordered) Shift(i, n int) Location {
 	locs := make([]Location, len(ordered))
 	for j, loc := range ordered {
-		locs[j] = loc.Shift(i, n, expand)
+		locs[j] = loc.Shift(i, n)
+	}
+	return Order(locs...)
+}
+
+// Expand the location beyond the given position i by n.
+func (ordered Ordered) Expand(i, n int) Location {
+	locs := make([]Location, len(ordered))
+	for j, loc := range ordered {
+		locs[j] = loc.Expand(i, n)
 	}
 	return Order(locs...)
 }
