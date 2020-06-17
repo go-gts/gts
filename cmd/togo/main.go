@@ -236,5 +236,10 @@ func listdb(ctx *flags.Context) error {
 
 func main() {
 	name, desc := "togo", "access various biological databases with TogoWS"
-	os.Exit(flags.Run(name, desc, flags.Compile()))
+	version := flags.Version{
+		Major: 1,
+		Minor: 0,
+		Patch: 0,
+	}
+	os.Exit(flags.Run(name, desc, version, flags.Compile()))
 }

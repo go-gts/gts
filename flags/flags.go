@@ -24,8 +24,8 @@ func Compile() Function {
 }
 
 // Run the given Function.
-func Run(name, desc string, f Function) int {
-	ctx := &Context{name, desc, os.Args[1:], context.Background()}
+func Run(name, desc string, version Version, f Function) int {
+	ctx := &Context{name, desc, version, os.Args[1:], context.Background()}
 	if err := f(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

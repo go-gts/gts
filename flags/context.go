@@ -10,10 +10,11 @@ import (
 // Context is an implementation of context.Context which contains extra data
 // needed to parse command line arguments and print command details.
 type Context struct {
-	Name string
-	Desc string
-	Args []string
-	Ctx  context.Context
+	Name    string
+	Desc    string
+	Version Version
+	Args    []string
+	Ctx     context.Context
 }
 
 // Done implements the context.Context.Done method.
