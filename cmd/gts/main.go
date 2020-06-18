@@ -11,7 +11,7 @@ func main() {
 	version := flags.Version{
 		Major: 0,
 		Minor: 9,
-		Patch: 2,
+		Patch: 4,
 	}
 	os.Exit(flags.Run(name, desc, version, flags.Compile()))
 }
