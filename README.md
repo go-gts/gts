@@ -14,9 +14,9 @@ $ brew install go-gts/gts/gts-bio
 #### apt
 ```sh
 # For 32 bit computers.
-$ yum install https://github.com/go-gts/gts/releases/download/v0.9.5/gts_0.9.5_linux_386.deb
+$ apt-get install https://github.com/go-gts/gts/releases/download/v0.9.5/gts_0.9.5_linux_386.deb
 # For 64 bit conmputers.
-$ yum install https://github.com/go-gts/gts/releases/download/v0.9.5/gts_0.9.5_linux_amd64.deb
+$ apt-get install https://github.com/go-gts/gts/releases/download/v0.9.5/gts_0.9.5_linux_amd64.deb
 ```
 
 #### yum
