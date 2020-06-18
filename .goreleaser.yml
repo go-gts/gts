@@ -3,19 +3,21 @@ before:
     - go mod download
     - go generate ./...
 builds:
-  - main: ./cmd/gts/main.go
+  - main: ./cmd/gts
     id: "gts-bio"
     env:
       - CGO_ENABLED=0
     binary: gts
+    flags: -v
     goos:
       - linux
       - darwin
-  - main: ./cmd/togo/main.go
+  - main: ./cmd/togo
     id: "gts-togo"
     env:
       - CGO_ENABLED=0
     binary: togo
+    flags: -v
     goos:
       - linux
       - darwin
