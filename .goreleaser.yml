@@ -37,8 +37,7 @@ changelog:
     - '^docs:'
     - '^test:'
 nfpms:
-  - id:gts-bio-nfpms
-    name_template: "{{ .ProjectName }}_{{ .Version }}-1_{{ .Arch }}"
+  - id: gts-bio-nfpms
     builds:
       - gts-bio
       - gts-togo
