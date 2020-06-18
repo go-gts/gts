@@ -11,7 +11,7 @@ GTS currently supports [Homebrew](https://brew.sh), apt and yum.
 $ brew install go-gts/gts/gts-bio
 ```
 
-### apt
+#### apt
 ```sh
 # For 32 bit computers.
 $ yum install https://github.com/go-gts/gts/releases/download/v0.9.5/gts_0.9.5_linux_386.deb
@@ -19,7 +19,7 @@ $ yum install https://github.com/go-gts/gts/releases/download/v0.9.5/gts_0.9.5_l
 $ yum install https://github.com/go-gts/gts/releases/download/v0.9.5/gts_0.9.5_linux_amd64.deb
 ```
 
-### yum
+#### yum
 ```sh
 # For 32 bit computers.
 $ yum install https://github.com/go-gts/gts/releases/download/v0.9.5/gts_0.9.5_linux_386.rpm
