@@ -4,14 +4,14 @@ A software suite for basic genome flatfile manipulation.
 ## Installing the GTS CLI tools
 ### Package Managers (Recommended)
 We recommend users who just want the GTS CLI tools (no library) to install via their favorite package managers.
-GTS currently supports [Homebrew](https://brew.sh).
+GTS currently supports [Homebrew](https://brew.sh), apt, and yum.
 
-#### Homebrew
+#### With Homebrew
 ```sh
 $ brew install go-gts/gts/gts-bio
 ```
 
-#### apt
+#### With apt
 1. Download the deb package with the command of your choice.
 ```sh
 # 32 bit with wget
@@ -40,7 +40,7 @@ $ rm gts_0.10.0_linux_386.deb
 $ rm gts_0.10.0_linux_amd64.deb
 ```
 
-#### yum
+#### With yum
 ```sh
 # 32 bit
 $ yum install -y https://github.com/go-gts/gts/releases/download/v0.10.0/gts_0.10.0_linux_386.rpm
