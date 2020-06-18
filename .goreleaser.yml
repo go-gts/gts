@@ -7,7 +7,19 @@ before:
     # you may remove this if you don't need go generate
     - go generate ./...
 builds:
-- env:
+  - main: ./cmd/gts/main.go
+    id: "gts"
+    binary: gts
+    goos:
+      - linux
+      - darwin
+  - main: ./cmd/togo/main.go
+    id: "togo"
+    binary: togo
+    goos:
+      - linux
+      - darwin
+env:
   - CGO_ENABLED=0
 archives:
 - replacements:
