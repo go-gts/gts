@@ -50,3 +50,14 @@ nfpms:
       - rpm
     bindir: /usr/bin
     epoch: 1
+brews:
+  - name: gts-bio
+    github:
+      owner: go-gts
+      name: homebrew-gts
+    homepage: https://github.com/go-gts/gts
+    description: "GTS: the Genomics Tools Suite"
+    dependencies:
+      - name: go
+        type: build
+    test: system "#{bin}/gts --version"
