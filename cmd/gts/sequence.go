@@ -283,10 +283,15 @@ func sequenceRotate(ctx *flags.Context) error {
 	}
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
+	backward := opt.Switch('v', "backward", "rotate the sequence backwards (equivalent to a negative amount)")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
+	}
+
+	if *backward {
+		*n = -*n
 	}
 
 	seqinFile := os.Stdin

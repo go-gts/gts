@@ -10,8 +10,8 @@ func main() {
 	name, desc := "gts", "the genomics tool suite command line tool"
 	version := flags.Version{
 		Major: 0,
-		Minor: 10,
-		Patch: 1,
+		Minor: 11,
+		Patch: 0,
 	}
 	os.Exit(flags.Run(name, desc, version, flags.Compile()))
 }
