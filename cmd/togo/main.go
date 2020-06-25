@@ -239,7 +239,7 @@ func main() {
 	version := flags.Version{
 		Major: 1,
 		Minor: 0,
-		Patch: 0,
+		Patch: 1,
 	}
 	os.Exit(flags.Run(name, desc, version, flags.Compile()))
 }

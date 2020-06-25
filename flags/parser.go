@@ -45,8 +45,9 @@ var errHelp = errors.New("help")
 func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 	head := ""
 	extra := []string{}
+	terminated := false
 
-	for len(args) > 0 {
+	for len(args) > 0 && !terminated {
 		head, args = shift(args)
 
 		switch TypeOf(head) {
@@ -136,7 +137,7 @@ func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 			extra = append(extra, head)
 		case Terminator:
 			extra = append(extra, args...)
-			break
+			terminated = true
 		}
 	}
 
