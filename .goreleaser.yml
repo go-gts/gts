@@ -57,6 +57,7 @@ brews:
     github:
       owner: go-gts
       name: homebrew-gts
+    folder: Formula
     homepage: https://github.com/go-gts/gts
     description: "GTS: the Genomics Tools Suite"
     dependencies:
