@@ -301,26 +301,30 @@ func featureExtract(ctx *flags.Context) error {
 		seq := scanner.Value()
 
 		for _, f := range seq.Features() {
-			values := make([]string, 0)
+			cc := make([]string, 0)
+
 			if !*nokey {
-				values = append(values, f.Key)
+				cc = append(cc, f.Key)
 			}
 			if !*noloc {
-				values = append(values, f.Location.String())
+				cc = append(cc, f.Location.String())
 			}
 
 			ok := !(*nosource && f.Key == "source")
 
 			for _, name := range *names {
-				value := f.Qualifiers.Get(name)
-				if len(value) == 0 && !*empty {
+				vv := f.Qualifiers.Get(name)
+				if len(vv) == 0 && !*empty {
 					ok = false
 				}
-				values = append(values, strings.Join(value, *sep))
+				for i, v := range vv {
+					vv[i] = fmt.Sprintf("%q", strings.ReplaceAll(v, "\n", ""))
+				}
+				cc = append(cc, strings.Join(vv, *sep))
 			}
 
 			if ok {
-				line := fmt.Sprintf("%s\n", strings.Join(values, *delim))
+				line := fmt.Sprintf("%s\n", strings.Join(cc, *delim))
 				_, err := io.WriteString(w, line)
 				if err != nil {
 					return ctx.Raise(err)
