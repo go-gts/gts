@@ -169,7 +169,7 @@ func Slice(seq Sequence, start, end int) Sequence {
 	copy(p, seq.Bytes()[start:end])
 	var ff []Feature
 	for _, f := range seq.Features() {
-		loc := f.Location.Expand(start, -start).Expand(end-1, end-Len(seq))
+		loc := f.Location.Expand(start, -start).Expand(end-1, -start)
 		if !isBetween(loc) || isBetween(f.Location) {
 			f.Location = loc
 			ff = append(ff, f)

@@ -26,7 +26,18 @@ func Complement(seq Sequence) Sequence {
 		[]byte("ACGTURYKMBDHVacgturykmbdhv"),
 		[]byte("TGCAAYRMKVHDBtgcaayrmkvhdb"),
 	)
-	return WithBytes(seq, p)
+	ff := make([]Feature, len(seq.Features()))
+	for i, f := range seq.Features() {
+		ff[i].Key = f.Key
+		switch loc := f.Location.(type) {
+		case Locatable:
+			ff[i].Location = loc.Complement()
+		default:
+			ff[i].Location = loc
+		}
+		ff[i].Qualifiers = f.Qualifiers
+	}
+	return WithBytes(WithFeatures(seq, ff), p)
 }
 
 // Transcribe returns the complement RNA sequence based on the FASTA sequence
