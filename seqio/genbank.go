@@ -310,7 +310,7 @@ func (gf GenBankFormatter) WriteTo(w io.Writer) (int64, error) {
 
 var genbankLocusParser = pars.Seq(
 	"LOCUS", pars.Spaces,
-	pars.Word(ascii.IsSnake), pars.Spaces,
+	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
 	pars.Int, " bp", pars.Spaces,
 	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
 	pars.Any("linear", "circular"), pars.Spaces,
