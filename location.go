@@ -74,11 +74,6 @@ func shift(pos, i, n int, closed bool) int {
 // sense if the start and end positions are directly adjacent.
 type Between int
 
-func isBetween(loc Location) bool {
-	_, ok := loc.(Between)
-	return ok
-}
-
 // String satisfies the fmt.Stringer interface.
 func (between Between) String() string {
 	return fmt.Sprintf("%d^%d", between, between+1)
