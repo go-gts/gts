@@ -248,6 +248,8 @@ func featureExtract(ctx *flags.Context) error {
 	names := opt.StringSlice('n', "name", nil, "qualifier name(s) to select")
 	delim := opt.String('d', "delimiter", "\t", "string to insert between columns")
 	sep := opt.String('t', "separator", ",", "string to insert between qualifier values")
+	noheader := opt.Switch(0, "no-header", "do not print the header line")
+	nosource := opt.Switch(0, "no-source", "ignore the source feature(s)")
 	nokey := opt.Switch(0, "no-key", "do not extract the feature key")
 	noloc := opt.Switch(0, "no-location", "do not extract the feature location")
 	empty := opt.Switch(0, "empty", "allow missing qualifiers to be extracted")
@@ -278,18 +280,20 @@ func featureExtract(ctx *flags.Context) error {
 
 	w := bufio.NewWriter(outFile)
 
-	fields := []string{}
-	if !*nokey {
-		fields = append(fields, "feature")
-	}
-	if !*noloc {
-		fields = append(fields, "location")
-	}
-	fields = append(fields, *names...)
-	header := fmt.Sprintf("%s\n", strings.Join(fields, *delim))
-	_, err := io.WriteString(w, header)
-	if err != nil {
-		return ctx.Raise(err)
+	if !*noheader {
+		fields := []string{}
+		if !*nokey {
+			fields = append(fields, "feature")
+		}
+		if !*noloc {
+			fields = append(fields, "location")
+		}
+		fields = append(fields, *names...)
+		header := fmt.Sprintf("%s\n", strings.Join(fields, *delim))
+		_, err := io.WriteString(w, header)
+		if err != nil {
+			return ctx.Raise(err)
+		}
 	}
 
 	scanner := seqio.NewAutoScanner(seqinFile)
@@ -304,7 +308,9 @@ func featureExtract(ctx *flags.Context) error {
 			if !*noloc {
 				values = append(values, f.Location.String())
 			}
-			ok := true
+
+			ok := !(*nosource && f.Key == "source")
+
 			for _, name := range *names {
 				value := f.Qualifiers.Get(name)
 				if len(value) == 0 && !*empty {
@@ -312,6 +318,7 @@ func featureExtract(ctx *flags.Context) error {
 				}
 				values = append(values, strings.Join(value, *sep))
 			}
+
 			if ok {
 				line := fmt.Sprintf("%s\n", strings.Join(values, *delim))
 				_, err := io.WriteString(w, line)
