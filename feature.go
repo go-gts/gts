@@ -12,23 +12,30 @@ import (
 	"github.com/go-pars/pars"
 )
 
-// Feature represents a single feature within a feature table.
+// Feature represents a single feature within an INSDC feature table. Each
+// feature has a feature key, a location, and qualifiers in the form of key
+// value pairs. A single qualifier name may have multiple values. The Feature
+// object can additionally store the order in which the qualifiers should
+// appear when it is formatted. Regardless of the specified order, the
+// `translation` qualifier will always appear last. Qualifiers whose names
+// appear in the ordering map will be prioritized over those that do not. All
+// qualifier names that do not appear in the ordering map will simply be
+// arranged in alphabetical order.
 type Feature struct {
 	Key        string
 	Location   Location
 	Qualifiers Values
-
-	order map[string]int
+	Order      map[string]int
 }
 
 func listQualifiers(f Feature) []QualifierIO {
-	ordered := make([]string, len(f.order))
+	ordered := make([]string, len(f.Order))
 	remains := []string{}
 
 	hasTranslate := false
 
 	for name := range f.Qualifiers {
-		index, ok := f.order[name]
+		index, ok := f.Order[name]
 		switch {
 		case ok:
 			ordered[index] = name
@@ -64,7 +71,8 @@ func listQualifiers(f Feature) []QualifierIO {
 	return qfs
 }
 
-// Filter represents a filtering function for a Feature.
+// Filter represents a filtering function for a Feature. It should return a
+// boolean value upon receiveing a Feature object.
 type Filter func(f Feature) bool
 
 // TrueFilter always returns true.
@@ -73,7 +81,8 @@ func TrueFilter(f Feature) bool { return true }
 // FalseFilter always return false.
 func FalseFilter(f Feature) bool { return false }
 
-// Key returns true if the key of a feature matches the given key string.
+// Key returns true if the key of a feature matches the given key string. If
+// an empty string was given, the filter will always return true.
 func Key(key string) Filter {
 	if key == "" {
 		return TrueFilter
@@ -81,17 +90,31 @@ func Key(key string) Filter {
 	return func(f Feature) bool { return f.Key == key }
 }
 
-// Qualifier returns true if the value for the given qualifier name matches the
-// given regex expression.
+// Qualifier tests if any of the values associated with the given qualifier
+// name matches the given regular expression query.
 func Qualifier(name, query string) (Filter, error) {
 	re, err := regexp.Compile(query)
 	if err != nil {
 		return FalseFilter, err
 	}
+
+	if name == "" {
+		return func(f Feature) bool {
+			for _, vv := range f.Qualifiers {
+				for _, v := range vv {
+					if re.MatchString(v) {
+						return true
+					}
+				}
+			}
+			return false
+		}, nil
+	}
+
 	return func(f Feature) bool {
-		if values, ok := f.Qualifiers[name]; ok {
-			for _, value := range values {
-				if re.MatchString(value) {
+		if vv, ok := f.Qualifiers[name]; ok {
+			for _, v := range vv {
+				if re.MatchString(v) {
 					return true
 				}
 			}
@@ -100,8 +123,8 @@ func Qualifier(name, query string) (Filter, error) {
 	}, nil
 }
 
-// And creates a Filter which will return true if all of the filters given to
-// And return true for the Feature.
+// And generates a new Filter which will only return true if all of the given
+// filters return true for a given Feature object.
 func And(filters ...Filter) Filter {
 	return func(f Feature) bool {
 		for _, filter := range filters {
@@ -113,8 +136,8 @@ func And(filters ...Filter) Filter {
 	}
 }
 
-// Or creates a Filter which will return true if any of the filters given to
-// Or return true for the Feature.
+// Or generates a new Filter which will return true if any one of the given
+// filters return true for a given Feature object.
 func Or(filters ...Filter) Filter {
 	return func(f Feature) bool {
 		for _, filter := range filters {
@@ -126,8 +149,8 @@ func Or(filters ...Filter) Filter {
 	}
 }
 
-// Not creates a Filter which will return true if the given Filter does not
-// return true for the Feature.
+// Not generates a new Filter which will return true if the given Filter
+// returns false for a given Feature object.
 func Not(filter Filter) Filter {
 	return func(f Feature) bool {
 		return !filter(f)
@@ -158,8 +181,12 @@ func toQualifier(s string) (Filter, error) {
 	return Qualifier(s, "")
 }
 
-// Selector creates a Filter which will return true if the Feature matches the
-// given selector string.
+// Selector generates a new Filter which will return true if a given Feature
+// satisfies the criteria specified by the selection string. A selector in GTS
+// is defined as follows:
+//   [feature_key]/qualifier_name=regexp[/qualifier_name=regexp]...
+// If the qualifier name is omitted, all of the values for each of every
+// qualifier will be tested.
 func Selector(sel string) (Filter, error) {
 	head, tail := selectorShift(sel)
 	filter := Key(head)
@@ -174,7 +201,9 @@ func Selector(sel string) (Filter, error) {
 	return filter, nil
 }
 
-// FeatureTable represents a table of features.
+// FeatureTable represents an INSDC feature table. Unless explicitly set, the
+// order of features appearing in the FeatureTable should be in ascending order
+// based on the location of the feature with the exception being sources.
 type FeatureTable []Feature
 
 // Filter returns a FeatureTable containing the features that match the given
@@ -349,7 +378,7 @@ func FeatureTableParser(prefix string) pars.Parser {
 			Key:        key,
 			Location:   loc,
 			Qualifiers: qfs,
-			order:      order,
+			Order:      order,
 		}}
 
 		for keylineParser(state, result) == nil {
@@ -374,7 +403,7 @@ func FeatureTableParser(prefix string) pars.Parser {
 				Key:        key,
 				Location:   loc,
 				Qualifiers: qfs,
-				order:      order,
+				Order:      order,
 			})
 		}
 

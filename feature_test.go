@@ -165,6 +165,7 @@ var featureFilterTests = []struct {
 	{Key("source"), FeatureTable{sampleSourceFeature}},
 	{Key("gene"), FeatureTable{sampleGeneFeature}},
 	{qualifierFilter("mol_type", "DNA"), FeatureTable{sampleSourceFeature}},
+	{qualifierFilter("", "DNA"), FeatureTable{sampleSourceFeature}},
 	{And(Key("source"), Key("gene")), FeatureTable{}},
 	{And(Key("source"), qualifierFilter("mol_type", "DNA")), FeatureTable{sampleSourceFeature}},
 	{Or(Key("source"), Key("gene")), sampleFeatureTable},
