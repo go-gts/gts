@@ -74,23 +74,12 @@ func TestLocationAccessors(t *testing.T) {
 			if tt.in.Len() != tt.len {
 				t.Errorf("%s.Len() = %d, want %d", locRep(tt.in), tt.in.Len(), tt.len)
 			}
-			if c, ok := tt.in.(Locatable); ok {
-				in := c.Complement()
-				if in.Len() != tt.len {
-					t.Errorf("%s.Len() = %d, want %d", locRep(in), in.Len(), tt.len)
-				}
+			in := tt.in.Complement()
+			if in.Len() != tt.len {
+				t.Errorf("%s.Len() = %d, want %d", locRep(in), in.Len(), tt.len)
 			}
 		})
 	}
-}
-
-func areLocatable(locs ...Location) bool {
-	for _, loc := range locs {
-		if _, ok := loc.(Locatable); !ok {
-			return false
-		}
-	}
-	return true
 }
 
 var locationShiftTests = []struct {
@@ -156,18 +145,16 @@ func TestLocationShift(t *testing.T) {
 				locRep(tt.out),
 			)
 		}
-		if areLocatable(tt.in, tt.out) {
-			if !reflect.DeepEqual(
-				tt.in.(Locatable).Complement().Shift(tt.i, tt.n),
-				tt.out.(Locatable).Complement(),
-			) {
-				t.Errorf(
-					"%s.Shift(%d, %d) = %s, want %s",
-					locRep(tt.in.(Locatable).Complement()), tt.i, tt.n,
-					locRep(tt.in.(Locatable).Complement().Shift(tt.i, tt.n)),
-					locRep(tt.out.(Locatable).Complement()),
-				)
-			}
+		if !reflect.DeepEqual(
+			tt.in.Complement().Shift(tt.i, tt.n),
+			tt.out.Complement(),
+		) {
+			t.Errorf(
+				"%s.Shift(%d, %d) = %s, want %s",
+				locRep(tt.in.Complement()), tt.i, tt.n,
+				locRep(tt.in.Complement().Shift(tt.i, tt.n)),
+				locRep(tt.out.Complement()),
+			)
 		}
 	}
 }
@@ -235,18 +222,16 @@ func TestLocationExpand(t *testing.T) {
 				locRep(tt.out),
 			)
 		}
-		if areLocatable(tt.in, tt.out) {
-			if !reflect.DeepEqual(
-				tt.in.(Locatable).Complement().Expand(tt.i, tt.n),
-				tt.out.(Locatable).Complement(),
-			) {
-				t.Errorf(
-					"%s.Expand(%d, %d) = %s, want %s",
-					locRep(tt.in.(Locatable).Complement()), tt.i, tt.n,
-					locRep(tt.in.(Locatable).Complement().Expand(tt.i, tt.n)),
-					locRep(tt.out.(Locatable).Complement()),
-				)
-			}
+		if !reflect.DeepEqual(
+			tt.in.Complement().Expand(tt.i, tt.n),
+			tt.out.Complement(),
+		) {
+			t.Errorf(
+				"%s.Expand(%d, %d) = %s, want %s",
+				locRep(tt.in.Complement()), tt.i, tt.n,
+				locRep(tt.in.Complement().Expand(tt.i, tt.n)),
+				locRep(tt.out.Complement()),
+			)
 		}
 	}
 }
@@ -259,10 +244,6 @@ func (null NullLocation) String() string {
 
 func (null NullLocation) Len() int {
 	return 0
-}
-
-func (null NullLocation) Regions() []Span {
-	return []Span{{int(null), 0}}
 }
 
 func (null NullLocation) Shift(i, n int) Location {
@@ -283,6 +264,14 @@ func (null NullLocation) Reverse(length int) Location {
 
 func (null NullLocation) Normalize(length int) Location {
 	return null
+}
+
+func (null NullLocation) Complement() Location {
+	return Complemented{null}
+}
+
+func (null NullLocation) Locate(seq Sequence) Sequence {
+	return WithBytes(seq, nil)
 }
 
 var locationLessTests = []struct {
@@ -403,15 +392,11 @@ func locationLessPassTest(t *testing.T, lhs, rhs Location) {
 	if !lhs.Less(rhs) {
 		t.Errorf("expected %s < %s", locRep(lhs), locRep(rhs))
 	}
-	if l, ok := lhs.(Locatable); ok {
-		if _, ok := l.(Complemented); !ok {
-			locationLessPassTest(t, l.Complement(), rhs)
-		}
+	if _, ok := lhs.(Complemented); !ok {
+		locationLessPassTest(t, lhs.Complement(), rhs)
 	}
-	if r, ok := rhs.(Locatable); ok {
-		if _, ok := r.(Complemented); !ok {
-			locationLessPassTest(t, lhs, r.Complement())
-		}
+	if _, ok := rhs.(Complemented); !ok {
+		locationLessPassTest(t, lhs, rhs.Complement())
 	}
 }
 
@@ -419,15 +404,11 @@ func locationLessFailTest(t *testing.T, lhs, rhs Location) {
 	if lhs.Less(rhs) {
 		t.Errorf("expected %s >= %s", locRep(lhs), locRep(rhs))
 	}
-	if l, ok := lhs.(Locatable); ok {
-		if _, ok := l.(Complemented); !ok {
-			locationLessFailTest(t, l.Complement(), rhs)
-		}
+	if _, ok := lhs.(Complemented); !ok {
+		locationLessFailTest(t, lhs.Complement(), rhs)
 	}
-	if r, ok := rhs.(Locatable); ok {
-		if _, ok := r.(Complemented); !ok {
-			locationLessFailTest(t, lhs, r.Complement())
-		}
+	if _, ok := rhs.(Complemented); !ok {
+		locationLessFailTest(t, lhs, rhs.Complement())
 	}
 }
 
@@ -507,20 +488,21 @@ func TestLocationReduction(t *testing.T) {
 	}
 }
 
-var locatableTests = []struct {
-	in  Locatable
+var locateTests = []struct {
+	in  Location
 	out Sequence
-	ss  []Span
 }{
-	{Between(0), New(nil, nil, []byte("")), []Span{{0, 0}}},
-	{Point(0), New(nil, nil, []byte("a")), []Span{{0, 1}}},
-	{Range(0, 2), New(nil, nil, []byte("at")), []Span{{0, 2}}},
-	{Join(Range(0, 2), Range(3, 5)), New(nil, nil, []byte("atca")), []Span{{0, 2}, {3, 2}}},
+	{Between(0), New(nil, nil, []byte(""))},
+	{Point(0), New(nil, nil, []byte("a"))},
+	{Range(0, 2), New(nil, nil, []byte("at"))},
+	{Ambiguous{0, 2}, New(nil, nil, []byte("at"))},
+	{Join(Range(0, 2), Range(3, 5)), New(nil, nil, []byte("atca"))},
+	{Order(Range(0, 2), Range(3, 5)), New(nil, nil, []byte("atca"))},
 }
 
-func TestLocatable(t *testing.T) {
+func TestLocate(t *testing.T) {
 	seq := New(nil, nil, []byte("atgcatgc"))
-	for _, tt := range locatableTests {
+	for _, tt := range locateTests {
 		out, exp := tt.in.Locate(seq), tt.out
 		if !reflect.DeepEqual(out.Info(), exp.Info()) {
 			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
@@ -532,7 +514,6 @@ func TestLocatable(t *testing.T) {
 			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 2, 6, out.Bytes(), exp.Bytes())
 		}
 
-		testutils.Equals(t, tt.in.Regions(), tt.ss)
 		cmp := tt.in.Complement()
 		cmpstr := fmt.Sprintf("complement(%s)", tt.in)
 		if cmp.String() != cmpstr {
@@ -556,7 +537,6 @@ func TestLocatable(t *testing.T) {
 				string(out.Bytes()), string(exp.Bytes()),
 			)
 		}
-		testutils.Equals(t, cmp.Regions(), tt.ss)
 	}
 }
 
@@ -649,40 +629,6 @@ func TestLocationParsers(t *testing.T) {
 		_, err := prs.Parse(pars.FromString(tt.in))
 		if err == nil {
 			t.Errorf("expected error while parsing %q", tt.in)
-		}
-	}
-}
-
-var locatableParserTests = []struct {
-	in  string
-	out Locatable
-}{
-	{"0^1", Between(0)},
-	{"1", Point(0)},
-	{"1..2", Range(0, 2)},
-	{"<1..2", PartialRange(0, 2, Partial5)},
-	{"1..>2", PartialRange(0, 2, Partial3)},
-	{"<1..>2", PartialRange(0, 2, PartialBoth)},
-	{"1..2>", PartialRange(0, 2, Partial3)},
-	{"<1..2>", PartialRange(0, 2, PartialBoth)},
-	{"join(1..2,4..5)", Join(Range(0, 2), Range(3, 5))},
-	{"join(1..2, 4..5)", Join(Range(0, 2), Range(3, 5))},
-}
-
-func TestLocatableParser(t *testing.T) {
-	for _, tt := range locatableParserTests {
-		res, err := LocatableParser.Parse(pars.FromString(tt.in))
-		if err != nil {
-			t.Errorf("failed to parse %q: %v", tt.in, err)
-			continue
-		}
-		out, ok := res.Value.(Locatable)
-		if !ok {
-			t.Errorf("parsed result is of type `%T`, want Locatable", res.Value)
-			continue
-		}
-		if !reflect.DeepEqual(out, tt.out) {
-			t.Errorf("parsed %q: expected %s, got %s", tt.in, locRep(tt.out), locRep(out))
 		}
 	}
 }

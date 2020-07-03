@@ -1,4 +1,4 @@
-package gts
+package seqio
 
 // ReferenceRange represents a start and end index pair.
 type ReferenceRange struct {

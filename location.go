@@ -20,31 +20,14 @@ type Location interface {
 	Less(loc Location) bool
 	Reverse(length int) Location
 	Normalize(length int) Location
-}
-
-// Locatable represents a location that can locate a region within a sequence.
-type Locatable interface {
-	Location
-	Regions() []Span
-	Complement() Locatable
+	Complement() Location
 	Locate(seq Sequence) Sequence
 }
-
-// LocatableParser attempts to parse some Locatable location.
-var LocatableParser pars.Parser
 
 // LocationParser attempts to parse some location.
 var LocationParser pars.Parser
 
 func init() {
-	LocatableParser = pars.Any(
-		RangeParser,
-		BetweenParser,
-		ComplementParser,
-		JoinParser,
-		PointParser,
-	)
-
 	LocationParser = pars.Any(
 		RangeParser,
 		BetweenParser,
@@ -82,11 +65,6 @@ func (between Between) String() string {
 // Len returns the total length spanned by the location.
 func (between Between) Len() int {
 	return 0
-}
-
-// Regions returns the regions spanned by the location.
-func (between Between) Regions() []Span {
-	return []Span{{int(between), 0}}
 }
 
 // Shift the location beyond the given position i by n.
@@ -142,7 +120,7 @@ func (between Between) Normalize(length int) Location {
 }
 
 // Complement returns the complement location.
-func (between Between) Complement() Locatable {
+func (between Between) Complement() Location {
 	return Complemented{between}
 }
 
@@ -194,11 +172,6 @@ func (point Point) String() string {
 // Len returns the total length spanned by the location.
 func (point Point) Len() int {
 	return 1
-}
-
-// Regions returns the regions spanned by the location.
-func (point Point) Regions() []Span {
-	return []Span{{int(point), 1}}
 }
 
 // Shift the location beyond the given position i by n.
@@ -263,7 +236,7 @@ func (point Point) Normalize(length int) Location {
 }
 
 // Complement returns the complement location.
-func (point Point) Complement() Locatable {
+func (point Point) Complement() Location {
 	return Complemented{point}
 }
 
@@ -331,11 +304,6 @@ func (ranged Ranged) String() string {
 	}
 	b.WriteString(strconv.Itoa(ranged.End))
 	return b.String()
-}
-
-// Regions returns the regions spanned by the location.
-func (ranged Ranged) Regions() []Span {
-	return []Span{{int(ranged.Start), int(ranged.End - ranged.Start)}}
 }
 
 // Len returns the total length spanned by the location.
@@ -470,7 +438,7 @@ func (ranged Ranged) Normalize(length int) Location {
 }
 
 // Complement returns the complement location.
-func (ranged Ranged) Complement() Locatable {
+func (ranged Ranged) Complement() Location {
 	return Complemented{ranged}
 }
 
@@ -531,7 +499,7 @@ func RangeParser(state *pars.State, result *pars.Result) error {
 }
 
 // Complemented represents a location complemented for the given molecule type.
-type Complemented [1]Locatable
+type Complemented [1]Location
 
 // String satisfies the fmt.Stringer interface.
 func (complement Complemented) String() string {
@@ -543,19 +511,14 @@ func (complement Complemented) Len() int {
 	return complement[0].Len()
 }
 
-// Regions returns the regions spanned by the location.
-func (complement Complemented) Regions() []Span {
-	return complement[0].Regions()
-}
-
 // Shift the location beyond the given position i by n.
 func (complement Complemented) Shift(i, n int) Location {
-	return Complemented{complement[0].Shift(i, n).(Locatable)}
+	return Complemented{complement[0].Shift(i, n)}
 }
 
 // Expand the location beyond the given position i by n.
 func (complement Complemented) Expand(i, n int) Location {
-	return Complemented{complement[0].Expand(i, n).(Locatable)}
+	return Complemented{complement[0].Expand(i, n)}
 }
 
 // Less returns true if the location is less than the given location.
@@ -565,16 +528,16 @@ func (complement Complemented) Less(loc Location) bool {
 
 // Reverse returns the reversed location for the given length sequence.
 func (complement Complemented) Reverse(length int) Location {
-	return Complemented{complement[0].Reverse(length).(Locatable)}
+	return Complemented{complement[0].Reverse(length)}
 }
 
 // Normalize returns a location normalized for the given length sequence.
 func (complement Complemented) Normalize(length int) Location {
-	return Complemented{complement[0].Normalize(length).(Locatable)}
+	return Complemented{complement[0].Normalize(length)}
 }
 
 // Complement returns the complement location.
-func (complement Complemented) Complement() Locatable {
+func (complement Complemented) Complement() Location {
 	return complement[0]
 }
 
@@ -596,7 +559,7 @@ func ComplementParser(state *pars.State, result *pars.Result) error {
 		return err
 	}
 	state.Advance()
-	if err := LocatableParser(state, result); err != nil {
+	if err := LocationParser(state, result); err != nil {
 		state.Pop()
 		return err
 	}
@@ -611,19 +574,19 @@ func ComplementParser(state *pars.State, result *pars.Result) error {
 		return err
 	}
 	state.Advance()
-	result.SetValue(result.Value.(Locatable).Complement())
+	result.SetValue(result.Value.(Location).Complement())
 	state.Drop()
 	return nil
 }
 
-// LocatableList represents a singly linked list of Locatable objects.
-type LocatableList struct {
-	Data Locatable
-	Next *LocatableList
+// LocationList represents a singly linked list of Location objects.
+type LocationList struct {
+	Data Location
+	Next *LocationList
 }
 
 // Len returns the length of the list.
-func (ll *LocatableList) Len() int {
+func (ll *LocationList) Len() int {
 	if ll.Next == nil {
 		if ll.Data == nil {
 			return 0
@@ -634,19 +597,19 @@ func (ll *LocatableList) Len() int {
 }
 
 // Slice returns the slice representation of the list.
-func (ll *LocatableList) Slice() []Locatable {
-	list := []Locatable{ll.Data}
+func (ll *LocationList) Slice() []Location {
+	list := []Location{ll.Data}
 	if ll.Next == nil {
 		return list
 	}
 	return append(list, ll.Next.Slice()...)
 }
 
-// Push a Locatable object to the end of the list. If the Locatable object is
-// equivalent to the last element, nothing happens. If the Locatable object can
-// be joined with the last element to form a contiguous Locatable location, the
-// last element will be replaced with the joined Locatable object.
-func (ll *LocatableList) Push(loc Locatable) {
+// Push a Location object to the end of the list. If the Location object is
+// equivalent to the last element, nothing happens. If the Location object can
+// be joined with the last element to form a contiguous Location location, the
+// last element will be replaced with the joined Location object.
+func (ll *LocationList) Push(loc Location) {
 	if ll.Next != nil {
 		ll.Next.Push(loc)
 		return
@@ -694,28 +657,28 @@ func (ll *LocatableList) Push(loc Locatable) {
 
 	case Complemented:
 		if u, ok := loc.(Complemented); ok {
-			tmp := LocatableList{u[0], nil}
+			tmp := LocationList{u[0], nil}
 			tmp.Push(v[0])
 			ll.Data = Complemented{Join(tmp.Slice()...)}
 		}
 		return
 	}
 
-	ll.Next = &LocatableList{loc, nil}
+	ll.Next = &LocationList{loc, nil}
 }
 
-// Joined represents a list of Locatable locations. It is strongly recommended
+// Joined represents a list of Location locations. It is strongly recommended
 // this be constructed using the Join helper function to reduce the list of
-// Locatable locations to the simplest representation.
-type Joined []Locatable
+// Location locations to the simplest representation.
+type Joined []Location
 
-// Join the given Locatable locations. Will panic if no argument is given. The
+// Join the given Location locations. Will panic if no argument is given. The
 // locations will first be reduced to the simplest representation by merging
 // adjacent identical locations and contiguous locations. If the resulting list
 // of locations have only one element, the elemnt will be returuned. Otherwise,
 // a Joined object will be returned.
-func Join(locs ...Locatable) Locatable {
-	list := LocatableList{}
+func Join(locs ...Location) Location {
+	list := LocationList{}
 	for _, loc := range locs {
 		list.Push(loc)
 	}
@@ -739,15 +702,6 @@ func (joined Joined) String() string {
 	return fmt.Sprintf("join(%s)", strings.Join(tmp, ","))
 }
 
-// Regions returns the regions spanned by the location.
-func (joined Joined) Regions() []Span {
-	var spans []Span
-	for _, loc := range joined {
-		spans = append(spans, loc.Regions()...)
-	}
-	return spans
-}
-
 // Len returns the total length spanned by the location.
 func (joined Joined) Len() int {
 	n := 0
@@ -759,18 +713,18 @@ func (joined Joined) Len() int {
 
 // Shift the location beyond the given position i by n.
 func (joined Joined) Shift(i, n int) Location {
-	locs := make([]Locatable, len(joined))
+	locs := make([]Location, len(joined))
 	for j, loc := range joined {
-		locs[j] = loc.Shift(i, n).(Locatable)
+		locs[j] = loc.Shift(i, n)
 	}
 	return Join(locs...)
 }
 
 // Expand the location beyond the given position i by n.
 func (joined Joined) Expand(i, n int) Location {
-	locs := make([]Locatable, len(joined))
+	locs := make([]Location, len(joined))
 	for j, loc := range joined {
-		locs[j] = loc.Expand(i, n).(Locatable)
+		locs[j] = loc.Expand(i, n)
 	}
 	return Join(locs...)
 }
@@ -787,34 +741,33 @@ func (joined Joined) Less(loc Location) bool {
 
 // Reverse returns the reversed location for the given length sequence.
 func (joined Joined) Reverse(length int) Location {
-	ll := make([]Locatable, len(joined))
-	copy(ll, []Locatable(joined))
+	ll := make([]Location, len(joined))
+	copy(ll, []Location(joined))
 	for l, r := 0, len(ll)-1; l < r; l, r = l+1, r-1 {
-		ll[l], ll[r] = ll[r].Reverse(length).(Locatable), ll[l].Reverse(length).(Locatable)
+		ll[l], ll[r] = ll[r].Reverse(length), ll[l].Reverse(length)
 	}
 	return Join(ll...)
 }
 
 // Normalize returns a location normalized for the given length sequence.
 func (joined Joined) Normalize(length int) Location {
-	ll := make([]Locatable, len(joined))
+	ll := make([]Location, len(joined))
 	for i, l := range joined {
-		ll[i] = l.Normalize(length).(Locatable)
+		ll[i] = l.Normalize(length)
 	}
 	return Join(ll...)
 }
 
 // Complement returns the complement location.
-func (joined Joined) Complement() Locatable {
+func (joined Joined) Complement() Location {
 	return Complemented{joined}
 }
 
 // Locate the sequence region represented by the location.
 func (joined Joined) Locate(seq Sequence) Sequence {
-	spans := joined.Regions()
-	slices := make([]Sequence, len(spans))
-	for i, span := range spans {
-		slices[i] = Slice(seq, span.Pos, span.Pos+span.Len)
+	slices := make([]Sequence, len(joined))
+	for i, loc := range joined {
+		slices[i] = loc.Locate(seq)
 	}
 	return Concat(slices...)
 }
@@ -840,19 +793,19 @@ func locationDelimiter(state *pars.State, result *pars.Result) bool {
 	return true
 }
 
-func multipleLocatableParser(state *pars.State, result *pars.Result) error {
+func multipleLocationParser(state *pars.State, result *pars.Result) error {
 	state.Push()
-	if err := LocatableParser(state, result); err != nil {
+	if err := LocationParser(state, result); err != nil {
 		state.Pop()
 		return err
 	}
-	locs := []Locatable{result.Value.(Locatable)}
+	locs := []Location{result.Value.(Location)}
 	for locationDelimiter(state, result) {
-		if err := LocatableParser(state, result); err != nil {
+		if err := LocationParser(state, result); err != nil {
 			state.Pop()
 			return err
 		}
-		locs = append(locs, result.Value.(Locatable))
+		locs = append(locs, result.Value.(Location))
 	}
 	result.SetValue(locs)
 	state.Drop()
@@ -872,7 +825,7 @@ func JoinParser(state *pars.State, result *pars.Result) error {
 		return err
 	}
 	state.Advance()
-	if err := multipleLocatableParser(state, result); err != nil {
+	if err := multipleLocationParser(state, result); err != nil {
 		return err
 	}
 	c, err := pars.Next(state)
@@ -886,7 +839,7 @@ func JoinParser(state *pars.State, result *pars.Result) error {
 		return err
 	}
 	state.Advance()
-	result.SetValue(Join(result.Value.([]Locatable)...))
+	result.SetValue(Join(result.Value.([]Location)...))
 	state.Drop()
 	return nil
 }
@@ -989,6 +942,16 @@ func (ambiguous Ambiguous) Reverse(length int) Location {
 // Normalize returns a location normalized for the given length sequence.
 func (ambiguous Ambiguous) Normalize(length int) Location {
 	return Ambiguous{ambiguous[0] % length, ambiguous[1] % length}
+}
+
+// Complement returns the complement location.
+func (ambiguous Ambiguous) Complement() Location {
+	return Complemented{ambiguous}
+}
+
+// Locate the sequence region represented by the location.
+func (ambiguous Ambiguous) Locate(seq Sequence) Sequence {
+	return Slice(seq, int(ambiguous[0]), int(ambiguous[1]))
 }
 
 // AmbiguousParser attempts to parse a Ambiguous location.
@@ -1101,7 +1064,7 @@ func (ordered Ordered) Reverse(length int) Location {
 	ll := make([]Location, len(ordered))
 	copy(ll, []Location(ordered))
 	for l, r := 0, len(ll)-1; l < r; l, r = l+1, r-1 {
-		ll[l], ll[r] = ll[r].Reverse(length).(Location), ll[l].Reverse(length).(Location)
+		ll[l], ll[r] = ll[r].Reverse(length), ll[l].Reverse(length)
 	}
 	return Order(ll...)
 }
@@ -1115,23 +1078,18 @@ func (ordered Ordered) Normalize(length int) Location {
 	return Order(ll...)
 }
 
-func multipleLocationParser(state *pars.State, result *pars.Result) error {
-	state.Push()
-	if err := LocationParser(state, result); err != nil {
-		state.Pop()
-		return err
+// Complement returns the complement location.
+func (ordered Ordered) Complement() Location {
+	return Complemented{ordered}
+}
+
+// Locate the sequence region represented by the location.
+func (ordered Ordered) Locate(seq Sequence) Sequence {
+	slices := make([]Sequence, len(ordered))
+	for i, loc := range ordered {
+		slices[i] = loc.Locate(seq)
 	}
-	locs := []Location{result.Value.(Location)}
-	for locationDelimiter(state, result) {
-		if err := LocationParser(state, result); err != nil {
-			state.Pop()
-			return err
-		}
-		locs = append(locs, result.Value.(Location))
-	}
-	result.SetValue(locs)
-	state.Drop()
-	return nil
+	return Concat(slices...)
 }
 
 // OrderParser attempts to parse a Ordered location.

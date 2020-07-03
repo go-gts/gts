@@ -1,4 +1,4 @@
-package gts
+package seqio
 
 // Organism represents an organism of a record.
 type Organism struct {

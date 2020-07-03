@@ -27,10 +27,10 @@ type GenBankFields struct {
 	Definition string
 	Accession  string
 	Version    string
-	DBLink     gts.Dictionary
+	DBLink     Dictionary
 	Keywords   []string
-	Source     gts.Organism
-	References []gts.Reference
+	Source     Organism
+	References []Reference
 	Comment    string
 }
 
@@ -420,7 +420,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 			sourceParser := fieldBodyParser.Map(pars.Join([]byte("\n")))
 			sourceParser(state, result)
 
-			organism := gts.Organism{}
+			organism := Organism{}
 			organism.Species = string(result.Token)
 
 			organismLineParser := pars.Seq(
@@ -462,16 +462,16 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				return pars.NewError("failed to parse reference", state.Position())
 			}
 
-			reference := gts.Reference{}
+			reference := Reference{}
 			reference.Number = result.Children[0].Value.(int)
 
 			if _, ok := result.Children[1].Value.(string); !ok {
 				children := result.Children[1].Children
-				ranges := make([]gts.ReferenceRange, len(children))
+				ranges := make([]ReferenceRange, len(children))
 				for i, child := range children {
 					start := child.Children[0].Value.(int)
 					end := child.Children[1].Value.(int)
-					ranges[i] = gts.ReferenceRange{Start: start, End: end}
+					ranges[i] = ReferenceRange{Start: start, End: end}
 				}
 				reference.Ranges = ranges
 			}

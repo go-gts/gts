@@ -389,13 +389,11 @@ func featureSeq(ctx *flags.Context) error {
 		seq := scanner.Value()
 		ff := seq.Features().Filter(gts.Not(gts.Key("source")))
 		for _, f := range ff {
-			if loc, ok := f.Location.(gts.Locatable); ok {
-				out := loc.Locate(seq)
-				formatter := seqio.NewFormatter(out, filetype)
-				_, err := formatter.WriteTo(w)
-				if err != nil {
-					return ctx.Raise(err)
-				}
+			out := f.Location.Locate(seq)
+			formatter := seqio.NewFormatter(out, filetype)
+			_, err := formatter.WriteTo(w)
+			if err != nil {
+				return ctx.Raise(err)
 			}
 		}
 	}

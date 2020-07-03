@@ -35,9 +35,9 @@ func TestGenBank(t *testing.T) {
 		"Sample sequence",
 		"ACCESSION",
 		"VERSION",
-		gts.Dictionary{},
+		Dictionary{},
 		nil,
-		gts.Organism{
+		Organism{
 			Species: "Genus species",
 			Name:    "Name",
 			Taxon:   []string{"Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "species"},
@@ -77,9 +77,9 @@ func TestGenBankWithInterface(t *testing.T) {
 		"Sample sequence",
 		"ACCESSION",
 		"VERSION",
-		gts.Dictionary{},
+		Dictionary{},
 		nil,
-		gts.Organism{
+		Organism{
 			Species: "Genus species",
 			Name:    "Name",
 			Taxon:   []string{"Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "species"},

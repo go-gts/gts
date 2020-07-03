@@ -1,4 +1,4 @@
-package gts
+package seqio
 
 import (
 	"testing"

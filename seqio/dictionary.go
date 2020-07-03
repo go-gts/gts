@@ -1,15 +1,15 @@
-package gts
+package seqio
 
-// Pair represents a pair of strings.
+// Pair represents a key-value pair of strings.
 type Pair struct {
 	Key   string
 	Value string
 }
 
-// Dictionary represents a list of pairs.
+// Dictionary represents an ordered key-value pair.
 type Dictionary []Pair
 
-// Get the value for the given key.
+// Get the value associated to the given key.
 func (d *Dictionary) Get(key string) []string {
 	ret := []string{}
 	for _, p := range *d {
@@ -20,7 +20,7 @@ func (d *Dictionary) Get(key string) []string {
 	return ret
 }
 
-// Set the value for the given key.
+// Set the value associated to the given key.
 func (d *Dictionary) Set(key, value string) {
 	for i, p := range *d {
 		if p.Key == key {
@@ -31,7 +31,7 @@ func (d *Dictionary) Set(key, value string) {
 	*d = append(*d, Pair{key, value})
 }
 
-// Del removes the value for the given key.
+// Del removes the value associated to the given key.
 func (d *Dictionary) Del(key string) {
 	for i, p := range *d {
 		if p.Key == key {

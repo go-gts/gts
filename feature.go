@@ -91,7 +91,8 @@ func Key(key string) Filter {
 }
 
 // Qualifier tests if any of the values associated with the given qualifier
-// name matches the given regular expression query.
+// name matches the given regular expression query. If the qualifier name is
+// empty, the values for every qualifier name will be tested.
 func Qualifier(name, query string) (Filter, error) {
 	re, err := regexp.Compile(query)
 	if err != nil {
@@ -185,8 +186,8 @@ func toQualifier(s string) (Filter, error) {
 // satisfies the criteria specified by the selection string. A selector in GTS
 // is defined as follows:
 //   [feature_key]/qualifier_name=regexp[/qualifier_name=regexp]...
-// If the qualifier name is omitted, all of the values for each of every
-// qualifier will be tested.
+// If the qualifier name is omitted, the values for every qualifier name will
+// be tested.
 func Selector(sel string) (Filter, error) {
 	head, tail := selectorShift(sel)
 	filter := Key(head)

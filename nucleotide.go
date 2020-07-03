@@ -29,12 +29,7 @@ func Complement(seq Sequence) Sequence {
 	ff := make([]Feature, len(seq.Features()))
 	for i, f := range seq.Features() {
 		ff[i].Key = f.Key
-		switch loc := f.Location.(type) {
-		case Locatable:
-			ff[i].Location = loc.Complement()
-		default:
-			ff[i].Location = loc
-		}
+		ff[i].Location = f.Location.Complement()
 		ff[i].Qualifiers = f.Qualifiers
 	}
 	return WithBytes(WithFeatures(seq, ff), p)

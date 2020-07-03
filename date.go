@@ -9,12 +9,12 @@ type Date struct {
 	Day   int
 }
 
-// FromTime creates a Date from a time.Time object.
+// FromTime creates a Date object from a time.Time object.
 func FromTime(t time.Time) Date {
 	return Date{t.Year(), t.Month(), t.Day()}
 }
 
-// ToTime returns the time.Time object for the Date.
+// ToTime converts the Date object into a time.Time object.
 func (d Date) ToTime() time.Time {
 	return time.Date(d.Year, d.Month, d.Day, 0, 0, 0, 0, time.UTC)
 }
