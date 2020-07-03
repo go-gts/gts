@@ -30,7 +30,7 @@ func TestGenBank(t *testing.T) {
 		"DNA",
 		"linear",
 		"UNA",
-		gts.FromTime(time.Now()),
+		FromTime(time.Now()),
 
 		"Sample sequence",
 		"ACCESSION",
@@ -72,7 +72,7 @@ func TestGenBankWithInterface(t *testing.T) {
 		"DNA",
 		"linear",
 		"UNA",
-		gts.FromTime(time.Now()),
+		FromTime(time.Now()),
 
 		"Sample sequence",
 		"ACCESSION",

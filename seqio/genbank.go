@@ -22,7 +22,7 @@ type GenBankFields struct {
 	Molecule  string
 	Topology  string
 	Division  string
-	Date      gts.Date
+	Date      Date
 
 	Definition string
 	Accession  string
@@ -347,7 +347,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 	molecule := string(result.Children[3].Token)
 	topology := result.Children[4].Value.(string)
 	division := string(result.Children[5].Token)
-	date := gts.FromTime(result.Children[6].Value.(time.Time))
+	date := FromTime(result.Children[6].Value.(time.Time))
 
 	fields := GenBankFields{
 		LocusName: locus,
