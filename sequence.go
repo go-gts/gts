@@ -147,7 +147,7 @@ func Insert(host Sequence, pos int, guest Sequence) Sequence {
 
 // Embed a sequence at the given position. For any feature whose location
 // covers a region containing the point of insertion, the location will be
-// extended by the lenght of the guest Sequence.
+// extended by the length of the guest Sequence.
 func Embed(host Sequence, pos int, guest Sequence) Sequence {
 	var ff FeatureTable
 	for _, f := range host.Features() {
