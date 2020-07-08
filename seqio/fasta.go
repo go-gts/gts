@@ -41,7 +41,7 @@ type FastaFormatter struct {
 func (ff FastaFormatter) WriteTo(w io.Writer) (int64, error) {
 	switch seq := ff.seq.(type) {
 	case Fasta:
-		s := fmt.Sprintf(">%s\n%s\n", seq.Desc, wrap.Wrap(string(seq.Data), ff.wrap))
+		s := fmt.Sprintf(">%s\n%s\n", seq.Desc, wrap.Force(string(seq.Data), ff.wrap))
 		n, err := io.WriteString(w, s)
 		return int64(n), err
 	case *Fasta:
