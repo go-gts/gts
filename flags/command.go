@@ -51,15 +51,11 @@ func (set CommandSet) Compile() Function {
 		if (strings.HasPrefix(head, "-") && strings.Contains(head, "h")) || head == "--help" {
 			return fmt.Errorf("%s: %s\n\n%s", ctx.Name, ctx.Desc, set.Help())
 		}
-		if head == "--version" {
-			fmt.Println(ctx.Version.String())
-			return nil
-		}
 		cmd, ok := set[head]
 		if !ok {
 			return fmt.Errorf("unknown command name `%s`", head)
 		}
 		name := fmt.Sprintf("%s %s", ctx.Name, head)
-		return cmd.Func(&Context{name, cmd.Desc, ctx.Version, tail, ctx.Ctx})
+		return cmd.Func(&Context{name, cmd.Desc, tail, ctx.Ctx})
 	}
 }

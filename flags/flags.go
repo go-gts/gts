@@ -25,7 +25,14 @@ func Compile() Function {
 
 // Run the given Function.
 func Run(name, desc string, version Version, f Function) int {
-	ctx := &Context{name, desc, version, os.Args[1:], context.Background()}
+	args := os.Args[1:]
+	for _, arg := range args {
+		if arg == "--version" {
+			fmt.Fprintln(os.Stdout, version)
+			return 0
+		}
+	}
+	ctx := &Context{name, desc, args, context.Background()}
 	if err := f(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
