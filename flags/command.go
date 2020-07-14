@@ -24,7 +24,9 @@ func (set CommandSet) Register(name, desc string, f Function) {
 }
 
 // Help lists the names and descriptions of the commands registered.
-func (set CommandSet) Help() string {
+func (set CommandSet) Help(ctx *Context) string {
+	builder := strings.Builder{}
+	builder.WriteString(fmt.Sprintf("usage: %s [--version] [-h | --help] <command> [<args>]\n\n", ctx.Name))
 	names := make([]string, len(set))
 	i := 0
 	for name := range set {
@@ -32,7 +34,6 @@ func (set CommandSet) Help() string {
 		i++
 	}
 	sort.Strings(names)
-	builder := strings.Builder{}
 	builder.WriteString("available commands:")
 	for _, name := range names {
 		cmd := set[name]
@@ -45,11 +46,11 @@ func (set CommandSet) Help() string {
 func (set CommandSet) Compile() Function {
 	return func(ctx *Context) error {
 		if len(ctx.Args) == 0 {
-			return fmt.Errorf("%s expected a command.\n\n%s", ctx.Name, set.Help())
+			return fmt.Errorf("%s expected a command.\n\n%s", ctx.Name, set.Help(ctx))
 		}
 		head, tail := shift(ctx.Args)
 		if (strings.HasPrefix(head, "-") && strings.Contains(head, "h")) || head == "--help" {
-			return fmt.Errorf("%s: %s\n\n%s", ctx.Name, ctx.Desc, set.Help())
+			return fmt.Errorf("%s: %s\n\n%s", ctx.Name, ctx.Desc, set.Help(ctx))
 		}
 		cmd, ok := set[head]
 		if !ok {

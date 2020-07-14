@@ -2,7 +2,9 @@ package flags
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/go-wrap/wrap"
 )
@@ -36,12 +38,18 @@ func (ctx Context) Value(key interface{}) interface{} {
 func (ctx Context) Parse(pos *Positional, opt *Optional) error {
 	args, err := Parse(pos, opt, ctx.Args)
 	if err != nil {
+		builder := strings.Builder{}
 		name := ctx.Name
 		usage := wrap.Space(Usage(pos, opt), 72-len(name))
+
 		if err == errHelp {
-			return fmt.Errorf("usage: %s %s\n%s", ctx.Name, usage, Help(pos, opt))
+			builder.WriteString(fmt.Sprintf("%s: %s\n\n", name, ctx.Desc))
+			builder.WriteString(fmt.Sprintf("usage: %s %s\n", name, usage))
+			builder.WriteString(Help(pos, opt))
+		} else {
+			builder.WriteString(fmt.Sprintf("%v\n\nusage: %s %s", err, name, usage))
 		}
-		return fmt.Errorf("%v\nusage: %s %s", err, ctx.Name, usage)
+		return errors.New(builder.String())
 	}
 	ctx.Args = args
 	return nil

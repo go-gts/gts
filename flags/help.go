@@ -20,7 +20,7 @@ func formatHelp(name, desc string) string {
 // Usage creates a usage string for the given argument definitions.
 func Usage(pos *Positional, opt *Optional) string {
 	builder := strings.Builder{}
-	builder.WriteString("[-h | --help]")
+	builder.WriteString("[--version] [-h | --help]")
 	if opt != nil && len(opt.Args) > 0 {
 		builder.WriteString(" [<args>]")
 	}
