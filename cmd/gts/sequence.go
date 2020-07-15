@@ -83,8 +83,7 @@ func sequenceInsert(ctx *flags.Context) error {
 			host = gts.Insert(host, *i, guest)
 		}
 		formatter := seqio.NewFormatter(host, filetype)
-		_, err := formatter.WriteTo(seqoutFile)
-		if err != nil {
+		if _, err := formatter.WriteTo(seqoutFile); err != nil {
 			return ctx.Raise(err)
 		}
 	}
@@ -144,8 +143,7 @@ func sequenceDelete(ctx *flags.Context) error {
 		seq := scanner.Value()
 		seq = gts.Delete(seq, *i, *n)
 		formatter := seqio.NewFormatter(seq, filetype)
-		_, err := formatter.WriteTo(seqoutFile)
-		if err != nil {
+		if _, err := formatter.WriteTo(seqoutFile); err != nil {
 			return ctx.Raise(err)
 		}
 	}
@@ -202,8 +200,7 @@ func sequenceReverse(ctx *flags.Context) error {
 		seq := scanner.Value()
 		seq = gts.Reverse(seq)
 		formatter := seqio.NewFormatter(seq, filetype)
-		_, err := formatter.WriteTo(seqoutFile)
-		if err != nil {
+		if _, err := formatter.WriteTo(seqoutFile); err != nil {
 			return ctx.Raise(err)
 		}
 	}
@@ -260,8 +257,7 @@ func sequenceComplement(ctx *flags.Context) error {
 		seq := scanner.Value()
 		seq = gts.Complement(seq)
 		formatter := seqio.NewFormatter(seq, filetype)
-		_, err := formatter.WriteTo(seqoutFile)
-		if err != nil {
+		if _, err := formatter.WriteTo(seqoutFile); err != nil {
 			return ctx.Raise(err)
 		}
 	}
@@ -325,8 +321,7 @@ func sequenceRotate(ctx *flags.Context) error {
 		seq := scanner.Value()
 		seq = gts.Rotate(seq, *n)
 		formatter := seqio.NewFormatter(seq, filetype)
-		_, err := formatter.WriteTo(seqoutFile)
-		if err != nil {
+		if _, err := formatter.WriteTo(seqoutFile); err != nil {
 			return ctx.Raise(err)
 		}
 	}
