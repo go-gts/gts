@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/go-gts/gts"
 	"github.com/go-gts/gts/flags"
 )
 
@@ -236,10 +237,5 @@ func listdb(ctx *flags.Context) error {
 
 func main() {
 	name, desc := "togo", "access various biological databases with TogoWS"
-	version := flags.Version{
-		Major: 1,
-		Minor: 0,
-		Patch: 1,
-	}
-	os.Exit(flags.Run(name, desc, version, flags.Compile()))
+	os.Exit(flags.Run(name, desc, gts.Version, flags.Compile()))
 }

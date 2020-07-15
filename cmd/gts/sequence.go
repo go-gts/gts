@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/go-gts/gts"
+	"github.com/go-gts/gts/cmd"
 	"github.com/go-gts/gts/flags"
 	"github.com/go-gts/gts/seqio"
 )
@@ -24,7 +25,7 @@ func sequenceInsert(ctx *flags.Context) error {
 	guestPath := pos.String("guest", "guest sequence file")
 
 	var hostPath *string
-	if isTerminal(os.Stdin.Fd()) {
+	if cmd.IsTerminal(os.Stdin.Fd()) {
 		hostPath = pos.String("host", "host sequence file (may be omitted if standard input is provided)")
 	}
 
@@ -102,7 +103,7 @@ func sequenceDelete(ctx *flags.Context) error {
 	n := pos.Int("length", "the length of the region to delete")
 
 	var seqinPath *string
-	if isTerminal(os.Stdin.Fd()) {
+	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
@@ -160,7 +161,7 @@ func sequenceReverse(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
 	var seqinPath *string
-	if isTerminal(os.Stdin.Fd()) {
+	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
@@ -218,7 +219,7 @@ func sequenceComplement(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
 	var seqinPath *string
-	if isTerminal(os.Stdin.Fd()) {
+	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
@@ -278,7 +279,7 @@ func sequenceRotate(ctx *flags.Context) error {
 	n := pos.Int("amount", "the amount to rotate the sequence by")
 
 	var seqinPath *string
-	if isTerminal(os.Stdin.Fd()) {
+	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 

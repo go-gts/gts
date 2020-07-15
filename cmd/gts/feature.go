@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/go-gts/gts"
+	"github.com/go-gts/gts/cmd"
 	"github.com/go-gts/gts/flags"
 	"github.com/go-gts/gts/seqio"
 	"github.com/go-pars/pars"
@@ -25,7 +26,7 @@ func featureClear(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
 	var seqinPath *string
-	if isTerminal(os.Stdin.Fd()) {
+	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
@@ -90,7 +91,7 @@ func featureSelect(ctx *flags.Context) error {
 	selector := pos.String("selector", "feature selector (syntax: feature_key[/qualifier1[=regexp1]][/qualifier2[]=regexp2]])")
 
 	var seqinPath *string
-	if isTerminal(os.Stdin.Fd()) {
+	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
@@ -165,7 +166,7 @@ func featureAnnotate(ctx *flags.Context) error {
 	featinPath := pos.String("feature_table", "feature table file containing features to merge")
 
 	var seqinPath *string
-	if isTerminal(os.Stdin.Fd()) {
+	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
@@ -240,7 +241,7 @@ func featureExtract(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
 	var seqinPath *string
-	if isTerminal(os.Stdin.Fd()) {
+	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
@@ -346,7 +347,7 @@ func featureSeq(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
 	var seqinPath *string
-	if isTerminal(os.Stdin.Fd()) {
+	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
