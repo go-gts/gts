@@ -69,22 +69,28 @@ func sequenceInsert(ctx *flags.Context) error {
 	}
 
 	scanner := seqio.NewAutoScanner(guestFile)
-	if !scanner.Scan() {
+	guests := []gts.Sequence{}
+	for scanner.Scan() {
+		guests = append(guests, scanner.Value())
+	}
+	if len(guests) == 0 {
 		ctx.Raise(fmt.Errorf("guest sequence file %q does not contain a sequence", *guestPath))
 	}
-	guest := scanner.Value()
 
 	scanner = seqio.NewAutoScanner(hostFile)
 	for scanner.Scan() {
 		host := scanner.Value()
-		if *embed {
-			host = gts.Embed(host, *i, guest)
-		} else {
-			host = gts.Insert(host, *i, guest)
-		}
-		formatter := seqio.NewFormatter(host, filetype)
-		if _, err := formatter.WriteTo(seqoutFile); err != nil {
-			return ctx.Raise(err)
+		for _, guest := range guests {
+			var out gts.Sequence
+			if *embed {
+				out = gts.Embed(host, *i, guest)
+			} else {
+				out = gts.Insert(host, *i, guest)
+			}
+			formatter := seqio.NewFormatter(out, filetype)
+			if _, err := formatter.WriteTo(seqoutFile); err != nil {
+				return ctx.Raise(err)
+			}
 		}
 	}
 
