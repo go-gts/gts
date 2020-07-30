@@ -112,6 +112,13 @@ func Qualifier(name, query string) (Filter, error) {
 		}, nil
 	}
 
+	if query == "" {
+		return func(f Feature) bool {
+			_, ok := f.Qualifiers[name]
+			return ok
+		}, nil
+	}
+
 	return func(f Feature) bool {
 		if vv, ok := f.Qualifiers[name]; ok {
 			for _, v := range vv {
