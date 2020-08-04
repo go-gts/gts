@@ -28,7 +28,7 @@ func TestGenBank(t *testing.T) {
 	info := GenBankFields{
 		"LOCUS_NAME",
 		"DNA",
-		"linear",
+		gts.Linear,
 		"UNA",
 		FromTime(time.Now()),
 
@@ -70,7 +70,7 @@ func TestGenBankWithInterface(t *testing.T) {
 	info := GenBankFields{
 		"LOCUS_NAME",
 		"DNA",
-		"linear",
+		gts.Linear,
 		"UNA",
 		FromTime(time.Now()),
 
@@ -156,6 +156,9 @@ func TestGenBankIO(t *testing.T) {
 var genbankIOFailTests = []string{
 	"",
 	"NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018",
+	"" +
+		"LOCUS       NC_001422               5386 bp ss-DNA     topology PHG 06-JUL-2018\n" +
+		"foo",
 	"" +
 		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
 		"foo",

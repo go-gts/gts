@@ -20,7 +20,7 @@ import (
 type GenBankFields struct {
 	LocusName string
 	Molecule  string
-	Topology  string
+	Topology  gts.Topology
 	Division  string
 	Date      Date
 
@@ -313,7 +313,7 @@ var genbankLocusParser = pars.Seq(
 	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
 	pars.Int, " bp", pars.Spaces,
 	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
-	pars.Any("linear", "circular"), pars.Spaces,
+	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
 	pars.Count(pars.Byte(), 3).Map(pars.Cat), pars.Spaces,
 	pars.AsParser(pars.Line).Map(pars.Time("02-Jan-2006")),
 ).Children(1, 2, 4, 7, 9, 11, 13)
@@ -345,7 +345,10 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 	locus := string(result.Children[1].Token)
 	length := result.Children[2].Value.(int)
 	molecule := string(result.Children[3].Token)
-	topology := result.Children[4].Value.(string)
+	topology, err := gts.AsTopology(string(result.Children[4].Token))
+	if err != nil {
+		return pars.NewError(err.Error(), state.Position())
+	}
 	division := string(result.Children[5].Token)
 	date := FromTime(result.Children[6].Value.(time.Time))
 
