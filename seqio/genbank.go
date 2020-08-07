@@ -176,6 +176,14 @@ func (gb GenBank) WithBytes(p []byte) gts.Sequence {
 	return GenBank{gb.Fields, gb.Table, NewOrigin(p)}
 }
 
+// WithTopology creates a shallow copy of the given Sequence object and swaps
+// the topology value with the given value.
+func (gb GenBank) WithTopology(t gts.Topology) gts.Sequence {
+	info := gb.Fields
+	info.Topology = t
+	return gb.WithInfo(info)
+}
+
 // String satisifes the fmt.Stringer interface.
 func (gb GenBank) String() string {
 	builder := strings.Builder{}

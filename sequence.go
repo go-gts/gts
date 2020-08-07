@@ -195,7 +195,7 @@ func Slice(seq Sequence, start, end int) Sequence {
 			ff = append(ff, f)
 		}
 	}
-	return WithBytes(WithFeatures(seq, ff), p)
+	return WithBytes(WithFeatures(WithTopology(seq, Linear), ff), p)
 }
 
 // Concat takes the given Sequences and concatenates them into a single

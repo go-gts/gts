@@ -2,6 +2,8 @@ package gts
 
 import (
 	"testing"
+
+	"github.com/go-gts/gts/testutils"
 )
 
 var topologyTests = []Topology{
@@ -30,5 +32,28 @@ func TestTopologyFail(t *testing.T) {
 	}
 	if out.String() != "" {
 		t.Errorf("Topology(%d).String() = %q, expected %q", out, out.String(), in)
+	}
+}
+
+func (wt withTest) WithTopology(t Topology) Sequence {
+	if _, ok := wt.info.(Topology); ok {
+		return wt.WithInfo(t)
+	}
+	return wt
+}
+
+var withTopologyTests = []struct {
+	in  Sequence
+	out Sequence
+}{
+	{New(nil, nil, nil), New(nil, nil, nil)},
+	{newWithTest(nil, nil, nil), newWithTest(nil, nil, nil)},
+	{newWithTest(Linear, nil, nil), newWithTest(Circular, nil, nil)},
+}
+
+func TestWithTopology(t *testing.T) {
+	for _, tt := range withTopologyTests {
+		out := WithTopology(tt.in, Circular)
+		testutils.Equals(t, out, tt.out)
 	}
 }

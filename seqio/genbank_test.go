@@ -112,6 +112,12 @@ func TestGenBankWithInterface(t *testing.T) {
 
 	out = gts.WithInfo(in, "info")
 	testutils.Equals(t, out, gts.New("info", nil, NewOrigin(nil)))
+
+	out = gts.WithTopology(in, gts.Circular)
+	top := out.(GenBank).Fields.Topology
+	if top != gts.Circular {
+		t.Errorf("topology is %q, expected %q", top, gts.Circular)
+	}
 }
 
 func TestGenBankIO(t *testing.T) {
