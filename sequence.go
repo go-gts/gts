@@ -5,16 +5,6 @@ import (
 	"reflect"
 )
 
-// Molecule represents the sequence molecule type.
-type Molecule string
-
-// Molecule constants for DNA, RNA, and amino acid (AA).
-const (
-	DNA Molecule = "DNA"
-	RNA Molecule = "RNA"
-	AA  Molecule = "AA"
-)
-
 // Sequence represents a biological sequence. All sequences are expected to be
 // able to return its metadata, associated features, and byte representation.
 type Sequence interface {

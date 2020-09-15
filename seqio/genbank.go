@@ -19,7 +19,7 @@ import (
 // features and sequence.
 type GenBankFields struct {
 	LocusName string
-	Molecule  string
+	Molecule  gts.Molecule
 	Topology  gts.Topology
 	Division  string
 	Date      Date
@@ -232,16 +232,9 @@ func (gb GenBank) String() string {
 	builder.WriteString("\n" + indent + taxon)
 
 	for _, ref := range gb.Fields.References {
-		builder.WriteString(fmt.Sprintf("\nREFERENCE   %-2d ", ref.Number))
-		switch len(ref.Ranges) {
-		case 0:
-			builder.WriteString("(sites)")
-		default:
-			ranges := make([]string, len(ref.Ranges))
-			for i, rng := range ref.Ranges {
-				ranges[i] = fmt.Sprintf("%d to %d", rng.Start, rng.End)
-			}
-			builder.WriteString(fmt.Sprintf("(bases %s)", strings.Join(ranges, "; ")))
+		builder.WriteString(fmt.Sprintf("\nREFERENCE   %d", ref.Number))
+		if ref.Info != "" {
+			builder.WriteString(ref.Info)
 		}
 		if ref.Authors != "" {
 			builder.WriteString("\n  AUTHORS   " +
@@ -352,7 +345,10 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 
 	locus := string(result.Children[1].Token)
 	length := result.Children[2].Value.(int)
-	molecule := string(result.Children[3].Token)
+	molecule, err := gts.AsMolecule(string(result.Children[3].Token))
+	if err != nil {
+		return pars.NewError(err.Error(), state.Position())
+	}
 	topology, err := gts.AsTopology(string(result.Children[4].Token))
 	if err != nil {
 		return pars.NewError(err.Error(), state.Position())
@@ -456,35 +452,20 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 			gb.Fields.Source = organism
 
 		case "REFERENCE":
-			parser := fieldBodyParser.Map(pars.Join([]byte(" ")))
-			parser(state, result)
+			pars.Spaces(state, result)
 
-			rangeParser := pars.Seq(
-				pars.Int, pars.Spaces, '(',
-				pars.Any(
-					pars.Seq(
-						pars.Any("bases ", "residues "),
-						pars.Delim(pars.Seq(pars.Int, " to ", pars.Int).Children(0, 2), "; "),
-					).Child(1),
-					"sites",
-				), ')', pars.EOL,
-			).Children(0, 3)
-			if err := rangeParser(pars.FromBytes(result.Token), result); err != nil {
-				return pars.NewError("failed to parse reference", state.Position())
+			if err := pars.Int(state, result); err != nil {
+				return pars.NewError("expected a reference number", state.Position())
 			}
 
-			reference := Reference{}
-			reference.Number = result.Children[0].Value.(int)
+			number := result.Value.(int)
 
-			if _, ok := result.Children[1].Value.(string); !ok {
-				children := result.Children[1].Children
-				ranges := make([]ReferenceRange, len(children))
-				for i, child := range children {
-					start := child.Children[0].Value.(int)
-					end := child.Children[1].Value.(int)
-					ranges[i] = ReferenceRange{Start: start, End: end}
-				}
-				reference.Ranges = ranges
+			pars.Line(state, result)
+			line := string(result.Token)
+
+			reference := Reference{
+				Number: number,
+				Info:   line,
 			}
 
 			subfieldParser := pars.Seq(

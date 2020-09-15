@@ -1,15 +1,9 @@
 package seqio
 
-// ReferenceRange represents a start and end index pair.
-type ReferenceRange struct {
-	Start int
-	End   int
-}
-
 // Reference represents a reference of a record.
 type Reference struct {
 	Number  int
-	Ranges  []ReferenceRange
+	Info    string
 	Authors string
 	Group   string
 	Title   string

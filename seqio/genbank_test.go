@@ -166,6 +166,9 @@ var genbankIOFailTests = []string{
 		"LOCUS       NC_001422               5386 bp ss-DNA     topology PHG 06-JUL-2018\n" +
 		"foo",
 	"" +
+		"LOCUS       NC_001422               5386 bp    foo     topology PHG 06-JUL-2018\n" +
+		"foo",
+	"" +
 		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
 		"foo",
 	"" +
@@ -178,6 +181,9 @@ var genbankIOFailTests = []string{
 		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
 		"SOURCE      Escherichia virus phiX174\n" +
 		"  ORGANISM Escherichia virus phiX174",
+	"" +
+		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
+		"REFERENCE   ",
 	"" +
 		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
 		"REFERENCE   1",
