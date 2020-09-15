@@ -54,7 +54,7 @@ nfpms:
     epoch: 1
 brews:
   - name: gts-bio
-    github:
+    tap:
       owner: go-gts
       name: homebrew-gts
     folder: Formula
