@@ -2,6 +2,8 @@ package gts
 
 import (
 	"bytes"
+	"regexp"
+	"strings"
 )
 
 func replaceBytes(p, old, new []byte) []byte {
@@ -45,4 +47,55 @@ func Transcribe(seq Sequence) Sequence {
 		[]byte("UGCAAYRMKVHDBugcaayrmkvhdb"),
 	)
 	return WithBytes(seq, p)
+}
+
+// Search for an oligomer within a sequence. The ambiguous nucleotides in the
+// query sequence will match any of the respective nucleotides.
+func Search(seq Sequence, query Sequence) []Location {
+	if Len(seq) == 0 || Len(query) == 0 {
+		return nil
+	}
+
+	b := strings.Builder{}
+	for _, c := range query.Bytes() {
+		switch c {
+		case 't', 'u':
+			b.WriteString("[tu]")
+		case 'r':
+			b.WriteString("[agr]")
+		case 'y':
+			b.WriteString("[ctuy]")
+		case 'k':
+			b.WriteString("[gtuy]")
+		case 'm':
+			b.WriteString("[acm]")
+		case 's':
+			b.WriteString("[cgs]")
+		case 'w':
+			b.WriteString("[atuw]")
+		case 'b':
+			b.WriteString("[cgtuyksb]")
+		case 'd':
+			b.WriteString("[agturkwd]")
+		case 'h':
+			b.WriteString("[actuymwh]")
+		case 'v':
+			b.WriteString("[acgrmsv]")
+		case 'n':
+			b.WriteString(".")
+		default:
+			b.WriteByte(c)
+		}
+	}
+
+	s := b.String()
+	p := bytes.ToLower(seq.Bytes())
+
+	re := regexp.MustCompile(s)
+	locs := re.FindAllIndex(p, -1)
+	ret := make([]Location, len(locs))
+	for i, loc := range locs {
+		ret[i] = Range(loc[0], loc[1])
+	}
+	return ret
 }
