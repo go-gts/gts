@@ -1,5 +1,5 @@
-# GTS: The Genomics Tool Suite
-A software suite for basic genome flatfile manipulation.
+# GTS: Genomics Tools and Subprograms
+An application and library package for genome manipulation.
 
 ## Installing the GTS CLI tools
 ### Package Managers (Recommended)
