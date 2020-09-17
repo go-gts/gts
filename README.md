@@ -21,7 +21,7 @@ $ curl -LO https://github.com/go-gts/gts/releases/download/v0.14.0/gts_0.14.0_li
 # 64 bit with wget
 $ wget https://github.com/go-gts/gts/releases/download/v0.14.0/gts_0.14.0_linux_amd64.deb
 # 64 bit with curl
-$ curl -LO https://github.com/go-gts/gts/releases/download/v0.14.0/gts_0.4.00_linux_amd64.deb
+$ curl -LO https://github.com/go-gts/gts/releases/download/v0.14.0/gts_0.14.0_linux_amd64.deb
 ```
 
 2. Install the deb package with dpkg.
@@ -43,9 +43,9 @@ $ rm gts_0.14.0_linux_amd64.deb
 #### With yum
 ```sh
 # 32 bit
-$ yum install -y https://github.com/go-gts/gts/releases/download/v0.14.0/gts_0.4.00_linux_386.rpm
+$ yum install -y https://github.com/go-gts/gts/releases/download/v0.14.0/gts_0.14.0_linux_386.rpm
 # 64 bit
-$ yum install -y https://github.com/go-gts/gts/releases/download/v0.14.0/gts_0.4.00_linux_amd64.rpm
+$ yum install -y https://github.com/go-gts/gts/releases/download/v0.14.0/gts_0.14.0_linux_amd64.rpm
 ```
 
 ## Using the GTS library
