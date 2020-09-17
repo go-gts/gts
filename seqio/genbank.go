@@ -82,7 +82,10 @@ func (iter *originIterator) Next() (int, int) {
 }
 
 // Origin represents a GenBank sequence origin value.
-type Origin []byte
+type Origin struct {
+	Buffer []byte
+	Parsed bool
+}
 
 // NewOrigin formats a byte slice into GenBank sequence origin format.
 func NewOrigin(p []byte) Origin {
@@ -102,23 +105,44 @@ func NewOrigin(p []byte) Origin {
 		}
 	}
 	w.Flush()
-	return Origin(buf.Bytes())
+	return Origin{buf.Bytes(), false}
 }
 
-// ToBytes converts the GenBank sequence origin into a byte slice.
-func (o Origin) ToBytes() []byte {
-	if len(o) < 10 {
-		return nil
+// Bytes converts the GenBank sequence origin into a byte slice.
+func (o *Origin) Bytes() []byte {
+	if !o.Parsed {
+		if len(o.Buffer) < 10 {
+			return nil
+		}
+		p := make([]byte, fromOriginLength(len(o.Buffer)))
+		iter := originIterator{}
+		i, j := iter.Next()
+
+		for i < len(o.Buffer) {
+			n := min(10, len(o.Buffer)-i)
+			copy(p[j:j+n], o.Buffer[i:i+n])
+			i, j = iter.Next()
+		}
+		o.Buffer = p
+		o.Parsed = true
 	}
-	p := make([]byte, fromOriginLength(len(o)))
-	iter := originIterator{}
-	i, j := iter.Next()
-	for i < len(o) {
-		n := min(10, len(o)-i)
-		copy(p[j:j+n], o[i:i+n])
-		i, j = iter.Next()
+	return o.Buffer
+}
+
+// String satisfies the fmt.Stringer interface.
+func (o Origin) String() string {
+	if !o.Parsed {
+		return string(o.Buffer)
 	}
-	return p
+	return string(NewOrigin(o.Buffer).Buffer)
+}
+
+// Len returns the actual sequence length.
+func (o Origin) Len() int {
+	if o.Parsed {
+		return len(o.Buffer)
+	}
+	return fromOriginLength(len(o.Buffer))
 }
 
 // GenBank represents a GenBank sequence record.
@@ -145,12 +169,12 @@ func (gb GenBank) Features() gts.FeatureTable {
 
 // Len returns the length of the sequence.
 func (gb GenBank) Len() int {
-	return fromOriginLength(len(gb.Origin))
+	return gb.Origin.Len()
 }
 
 // Bytes returns the byte representation of the sequence.
 func (gb GenBank) Bytes() []byte {
-	return gb.Origin.ToBytes()
+	return gb.Origin.Bytes()
 }
 
 // WithInfo creates a shallow copy of the given Sequence object and swaps the
@@ -273,7 +297,7 @@ func (gb GenBank) String() string {
 	gb.Table.Format("     ", 21).WriteTo(&builder)
 
 	builder.WriteString("\nORIGIN      \n")
-	builder.Write(gb.Origin)
+	builder.WriteString(gb.Origin.String())
 	builder.WriteString("\n//\n")
 
 	return builder.String()
@@ -535,7 +559,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 			}
 			buffer := state.Buffer()
 			state.Advance()
-			gb.Origin = buffer[:len(buffer)-1]
+			gb.Origin = Origin{buffer[:len(buffer)-1], false}
 
 		default:
 			what := fmt.Sprintf("unexpected field name `%s`", name)

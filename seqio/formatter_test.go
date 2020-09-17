@@ -9,7 +9,7 @@ import (
 
 var basicSeq = gts.New(nil, nil, nil)
 var fastaSeq = Fasta{"", nil}
-var genbankSeq = GenBank{GenBankFields{}, nil, nil}
+var genbankSeq = NewGenBank(GenBankFields{}, nil, nil)
 var strInfoSeq = gts.New("", nil, nil)
 var gbInfoSeq = gts.New(GenBankFields{}, nil, nil)
 

@@ -24,6 +24,36 @@ func formatGenBankHelper(t *testing.T, seq gts.Sequence, in string) {
 	testutils.Diff(t, in, b.String())
 }
 
+func TestOrigin(t *testing.T) {
+	in := "gagttttatcgcttccatgacgcagaagttaacactttcggatatttctgatgagtcgaa"
+	exp := "        1 gagttttatc gcttccatga cgcagaagtt aacactttcg gatatttctg atgagtcgaa"
+	o := NewOrigin([]byte(in))
+	out := o.String()
+	if out != exp {
+		testutils.Diff(t, out, exp)
+	}
+	if o.Len() != len(in) {
+		t.Errorf("o.Len() = %d, expected %d", o.Len(), len(in))
+	}
+
+	out = string(o.Bytes())
+	if out != in {
+		testutils.Diff(t, out, in)
+	}
+	if o.Len() != len(in) {
+		t.Errorf("o.Len() = %d, expected %d", o.Len(), len(in))
+	}
+
+	out = o.String()
+	if out != exp {
+		testutils.Diff(t, out, exp)
+	}
+	out = string(o.Buffer)
+	if out != in {
+		testutils.Diff(t, out, in)
+	}
+}
+
 func TestGenBank(t *testing.T) {
 	info := GenBankFields{
 		"LOCUS_NAME",
@@ -111,7 +141,7 @@ func TestGenBankWithInterface(t *testing.T) {
 	testutils.Equals(t, out, GenBank{GenBankFields{}, nil, NewOrigin(p)})
 
 	out = gts.WithInfo(in, "info")
-	testutils.Equals(t, out, gts.New("info", nil, NewOrigin(nil)))
+	testutils.Equals(t, out, gts.New("info", nil, nil))
 
 	out = gts.WithTopology(in, gts.Circular)
 	top := out.(GenBank).Fields.Topology
