@@ -18,8 +18,8 @@ func init() {
 	flags.Register("clear", "remove all features from the sequence (excluding source features)", featureClear)
 	flags.Register("select", "select features using the given feature selector(s)", featureSelect)
 	flags.Register("annotate", "merge features from a feature list file into a sequence", featureAnnotate)
-	flags.Register("extract", "extract information from the given sequence", featureExtract)
-	flags.Register("seq", "retrieve the sequences referenced by the features", featureSeq)
+	flags.Register("query", "query information from the given sequence", featureQuery)
+	flags.Register("extract", "extract the sequences referenced by the features", featureExtract)
 }
 
 func featureClear(ctx *flags.Context) error {
@@ -234,7 +234,7 @@ func featureAnnotate(ctx *flags.Context) error {
 	return nil
 }
 
-func featureExtract(ctx *flags.Context) error {
+func featureQuery(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
 	var seqinPath *string
@@ -248,9 +248,9 @@ func featureExtract(ctx *flags.Context) error {
 	sep := opt.String('t', "separator", ",", "string to insert between qualifier values")
 	noheader := opt.Switch(0, "no-header", "do not print the header line")
 	nosource := opt.Switch(0, "no-source", "ignore the source feature(s)")
-	nokey := opt.Switch(0, "no-key", "do not extract the feature key")
-	noloc := opt.Switch(0, "no-location", "do not extract the feature location")
-	empty := opt.Switch(0, "empty", "allow missing qualifiers to be extracted")
+	nokey := opt.Switch(0, "no-key", "do not report the feature key")
+	noloc := opt.Switch(0, "no-location", "do not report the feature location")
+	empty := opt.Switch(0, "empty", "allow missing qualifiers to be reported")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -340,7 +340,7 @@ func featureExtract(ctx *flags.Context) error {
 	return nil
 }
 
-func featureSeq(ctx *flags.Context) error {
+func featureExtract(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
 	var seqinPath *string
