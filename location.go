@@ -19,7 +19,6 @@ type Location interface {
 	Expand(i, n int) Location
 	Less(loc Location) bool
 	Reverse(length int) Location
-	Normalize(length int) Location
 	Complement() Location
 	Locate(seq Sequence) Sequence
 }
@@ -112,11 +111,6 @@ func (between Between) Less(loc Location) bool {
 // Reverse returns the reversed location for the given length sequence.
 func (between Between) Reverse(length int) Location {
 	return Between(length - 1 - int(between))
-}
-
-// Normalize returns a location normalized for the given length sequence.
-func (between Between) Normalize(length int) Location {
-	return Between(int(between) % length)
 }
 
 // Complement returns the complement location.
@@ -228,11 +222,6 @@ func (point Point) Less(loc Location) bool {
 // Reverse returns the reversed location for the given length sequence.
 func (point Point) Reverse(length int) Location {
 	return Point(length - 1 - int(point))
-}
-
-// Normalize returns a location normalized for the given length sequence.
-func (point Point) Normalize(length int) Location {
-	return Point(int(point) % length)
 }
 
 // Complement returns the complement location.
@@ -418,25 +407,6 @@ func (ranged Ranged) Reverse(length int) Location {
 	return ret
 }
 
-// Normalize returns a location normalized for the given length sequence.
-func (ranged Ranged) Normalize(length int) Location {
-	if ranged.Len() == length {
-		return ranged.Expand(0, -ranged.Start)
-	}
-	start, end := ranged.Start%length, ranged.End%length
-	if start < end {
-		return PartialRange(start, end, ranged.Partial)
-	}
-	left, right := Range(start, length), Range(0, end)
-	if ranged.Partial[0] {
-		left.Partial = Partial5
-	}
-	if ranged.Partial[1] {
-		right.Partial = Partial3
-	}
-	return Join(left, right)
-}
-
 // Complement returns the complement location.
 func (ranged Ranged) Complement() Location {
 	return Complemented{ranged}
@@ -529,11 +499,6 @@ func (complement Complemented) Less(loc Location) bool {
 // Reverse returns the reversed location for the given length sequence.
 func (complement Complemented) Reverse(length int) Location {
 	return Complemented{complement[0].Reverse(length)}
-}
-
-// Normalize returns a location normalized for the given length sequence.
-func (complement Complemented) Normalize(length int) Location {
-	return Complemented{complement[0].Normalize(length)}
 }
 
 // Complement returns the complement location.
@@ -749,15 +714,6 @@ func (joined Joined) Reverse(length int) Location {
 	return Join(ll...)
 }
 
-// Normalize returns a location normalized for the given length sequence.
-func (joined Joined) Normalize(length int) Location {
-	ll := make([]Location, len(joined))
-	for i, l := range joined {
-		ll[i] = l.Normalize(length)
-	}
-	return Join(ll...)
-}
-
 // Complement returns the complement location.
 func (joined Joined) Complement() Location {
 	return Complemented{joined}
@@ -939,11 +895,6 @@ func (ambiguous Ambiguous) Reverse(length int) Location {
 	return Ambiguous{length - ambiguous[1], length - ambiguous[0]}
 }
 
-// Normalize returns a location normalized for the given length sequence.
-func (ambiguous Ambiguous) Normalize(length int) Location {
-	return Ambiguous{ambiguous[0] % length, ambiguous[1] % length}
-}
-
 // Complement returns the complement location.
 func (ambiguous Ambiguous) Complement() Location {
 	return Complemented{ambiguous}
@@ -1069,15 +1020,6 @@ func (ordered Ordered) Reverse(length int) Location {
 	return Order(ll...)
 }
 
-// Normalize returns a location normalized for the given length sequence.
-func (ordered Ordered) Normalize(length int) Location {
-	ll := make([]Location, len(ordered))
-	for i, l := range ordered {
-		ll[i] = l.Normalize(length)
-	}
-	return Order(ll...)
-}
-
 // Complement returns the complement location.
 func (ordered Ordered) Complement() Location {
 	return Complemented{ordered}
@@ -1122,4 +1064,48 @@ func OrderParser(state *pars.State, result *pars.Result) error {
 	result.SetValue(Order(result.Value.([]Location)...))
 	state.Drop()
 	return nil
+}
+
+// normalizeLocation returns a location normalized for the given length sequence.
+func normalizeLocation(loc Location, length int) Location {
+	switch v := loc.(type) {
+	case Between:
+		return Between(int(v) % length)
+	case Point:
+		return Point(int(v) % length)
+	case Ranged:
+		if v.Len() == length {
+			return v.Expand(0, -v.Start)
+		}
+		start, end := v.Start%length, v.End%length
+		if start < end {
+			return PartialRange(start, end, v.Partial)
+		}
+		left, right := Range(start, length), Range(0, end)
+		if v.Partial[0] {
+			left.Partial = Partial5
+		}
+		if v.Partial[1] {
+			right.Partial = Partial3
+		}
+		return Join(left, right)
+	case Complemented:
+		return Complemented{normalizeLocation(v[0], length)}
+	case Joined:
+		ll := make([]Location, len(v))
+		for i, l := range v {
+			ll[i] = normalizeLocation(l, length)
+		}
+		return Join(ll...)
+	case Ambiguous:
+		return Ambiguous{v[0] % length, v[1] % length}
+	case Ordered:
+		ll := make([]Location, len(v))
+		for i, l := range v {
+			ll[i] = normalizeLocation(l, length)
+		}
+		return Order(ll...)
+	default:
+		return v
+	}
 }

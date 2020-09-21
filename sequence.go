@@ -220,7 +220,12 @@ func Concat(ss ...Sequence) Sequence {
 func Reverse(seq Sequence) Sequence {
 	var ff FeatureTable
 	for _, f := range seq.Features() {
-		ff = ff.Insert(Feature{f.Key, f.Location.Reverse(Len(seq)), f.Qualifiers, f.Order})
+		ff = ff.Insert(Feature{
+			f.Key,
+			f.Location.Reverse(Len(seq)),
+			f.Qualifiers,
+			f.Order,
+		})
 	}
 	p := make([]byte, Len(seq))
 	copy(p, seq.Bytes())
@@ -237,7 +242,7 @@ func Rotate(seq Sequence, n int) Sequence {
 	}
 	var ff FeatureTable
 	for _, f := range seq.Features() {
-		loc := f.Location.Expand(0, n).Normalize(Len(seq))
+		loc := normalizeLocation(f.Location.Expand(0, n), Len(seq))
 		ff = ff.Insert(Feature{f.Key, loc, f.Qualifiers, f.Order})
 	}
 	p := seq.Bytes()

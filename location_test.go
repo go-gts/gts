@@ -262,10 +262,6 @@ func (null NullLocation) Reverse(length int) Location {
 	return null
 }
 
-func (null NullLocation) Normalize(length int) Location {
-	return null
-}
-
 func (null NullLocation) Complement() Location {
 	return Complemented{null}
 }
@@ -450,6 +446,7 @@ var locationNormalizeTest = []struct {
 	in  Location
 	out Location
 }{
+	{NullLocation(0), NullLocation(0)},
 	{Between(10), Between(0)},
 	{Point(10), Point(0)},
 	{Range(10, 13), Range(0, 3)},
@@ -463,7 +460,7 @@ var locationNormalizeTest = []struct {
 
 func TestLocationNormalize(t *testing.T) {
 	for _, tt := range locationNormalizeTest {
-		out := tt.in.Normalize(10)
+		out := normalizeLocation(tt.in, 10)
 		testutils.Equals(t, out, tt.out)
 	}
 }
