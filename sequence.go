@@ -3,6 +3,8 @@ package gts
 import (
 	"bytes"
 	"reflect"
+
+	"github.com/go-flip/flip"
 )
 
 // Sequence represents a biological sequence. All sequences are expected to be
@@ -219,9 +221,7 @@ func Reverse(seq Sequence) Sequence {
 	}
 	p := make([]byte, Len(seq))
 	copy(p, seq.Bytes())
-	for l, r := 0, len(p)-1; l < r; l, r = l+1, r-1 {
-		p[l], p[r] = p[r], p[l]
-	}
+	flip.Bytes(p)
 	return WithBytes(WithFeatures(seq, ff), p)
 }
 

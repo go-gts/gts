@@ -3,6 +3,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/go-ascii/ascii v1.0.3 h1:PzqTidYM5B8bS8BHByjFUHq95+O/R1JD1Y07KXuxUFM=
 github.com/go-ascii/ascii v1.0.3/go.mod h1:dunT2OpwwyuEoHXprC876gNQaxKFFYqoaRZfjVLIGb4=
+github.com/go-flip/flip v1.0.0 h1:vCW7niAHuJr9ZKgsn3gaxap4hNU5CzdFc6DRRhwWBrc=
+github.com/go-flip/flip v1.0.0/go.mod h1:TMjs2G9lS33sa+kDEPMmqBY35V9j94Hks0fj7uJUoEU=
 github.com/go-pars/pars v1.1.1 h1:wDgNSe9Wtds6y8oBgmLnhwRnP0Uz1w5nmOtGLE+2K0M=
 github.com/go-pars/pars v1.1.1/go.mod h1:CoFQeW1ZswG9tHpBxfN1cLdEp6AI1q/iF2izSJmPMG0=
 github.com/go-test/deep v1.0.6 h1:UHSEyLZUwX9Qoi99vVwvewiMC8mM2bf7XEM2nqvzEn8=
