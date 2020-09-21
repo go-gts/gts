@@ -177,6 +177,9 @@ func Delete(seq Sequence, i, n int) Sequence {
 // to end. The target sequence region is copied. Any features with locations
 // overlapping with the sliced region will be left in the sliced sequence.
 func Slice(seq Sequence, start, end int) Sequence {
+	if end < start {
+		return Reverse(Slice(seq, end, start))
+	}
 	p := make([]byte, end-start)
 	copy(p, seq.Bytes()[start:end])
 	var ff []Feature

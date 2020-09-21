@@ -135,17 +135,33 @@ func TestSlice(t *testing.T) {
 	info := "info"
 	in := New(info, ff, p)
 
-	gg := []Feature{{"source", Range(0, 4), qfs, nil}, {"gene", Range(1, 3), qfs, nil}}
-	out, exp := Slice(in, 2, 6), New(info, gg, p[2:6])
-	if !reflect.DeepEqual(out.Info(), exp.Info()) {
-		t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
-	}
-	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
-		t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 2, 6, out.Features(), exp.Features())
-	}
-	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
-		t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 2, 6, out.Bytes(), exp.Bytes())
-	}
+	t.Run("Forward", func(t *testing.T) {
+		gg := []Feature{{"source", Range(0, 4), qfs, nil}, {"gene", Range(1, 3), qfs, nil}}
+		out, exp := Slice(in, 2, 6), New(info, gg, p[2:6])
+		if !reflect.DeepEqual(out.Info(), exp.Info()) {
+			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
+		}
+		if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+			t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 2, 6, out.Features(), exp.Features())
+		}
+		if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 2, 6, out.Bytes(), exp.Bytes())
+		}
+	})
+
+	t.Run("Backward", func(t *testing.T) {
+		gg := []Feature{{"source", Range(0, 4), qfs, nil}, {"gene", Range(1, 3), qfs, nil}}
+		out, exp := Slice(in, 6, 2), Reverse(New(info, gg, p[2:6]))
+		if !reflect.DeepEqual(out.Info(), exp.Info()) {
+			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
+		}
+		if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+			t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 2, 6, out.Features(), exp.Features())
+		}
+		if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 2, 6, out.Bytes(), exp.Bytes())
+		}
+	})
 }
 
 func TestConcat(t *testing.T) {
