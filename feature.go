@@ -165,7 +165,7 @@ func Not(filter Filter) Filter {
 	}
 }
 
-func selectorShift(s string) (string, string) {
+func shiftSelector(s string) (string, string) {
 	esc := false
 	for i := 0; i < len(s); i++ {
 		switch s[i] {
@@ -196,10 +196,10 @@ func toQualifier(s string) (Filter, error) {
 // If the qualifier name is omitted, the values for every qualifier name will
 // be tested.
 func Selector(sel string) (Filter, error) {
-	head, tail := selectorShift(sel)
+	head, tail := shiftSelector(sel)
 	filter := Key(head)
 	for tail != "" {
-		head, tail = selectorShift(tail)
+		head, tail = shiftSelector(tail)
 		qfs, err := toQualifier(head)
 		if err != nil {
 			return FalseFilter, err
