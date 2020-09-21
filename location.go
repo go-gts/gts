@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-ascii/ascii"
+	"github.com/go-flip/flip"
 	"github.com/go-pars/pars"
 )
 
@@ -18,7 +19,6 @@ type Location interface {
 	Shift(i, n int) Location
 	Expand(i, n int) Location
 	Less(loc Location) bool
-	Reverse(length int) Location
 	Complement() Location
 	Locate(seq Sequence) Sequence
 }
@@ -106,11 +106,6 @@ func (between Between) Less(loc Location) bool {
 	default:
 		return true
 	}
-}
-
-// Reverse returns the reversed location for the given length sequence.
-func (between Between) Reverse(length int) Location {
-	return Between(length - 1 - int(between))
 }
 
 // Complement returns the complement location.
@@ -217,11 +212,6 @@ func (point Point) Less(loc Location) bool {
 	default:
 		return true
 	}
-}
-
-// Reverse returns the reversed location for the given length sequence.
-func (point Point) Reverse(length int) Location {
-	return Point(length - 1 - int(point))
 }
 
 // Complement returns the complement location.
@@ -395,18 +385,6 @@ func (ranged Ranged) Less(loc Location) bool {
 	}
 }
 
-// Reverse returns the reversed location for the given length sequence.
-func (ranged Ranged) Reverse(length int) Location {
-	ret := PartialRange(length-ranged.End, length-ranged.Start, ranged.Partial)
-	switch ret.Partial {
-	case Partial5:
-		ret.Partial = Partial3
-	case Partial3:
-		ret.Partial = Partial5
-	}
-	return ret
-}
-
 // Complement returns the complement location.
 func (ranged Ranged) Complement() Location {
 	return Complemented{ranged}
@@ -494,11 +472,6 @@ func (complement Complemented) Expand(i, n int) Location {
 // Less returns true if the location is less than the given location.
 func (complement Complemented) Less(loc Location) bool {
 	return complement[0].Less(loc)
-}
-
-// Reverse returns the reversed location for the given length sequence.
-func (complement Complemented) Reverse(length int) Location {
-	return Complemented{complement[0].Reverse(length)}
 }
 
 // Complement returns the complement location.
@@ -704,16 +677,6 @@ func (joined Joined) Less(loc Location) bool {
 	return false
 }
 
-// Reverse returns the reversed location for the given length sequence.
-func (joined Joined) Reverse(length int) Location {
-	ll := make([]Location, len(joined))
-	copy(ll, []Location(joined))
-	for l, r := 0, len(ll)-1; l < r; l, r = l+1, r-1 {
-		ll[l], ll[r] = ll[r].Reverse(length), ll[l].Reverse(length)
-	}
-	return Join(ll...)
-}
-
 // Complement returns the complement location.
 func (joined Joined) Complement() Location {
 	return Complemented{joined}
@@ -890,11 +853,6 @@ func (ambiguous Ambiguous) Less(loc Location) bool {
 	}
 }
 
-// Reverse returns the reversed location for the given length sequence.
-func (ambiguous Ambiguous) Reverse(length int) Location {
-	return Ambiguous{length - ambiguous[1], length - ambiguous[0]}
-}
-
 // Complement returns the complement location.
 func (ambiguous Ambiguous) Complement() Location {
 	return Complemented{ambiguous}
@@ -1010,16 +968,6 @@ func (ordered Ordered) Less(loc Location) bool {
 	return false
 }
 
-// Reverse returns the reversed location for the given length sequence.
-func (ordered Ordered) Reverse(length int) Location {
-	ll := make([]Location, len(ordered))
-	copy(ll, []Location(ordered))
-	for l, r := 0, len(ll)-1; l < r; l, r = l+1, r-1 {
-		ll[l], ll[r] = ll[r].Reverse(length), ll[l].Reverse(length)
-	}
-	return Order(ll...)
-}
-
 // Complement returns the complement location.
 func (ordered Ordered) Complement() Location {
 	return Complemented{ordered}
@@ -1107,5 +1055,45 @@ func normalizeLocation(loc Location, length int) Location {
 		return Order(ll...)
 	default:
 		return v
+	}
+}
+
+func flipLocation(arg Location, length int) Location {
+	switch loc := arg.(type) {
+	case Between:
+		return Between(length - 1 - int(loc))
+	case Point:
+		return Point(length - 1 - int(loc))
+	case Ranged:
+		ret := PartialRange(length-loc.End, length-loc.Start, loc.Partial)
+		switch ret.Partial {
+		case Partial5:
+			ret.Partial = Partial3
+		case Partial3:
+			ret.Partial = Partial5
+		}
+		return ret
+	case Complemented:
+		return Complemented{flipLocation(loc[0], length)}
+	case Joined:
+		ll := make([]Location, len(loc))
+		copy(ll, []Location(loc))
+		for i, l := range loc {
+			ll[i] = flipLocation(l, length)
+		}
+		flip.Slice(ll)
+		return Join(ll...)
+	case Ambiguous:
+		return Ambiguous{length - loc[1], length - loc[0]}
+	case Ordered:
+		ll := make([]Location, len(loc))
+		copy(ll, []Location(loc))
+		for i, l := range loc {
+			ll[i] = flipLocation(l, length)
+		}
+		flip.Slice(ll)
+		return Order(ll...)
+	default:
+		return loc
 	}
 }

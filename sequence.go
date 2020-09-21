@@ -222,7 +222,7 @@ func Reverse(seq Sequence) Sequence {
 	for _, f := range seq.Features() {
 		ff = ff.Insert(Feature{
 			f.Key,
-			f.Location.Reverse(Len(seq)),
+			flipLocation(f.Location, Len(seq)),
 			f.Qualifiers,
 			f.Order,
 		})

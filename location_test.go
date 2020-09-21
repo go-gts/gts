@@ -258,10 +258,6 @@ func (null NullLocation) Less(loc Location) bool {
 	return false
 }
 
-func (null NullLocation) Reverse(length int) Location {
-	return null
-}
-
 func (null NullLocation) Complement() Location {
 	return Complemented{null}
 }
@@ -419,10 +415,11 @@ func TestLocationLess(t *testing.T) {
 	}
 }
 
-var locationReverseTest = []struct {
+var locationFlipTest = []struct {
 	in  Location
 	out Location
 }{
+	{NullLocation(0), NullLocation(0)},
 	{Between(0), Between(9)},
 	{Point(0), Point(9)},
 	{Range(0, 3), Range(7, 10)},
@@ -435,9 +432,9 @@ var locationReverseTest = []struct {
 	{Order(Range(0, 3), Range(5, 8)), Order(Range(2, 5), Range(7, 10))},
 }
 
-func TestLocationReverse(t *testing.T) {
-	for _, tt := range locationReverseTest {
-		out := tt.in.Reverse(10)
+func TestLocationFlip(t *testing.T) {
+	for _, tt := range locationFlipTest {
+		out := flipLocation(tt.in, 10)
 		testutils.Equals(t, out, tt.out)
 	}
 }
