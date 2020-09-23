@@ -1014,7 +1014,6 @@ func OrderParser(state *pars.State, result *pars.Result) error {
 	return nil
 }
 
-// normalizeLocation returns a location normalized for the given length sequence.
 func normalizeLocation(loc Location, length int) Location {
 	switch v := loc.(type) {
 	case Between:
