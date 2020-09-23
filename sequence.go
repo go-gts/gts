@@ -125,7 +125,7 @@ func insert(p []byte, pos int, q []byte) []byte {
 func Insert(host Sequence, pos int, guest Sequence) Sequence {
 	var ff FeatureTable
 	for _, f := range host.Features() {
-		f.Location = f.Location.Shift(pos, Len(guest))
+		f.Location = shiftLocation(f.Location, pos, Len(guest))
 		ff = ff.Insert(f)
 	}
 	for _, f := range guest.Features() {

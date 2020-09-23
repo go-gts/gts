@@ -16,7 +16,6 @@ import (
 type Location interface {
 	fmt.Stringer
 	Len() int
-	Shift(i, n int) Location
 	Expand(i, n int) Location
 	Less(loc Location) bool
 	Complement() Location
@@ -64,11 +63,6 @@ func (between Between) String() string {
 // Len returns the total length spanned by the location.
 func (between Between) Len() int {
 	return 0
-}
-
-// Shift the location beyond the given position i by n.
-func (between Between) Shift(i, n int) Location {
-	return between.Expand(i, n)
 }
 
 // Expand the location beyond the given position i by n.
@@ -161,11 +155,6 @@ func (point Point) String() string {
 // Len returns the total length spanned by the location.
 func (point Point) Len() int {
 	return 1
-}
-
-// Shift the location beyond the given position i by n.
-func (point Point) Shift(i, n int) Location {
-	return point.Expand(i, n)
 }
 
 // Expand the location beyond the given position i by n.
@@ -288,26 +277,6 @@ func (ranged Ranged) String() string {
 // Len returns the total length spanned by the location.
 func (ranged Ranged) Len() int {
 	return ranged.End - ranged.Start
-}
-
-// Shift the location beyond the given position i by n.
-func (ranged Ranged) Shift(i, n int) Location {
-	start, end := shift(ranged.Start, i, n, true), shift(ranged.End, i, n, false)
-	if end <= start {
-		return Between(start)
-	}
-	if i <= start || end <= i {
-		return PartialRange(start, end, ranged.Partial)
-	}
-	left, right := Range(start, i), Range(i+n, end)
-	partial5, partial3 := ranged.Partial[0], ranged.Partial[1]
-	if partial5 {
-		left.Partial = Partial5
-	}
-	if partial3 {
-		right.Partial = Partial3
-	}
-	return Join(left, right)
 }
 
 // Expand the location beyond the given position i by n.
@@ -457,11 +426,6 @@ func (complement Complemented) String() string {
 // Len returns the total length spanned by the location.
 func (complement Complemented) Len() int {
 	return complement[0].Len()
-}
-
-// Shift the location beyond the given position i by n.
-func (complement Complemented) Shift(i, n int) Location {
-	return Complemented{complement[0].Shift(i, n)}
 }
 
 // Expand the location beyond the given position i by n.
@@ -649,15 +613,6 @@ func (joined Joined) Len() int {
 	return n
 }
 
-// Shift the location beyond the given position i by n.
-func (joined Joined) Shift(i, n int) Location {
-	locs := make([]Location, len(joined))
-	for j, loc := range joined {
-		locs[j] = loc.Shift(i, n)
-	}
-	return Join(locs...)
-}
-
 // Expand the location beyond the given position i by n.
 func (joined Joined) Expand(i, n int) Location {
 	locs := make([]Location, len(joined))
@@ -774,18 +729,6 @@ func (ambiguous Ambiguous) String() string {
 // Len returns the total length spanned by the location.
 func (ambiguous Ambiguous) Len() int {
 	return 1
-}
-
-// Shift the location beyond the given position i by n.
-func (ambiguous Ambiguous) Shift(i, n int) Location {
-	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
-	if end <= start {
-		return Between(start)
-	}
-	if i <= start || end <= i {
-		return Ambiguous{start, end}
-	}
-	return Order(Ambiguous{start, i}, Ambiguous{i + n, end})
 }
 
 // Expand the location beyond the given position i by n.
@@ -940,15 +883,6 @@ func (ordered Ordered) Len() int {
 	return n
 }
 
-// Shift the location beyond the given position i by n.
-func (ordered Ordered) Shift(i, n int) Location {
-	locs := make([]Location, len(ordered))
-	for j, loc := range ordered {
-		locs[j] = loc.Shift(i, n)
-	}
-	return Order(locs...)
-}
-
 // Expand the location beyond the given position i by n.
 func (ordered Ordered) Expand(i, n int) Location {
 	locs := make([]Location, len(ordered))
@@ -1012,6 +946,53 @@ func OrderParser(state *pars.State, result *pars.Result) error {
 	result.SetValue(Order(result.Value.([]Location)...))
 	state.Drop()
 	return nil
+}
+
+func shiftLocation(loc Location, i, n int) Location {
+	switch v := loc.(type) {
+	case Ranged:
+		start, end := shift(v.Start, i, n, true), shift(v.End, i, n, false)
+		if end <= start {
+			return Between(start)
+		}
+		if i <= start || end <= i {
+			return PartialRange(start, end, v.Partial)
+		}
+		left, right := Range(start, i), Range(i+n, end)
+		partial5, partial3 := v.Partial[0], v.Partial[1]
+		if partial5 {
+			left.Partial = Partial5
+		}
+		if partial3 {
+			right.Partial = Partial3
+		}
+		return Join(left, right)
+	case Ambiguous:
+		start, end := shift(v[0], i, n, true), shift(v[1], i, n, false)
+		if end <= start {
+			return Between(start)
+		}
+		if i <= start || end <= i {
+			return Ambiguous{start, end}
+		}
+		return Order(Ambiguous{start, i}, Ambiguous{i + n, end})
+	case Complemented:
+		return shiftLocation(v[0], i, n).Complement()
+	case Joined:
+		ll := make([]Location, len(v))
+		for j, l := range v {
+			ll[j] = shiftLocation(l, i, n)
+		}
+		return Join(ll...)
+	case Ordered:
+		ll := make([]Location, len(v))
+		for j, l := range v {
+			ll[j] = shiftLocation(l, i, n)
+		}
+		return Order(ll...)
+	default:
+		return loc.Expand(i, n)
+	}
 }
 
 func normalizeLocation(loc Location, length int) Location {

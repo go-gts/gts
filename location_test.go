@@ -136,23 +136,25 @@ var locationShiftTests = []struct {
 }
 
 func TestLocationShift(t *testing.T) {
-	for _, tt := range locationShiftTests {
-		if !reflect.DeepEqual(tt.in.Shift(tt.i, tt.n), tt.out) {
+	for i, tt := range locationShiftTests {
+		if !reflect.DeepEqual(shiftLocation(tt.in, tt.i, tt.n), tt.out) {
 			t.Errorf(
-				"%s.Shift(%d, %d) = %s, want %s",
-				locRep(tt.in), tt.i, tt.n,
-				locRep(tt.in.Shift(tt.i, tt.n)),
+				"\ncase [%d]:\nshift by (%d, %d)\n in: %s\nout: %s\nexp: %s",
+				i+1, tt.i, tt.n,
+				locRep(tt.in),
+				locRep(shiftLocation(tt.in, tt.i, tt.n)),
 				locRep(tt.out),
 			)
 		}
 		if !reflect.DeepEqual(
-			tt.in.Complement().Shift(tt.i, tt.n),
+			shiftLocation(tt.in.Complement(), tt.i, tt.n),
 			tt.out.Complement(),
 		) {
 			t.Errorf(
-				"%s.Shift(%d, %d) = %s, want %s",
-				locRep(tt.in.Complement()), tt.i, tt.n,
-				locRep(tt.in.Complement().Shift(tt.i, tt.n)),
+				"\ncase [%d]:\nshift by (%d, %d)\n in: %s\nout: %s\nexp: %s",
+				i+1, tt.i, tt.n,
+				locRep(tt.in.Complement()),
+				locRep(shiftLocation(tt.in.Complement(), tt.i, tt.n)),
 				locRep(tt.out.Complement()),
 			)
 		}
@@ -213,11 +215,12 @@ var locationExpandTests = []struct {
 }
 
 func TestLocationExpand(t *testing.T) {
-	for _, tt := range locationExpandTests {
+	for i, tt := range locationExpandTests {
 		if !reflect.DeepEqual(tt.in.Expand(tt.i, tt.n), tt.out) {
 			t.Errorf(
-				"%s.Expand(%d, %d) = %s, want %s",
-				locRep(tt.in), tt.i, tt.n,
+				"\ncase [%d]:\nexpand by (%d, %d)\n in: %s\nout: %s\nexp: %s",
+				i+1, tt.i, tt.n,
+				locRep(tt.in),
 				locRep(tt.in.Expand(tt.i, tt.n)),
 				locRep(tt.out),
 			)
@@ -227,8 +230,9 @@ func TestLocationExpand(t *testing.T) {
 			tt.out.Complement(),
 		) {
 			t.Errorf(
-				"%s.Expand(%d, %d) = %s, want %s",
-				locRep(tt.in.Complement()), tt.i, tt.n,
+				"\ncase [%d]:\nexpand by (%d, %d)\n in: %s\nout: %s\nexp: %s",
+				i+1, tt.i, tt.n,
+				locRep(tt.in.Complement()),
 				locRep(tt.in.Complement().Expand(tt.i, tt.n)),
 				locRep(tt.out.Complement()),
 			)
