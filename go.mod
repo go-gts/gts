@@ -9,5 +9,4 @@ require (
 	github.com/go-test/deep v1.0.7
 	github.com/go-wrap/wrap v1.0.3
 	github.com/mattn/go-isatty v0.0.12
-	github.com/sergi/go-diff v1.1.0
 )

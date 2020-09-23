@@ -3,10 +3,10 @@ package testutils
 import (
 	"io/ioutil"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/go-test/deep"
-	"github.com/sergi/go-diff/diffmatchpatch"
 )
 
 // ReadGolden will attempt to read the golden file associated to the test.
@@ -41,12 +41,13 @@ func Equals(t *testing.T, a, b interface{}) {
 func Diff(t *testing.T, a, b string) {
 	t.Helper()
 	if a != b {
-		dmp := diffmatchpatch.New()
-		lineText1, lineText2, array := dmp.DiffLinesToChars(a, b)
-		diffs := dmp.DiffMain(lineText1, lineText2, false)
-		if len(diffs) > 0 {
-			lineDiffs := dmp.DiffCharsToLines(diffs, array)
-			t.Errorf("\n%s", dmp.DiffPrettyText(lineDiffs))
+		// TODO: use a proper diff algorithm.
+		c := strings.Split(a, "\n")
+		d := strings.Split(b, "\n")
+		for i := 0; i < len(c) && i < len(d); i++ {
+			if c[i] != d[i] {
+				t.Errorf("line [%d]:\n%s\n%s", i, c[i], d[i])
+			}
 		}
 	}
 }
