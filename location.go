@@ -738,9 +738,8 @@ func (joined Joined) Complement() Location {
 // Reverse returns the reversed location for the given length sequence.
 func (joined Joined) Reverse(length int) Location {
 	ll := make([]Location, len(joined))
-	copy(ll, []Location(joined))
 	for l, r := 0, len(ll)-1; l < r; l, r = l+1, r-1 {
-		ll[l], ll[r] = ll[r].Reverse(length), ll[l].Reverse(length)
+		ll[l], ll[r] = joined[r].Reverse(length), joined[l].Reverse(length)
 	}
 	return Join(ll...)
 }
@@ -1058,9 +1057,8 @@ func (ordered Ordered) Complement() Location {
 // Reverse returns the reversed location for the given length sequence.
 func (ordered Ordered) Reverse(length int) Location {
 	ll := make([]Location, len(ordered))
-	copy(ll, []Location(ordered))
 	for l, r := 0, len(ll)-1; l < r; l, r = l+1, r-1 {
-		ll[l], ll[r] = ll[r].Reverse(length), ll[l].Reverse(length)
+		ll[l], ll[r] = ordered[r].Reverse(length), ordered[l].Reverse(length)
 	}
 	return Order(ll...)
 }
