@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/go-ascii/ascii"
-	"github.com/go-flip/flip"
 	"github.com/go-pars/pars"
 )
 
@@ -16,10 +15,13 @@ import (
 type Location interface {
 	fmt.Stringer
 	Len() int
-	Expand(i, n int) Location
 	Less(loc Location) bool
-	Complement() Location
 	Locate(seq Sequence) Sequence
+	Complement() Location
+	Reverse(length int) Location
+	Normalize(length int) Location
+	Shift(i, n int) Location
+	Expand(i, n int) Location
 }
 
 // LocationParser attempts to parse some location.
@@ -65,11 +67,6 @@ func (between Between) Len() int {
 	return 0
 }
 
-// Expand the location beyond the given position i by n.
-func (between Between) Expand(i, n int) Location {
-	return Between(shift(int(between), i, n, false))
-}
-
 // Less returns true if the location is less than the given location.
 func (between Between) Less(loc Location) bool {
 	switch v := loc.(type) {
@@ -102,14 +99,34 @@ func (between Between) Less(loc Location) bool {
 	}
 }
 
+// Locate the sequence region represented by the location.
+func (between Between) Locate(seq Sequence) Sequence {
+	return Slice(seq, int(between), 0)
+}
+
 // Complement returns the complement location.
 func (between Between) Complement() Location {
 	return Complemented{between}
 }
 
-// Locate the sequence region represented by the location.
-func (between Between) Locate(seq Sequence) Sequence {
-	return Slice(seq, int(between), 0)
+// Reverse returns the reversed location for the given length sequence.
+func (between Between) Reverse(length int) Location {
+	return Between(length - 1 - int(between))
+}
+
+// Normalize returns a location normalized for the given length sequence.
+func (between Between) Normalize(length int) Location {
+	return Between(int(between) % length)
+}
+
+// Shift the location beyond the given position i by n.
+func (between Between) Shift(i, n int) Location {
+	return between.Expand(i, n)
+}
+
+// Expand the location beyond the given position i by n.
+func (between Between) Expand(i, n int) Location {
+	return Between(shift(int(between), i, n, false))
 }
 
 // BetweenParser will attempt to parse a Between loctation.
@@ -157,15 +174,6 @@ func (point Point) Len() int {
 	return 1
 }
 
-// Expand the location beyond the given position i by n.
-func (point Point) Expand(i, n int) Location {
-	pos := int(point)
-	if n < 0 && i <= pos && pos+1 <= i-n {
-		return Between(pos)
-	}
-	return Point(shift(pos, i, n, true))
-}
-
 // Less returns true if the location is less than the given location.
 func (point Point) Less(loc Location) bool {
 	switch v := loc.(type) {
@@ -203,14 +211,38 @@ func (point Point) Less(loc Location) bool {
 	}
 }
 
+// Locate the sequence region represented by the location.
+func (point Point) Locate(seq Sequence) Sequence {
+	return Slice(seq, int(point), int(point)+1)
+}
+
 // Complement returns the complement location.
 func (point Point) Complement() Location {
 	return Complemented{point}
 }
 
-// Locate the sequence region represented by the location.
-func (point Point) Locate(seq Sequence) Sequence {
-	return Slice(seq, int(point), int(point)+1)
+// Reverse returns the reversed location for the given length sequence.
+func (point Point) Reverse(length int) Location {
+	return Point(length - 1 - int(point))
+}
+
+// Normalize returns a location normalized for the given length sequence.
+func (point Point) Normalize(length int) Location {
+	return Point(int(point) % length)
+}
+
+// Shift the location beyond the given position i by n.
+func (point Point) Shift(i, n int) Location {
+	return point.Expand(i, n)
+}
+
+// Expand the location beyond the given position i by n.
+func (point Point) Expand(i, n int) Location {
+	pos := int(point)
+	if n < 0 && i <= pos && pos+1 <= i-n {
+		return Between(pos)
+	}
+	return Point(shift(pos, i, n, true))
 }
 
 // PointParser will attempt to parse a Point loctation.
@@ -279,15 +311,6 @@ func (ranged Ranged) Len() int {
 	return ranged.End - ranged.Start
 }
 
-// Expand the location beyond the given position i by n.
-func (ranged Ranged) Expand(i, n int) Location {
-	start, end := shift(ranged.Start, i, n, true), shift(ranged.End, i, n, false)
-	if end <= start {
-		return Between(start)
-	}
-	return PartialRange(start, end, ranged.Partial)
-}
-
 // Less returns true if the location is less than the given location.
 func (ranged Ranged) Less(loc Location) bool {
 	switch v := loc.(type) {
@@ -354,14 +377,74 @@ func (ranged Ranged) Less(loc Location) bool {
 	}
 }
 
+// Locate the sequence region represented by the location.
+func (ranged Ranged) Locate(seq Sequence) Sequence {
+	return Slice(seq, ranged.Start, ranged.End)
+}
+
 // Complement returns the complement location.
 func (ranged Ranged) Complement() Location {
 	return Complemented{ranged}
 }
 
-// Locate the sequence region represented by the location.
-func (ranged Ranged) Locate(seq Sequence) Sequence {
-	return Slice(seq, ranged.Start, ranged.End)
+// Reverse returns the reversed location for the given length sequence.
+func (ranged Ranged) Reverse(length int) Location {
+	ret := PartialRange(length-ranged.End, length-ranged.Start, ranged.Partial)
+	switch ret.Partial {
+	case Partial5:
+		ret.Partial = Partial3
+	case Partial3:
+		ret.Partial = Partial5
+	}
+	return ret
+}
+
+// Normalize returns a location normalized for the given length sequence.
+func (ranged Ranged) Normalize(length int) Location {
+	if ranged.Len() == length {
+		return ranged.Expand(0, -ranged.Start)
+	}
+	start, end := ranged.Start%length, ranged.End%length
+	if start < end {
+		return PartialRange(start, end, ranged.Partial)
+	}
+	left, right := Range(start, length), Range(0, end)
+	if ranged.Partial[0] {
+		left.Partial = Partial5
+	}
+	if ranged.Partial[1] {
+		right.Partial = Partial3
+	}
+	return Join(left, right)
+}
+
+// Shift the location beyond the given position i by n.
+func (ranged Ranged) Shift(i, n int) Location {
+	start, end := shift(ranged.Start, i, n, true), shift(ranged.End, i, n, false)
+	if end <= start {
+		return Between(start)
+	}
+	if i <= start || end <= i {
+		return PartialRange(start, end, ranged.Partial)
+	}
+	left, right := Range(start, i), Range(i+n, end)
+	partial5, partial3 := ranged.Partial[0], ranged.Partial[1]
+	if partial5 {
+		left.Partial = Partial5
+	}
+	if partial3 {
+		right.Partial = Partial3
+	}
+	return Join(left, right)
+}
+
+// Expand the location beyond the given position i by n.
+func (ranged Ranged) Expand(i, n int) Location {
+	start, end := shift(ranged.Start, i, n, true), shift(ranged.End, i, n, false)
+	if end <= start {
+		return Between(start)
+	}
+	return PartialRange(start, end, ranged.Partial)
 }
 
 // RangeParser attempts to parse a Ranged location.
@@ -428,14 +511,14 @@ func (complement Complemented) Len() int {
 	return complement[0].Len()
 }
 
-// Expand the location beyond the given position i by n.
-func (complement Complemented) Expand(i, n int) Location {
-	return Complemented{complement[0].Expand(i, n)}
-}
-
 // Less returns true if the location is less than the given location.
 func (complement Complemented) Less(loc Location) bool {
 	return complement[0].Less(loc)
+}
+
+// Locate the sequence region represented by the location.
+func (complement Complemented) Locate(seq Sequence) Sequence {
+	return Reverse(Complement(complement[0].Locate(seq)))
 }
 
 // Complement returns the complement location.
@@ -443,9 +526,24 @@ func (complement Complemented) Complement() Location {
 	return complement[0]
 }
 
-// Locate the sequence region represented by the location.
-func (complement Complemented) Locate(seq Sequence) Sequence {
-	return Reverse(Complement(complement[0].Locate(seq)))
+// Reverse returns the reversed location for the given length sequence.
+func (complement Complemented) Reverse(length int) Location {
+	return Complemented{complement[0].Reverse(length)}
+}
+
+// Normalize returns a location normalized for the given length sequence.
+func (complement Complemented) Normalize(length int) Location {
+	return Complemented{complement[0].Normalize(length)}
+}
+
+// Shift the location beyond the given position i by n.
+func (complement Complemented) Shift(i, n int) Location {
+	return Complemented{complement[0].Shift(i, n)}
+}
+
+// Expand the location beyond the given position i by n.
+func (complement Complemented) Expand(i, n int) Location {
+	return Complemented{complement[0].Expand(i, n)}
 }
 
 // ComplementParser attempts to parse a Complement location.
@@ -613,15 +711,6 @@ func (joined Joined) Len() int {
 	return n
 }
 
-// Expand the location beyond the given position i by n.
-func (joined Joined) Expand(i, n int) Location {
-	locs := make([]Location, len(joined))
-	for j, loc := range joined {
-		locs[j] = loc.Expand(i, n)
-	}
-	return Join(locs...)
-}
-
 // Less returns true if the location is less than the given location.
 func (joined Joined) Less(loc Location) bool {
 	for _, v := range joined {
@@ -632,11 +721,6 @@ func (joined Joined) Less(loc Location) bool {
 	return false
 }
 
-// Complement returns the complement location.
-func (joined Joined) Complement() Location {
-	return Complemented{joined}
-}
-
 // Locate the sequence region represented by the location.
 func (joined Joined) Locate(seq Sequence) Sequence {
 	slices := make([]Sequence, len(joined))
@@ -644,6 +728,48 @@ func (joined Joined) Locate(seq Sequence) Sequence {
 		slices[i] = loc.Locate(seq)
 	}
 	return Concat(slices...)
+}
+
+// Complement returns the complement location.
+func (joined Joined) Complement() Location {
+	return Complemented{joined}
+}
+
+// Reverse returns the reversed location for the given length sequence.
+func (joined Joined) Reverse(length int) Location {
+	ll := make([]Location, len(joined))
+	copy(ll, []Location(joined))
+	for l, r := 0, len(ll)-1; l < r; l, r = l+1, r-1 {
+		ll[l], ll[r] = ll[r].Reverse(length), ll[l].Reverse(length)
+	}
+	return Join(ll...)
+}
+
+// Normalize returns a location normalized for the given length sequence.
+func (joined Joined) Normalize(length int) Location {
+	ll := make([]Location, len(joined))
+	for i, l := range joined {
+		ll[i] = l.Normalize(length)
+	}
+	return Join(ll...)
+}
+
+// Shift the location beyond the given position i by n.
+func (joined Joined) Shift(i, n int) Location {
+	locs := make([]Location, len(joined))
+	for j, loc := range joined {
+		locs[j] = loc.Shift(i, n)
+	}
+	return Join(locs...)
+}
+
+// Expand the location beyond the given position i by n.
+func (joined Joined) Expand(i, n int) Location {
+	locs := make([]Location, len(joined))
+	for j, loc := range joined {
+		locs[j] = loc.Expand(i, n)
+	}
+	return Join(locs...)
 }
 
 func locationDelimiter(state *pars.State, result *pars.Result) bool {
@@ -731,15 +857,6 @@ func (ambiguous Ambiguous) Len() int {
 	return 1
 }
 
-// Expand the location beyond the given position i by n.
-func (ambiguous Ambiguous) Expand(i, n int) Location {
-	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
-	if end <= start {
-		return Between(start)
-	}
-	return Ambiguous{start, end}
-}
-
 // Less returns true if the location is less than the given location.
 func (ambiguous Ambiguous) Less(loc Location) bool {
 	switch v := loc.(type) {
@@ -796,14 +913,45 @@ func (ambiguous Ambiguous) Less(loc Location) bool {
 	}
 }
 
+// Locate the sequence region represented by the location.
+func (ambiguous Ambiguous) Locate(seq Sequence) Sequence {
+	return Slice(seq, int(ambiguous[0]), int(ambiguous[1]))
+}
+
 // Complement returns the complement location.
 func (ambiguous Ambiguous) Complement() Location {
 	return Complemented{ambiguous}
 }
 
-// Locate the sequence region represented by the location.
-func (ambiguous Ambiguous) Locate(seq Sequence) Sequence {
-	return Slice(seq, int(ambiguous[0]), int(ambiguous[1]))
+// Reverse returns the reversed location for the given length sequence.
+func (ambiguous Ambiguous) Reverse(length int) Location {
+	return Ambiguous{length - ambiguous[1], length - ambiguous[0]}
+}
+
+// Normalize returns a location normalized for the given length sequence.
+func (ambiguous Ambiguous) Normalize(length int) Location {
+	return Ambiguous{ambiguous[0] % length, ambiguous[1] % length}
+}
+
+// Shift the location beyond the given position i by n.
+func (ambiguous Ambiguous) Shift(i, n int) Location {
+	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
+	if end <= start {
+		return Between(start)
+	}
+	if i <= start || end <= i {
+		return Ambiguous{start, end}
+	}
+	return Order(Ambiguous{start, i}, Ambiguous{i + n, end})
+}
+
+// Expand the location beyond the given position i by n.
+func (ambiguous Ambiguous) Expand(i, n int) Location {
+	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
+	if end <= start {
+		return Between(start)
+	}
+	return Ambiguous{start, end}
 }
 
 // AmbiguousParser attempts to parse a Ambiguous location.
@@ -883,15 +1031,6 @@ func (ordered Ordered) Len() int {
 	return n
 }
 
-// Expand the location beyond the given position i by n.
-func (ordered Ordered) Expand(i, n int) Location {
-	locs := make([]Location, len(ordered))
-	for j, loc := range ordered {
-		locs[j] = loc.Expand(i, n)
-	}
-	return Order(locs...)
-}
-
 // Less returns true if the location is less than the given location.
 func (ordered Ordered) Less(loc Location) bool {
 	for _, v := range ordered {
@@ -902,11 +1041,6 @@ func (ordered Ordered) Less(loc Location) bool {
 	return false
 }
 
-// Complement returns the complement location.
-func (ordered Ordered) Complement() Location {
-	return Complemented{ordered}
-}
-
 // Locate the sequence region represented by the location.
 func (ordered Ordered) Locate(seq Sequence) Sequence {
 	slices := make([]Sequence, len(ordered))
@@ -914,6 +1048,48 @@ func (ordered Ordered) Locate(seq Sequence) Sequence {
 		slices[i] = loc.Locate(seq)
 	}
 	return Concat(slices...)
+}
+
+// Complement returns the complement location.
+func (ordered Ordered) Complement() Location {
+	return Complemented{ordered}
+}
+
+// Reverse returns the reversed location for the given length sequence.
+func (ordered Ordered) Reverse(length int) Location {
+	ll := make([]Location, len(ordered))
+	copy(ll, []Location(ordered))
+	for l, r := 0, len(ll)-1; l < r; l, r = l+1, r-1 {
+		ll[l], ll[r] = ll[r].Reverse(length), ll[l].Reverse(length)
+	}
+	return Order(ll...)
+}
+
+// Normalize returns a location normalized for the given length sequence.
+func (ordered Ordered) Normalize(length int) Location {
+	ll := make([]Location, len(ordered))
+	for i, l := range ordered {
+		ll[i] = l.Normalize(length)
+	}
+	return Order(ll...)
+}
+
+// Shift the location beyond the given position i by n.
+func (ordered Ordered) Shift(i, n int) Location {
+	locs := make([]Location, len(ordered))
+	for j, loc := range ordered {
+		locs[j] = loc.Shift(i, n)
+	}
+	return Order(locs...)
+}
+
+// Expand the location beyond the given position i by n.
+func (ordered Ordered) Expand(i, n int) Location {
+	locs := make([]Location, len(ordered))
+	for j, loc := range ordered {
+		locs[j] = loc.Expand(i, n)
+	}
+	return Order(locs...)
 }
 
 // OrderParser attempts to parse a Ordered location.
@@ -946,134 +1122,4 @@ func OrderParser(state *pars.State, result *pars.Result) error {
 	result.SetValue(Order(result.Value.([]Location)...))
 	state.Drop()
 	return nil
-}
-
-func shiftLocation(loc Location, i, n int) Location {
-	switch v := loc.(type) {
-	case Ranged:
-		start, end := shift(v.Start, i, n, true), shift(v.End, i, n, false)
-		if end <= start {
-			return Between(start)
-		}
-		if i <= start || end <= i {
-			return PartialRange(start, end, v.Partial)
-		}
-		left, right := Range(start, i), Range(i+n, end)
-		partial5, partial3 := v.Partial[0], v.Partial[1]
-		if partial5 {
-			left.Partial = Partial5
-		}
-		if partial3 {
-			right.Partial = Partial3
-		}
-		return Join(left, right)
-	case Ambiguous:
-		start, end := shift(v[0], i, n, true), shift(v[1], i, n, false)
-		if end <= start {
-			return Between(start)
-		}
-		if i <= start || end <= i {
-			return Ambiguous{start, end}
-		}
-		return Order(Ambiguous{start, i}, Ambiguous{i + n, end})
-	case Complemented:
-		return shiftLocation(v[0], i, n).Complement()
-	case Joined:
-		ll := make([]Location, len(v))
-		for j, l := range v {
-			ll[j] = shiftLocation(l, i, n)
-		}
-		return Join(ll...)
-	case Ordered:
-		ll := make([]Location, len(v))
-		for j, l := range v {
-			ll[j] = shiftLocation(l, i, n)
-		}
-		return Order(ll...)
-	default:
-		return loc.Expand(i, n)
-	}
-}
-
-func normalizeLocation(loc Location, length int) Location {
-	switch v := loc.(type) {
-	case Between:
-		return Between(int(v) % length)
-	case Point:
-		return Point(int(v) % length)
-	case Ranged:
-		if v.Len() == length {
-			return v.Expand(0, -v.Start)
-		}
-		start, end := v.Start%length, v.End%length
-		if start < end {
-			return PartialRange(start, end, v.Partial)
-		}
-		left, right := Range(start, length), Range(0, end)
-		if v.Partial[0] {
-			left.Partial = Partial5
-		}
-		if v.Partial[1] {
-			right.Partial = Partial3
-		}
-		return Join(left, right)
-	case Complemented:
-		return Complemented{normalizeLocation(v[0], length)}
-	case Joined:
-		ll := make([]Location, len(v))
-		for i, l := range v {
-			ll[i] = normalizeLocation(l, length)
-		}
-		return Join(ll...)
-	case Ambiguous:
-		return Ambiguous{v[0] % length, v[1] % length}
-	case Ordered:
-		ll := make([]Location, len(v))
-		for i, l := range v {
-			ll[i] = normalizeLocation(l, length)
-		}
-		return Order(ll...)
-	default:
-		return v
-	}
-}
-
-func flipLocation(arg Location, length int) Location {
-	switch loc := arg.(type) {
-	case Between:
-		return Between(length - 1 - int(loc))
-	case Point:
-		return Point(length - 1 - int(loc))
-	case Ranged:
-		ret := PartialRange(length-loc.End, length-loc.Start, loc.Partial)
-		switch ret.Partial {
-		case Partial5:
-			ret.Partial = Partial3
-		case Partial3:
-			ret.Partial = Partial5
-		}
-		return ret
-	case Complemented:
-		return Complemented{flipLocation(loc[0], length)}
-	case Joined:
-		ll := make([]Location, len(loc))
-		copy(ll, []Location(loc))
-		for i, l := range loc {
-			ll[i] = flipLocation(l, length)
-		}
-		flip.Slice(ll)
-		return Join(ll...)
-	case Ambiguous:
-		return Ambiguous{length - loc[1], length - loc[0]}
-	case Ordered:
-		ll := make([]Location, len(loc))
-		copy(ll, []Location(loc))
-		for i, l := range loc {
-			ll[i] = flipLocation(l, length)
-		}
-		flip.Slice(ll)
-		return Order(ll...)
-	default:
-		return loc
-	}
 }

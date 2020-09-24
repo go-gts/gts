@@ -125,7 +125,7 @@ func insert(p []byte, pos int, q []byte) []byte {
 func Insert(host Sequence, pos int, guest Sequence) Sequence {
 	var ff FeatureTable
 	for _, f := range host.Features() {
-		f.Location = shiftLocation(f.Location, pos, Len(guest))
+		f.Location = f.Location.Shift(pos, Len(guest))
 		ff = ff.Insert(f)
 	}
 	for _, f := range guest.Features() {
@@ -222,7 +222,7 @@ func Reverse(seq Sequence) Sequence {
 	for _, f := range seq.Features() {
 		ff = ff.Insert(Feature{
 			f.Key,
-			flipLocation(f.Location, Len(seq)),
+			f.Location.Reverse(Len(seq)),
 			f.Qualifiers,
 			f.Order,
 		})
@@ -242,7 +242,7 @@ func Rotate(seq Sequence, n int) Sequence {
 	}
 	var ff FeatureTable
 	for _, f := range seq.Features() {
-		loc := normalizeLocation(f.Location.Expand(0, n), Len(seq))
+		loc := f.Location.Expand(0, n).Normalize(Len(seq))
 		ff = ff.Insert(Feature{f.Key, loc, f.Qualifiers, f.Order})
 	}
 	p := seq.Bytes()

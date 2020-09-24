@@ -137,24 +137,24 @@ var locationShiftTests = []struct {
 
 func TestLocationShift(t *testing.T) {
 	for i, tt := range locationShiftTests {
-		if !reflect.DeepEqual(shiftLocation(tt.in, tt.i, tt.n), tt.out) {
+		if !reflect.DeepEqual(tt.in.Shift(tt.i, tt.n), tt.out) {
 			t.Errorf(
 				"\ncase [%d]:\nshift by (%d, %d)\n in: %s\nout: %s\nexp: %s",
 				i+1, tt.i, tt.n,
 				locRep(tt.in),
-				locRep(shiftLocation(tt.in, tt.i, tt.n)),
+				locRep(tt.in.Shift(tt.i, tt.n)),
 				locRep(tt.out),
 			)
 		}
 		if !reflect.DeepEqual(
-			shiftLocation(tt.in.Complement(), tt.i, tt.n),
+			tt.in.Complement().Shift(tt.i, tt.n),
 			tt.out.Complement(),
 		) {
 			t.Errorf(
 				"\ncase [%d]:\nshift by (%d, %d)\n in: %s\nout: %s\nexp: %s",
 				i+1, tt.i, tt.n,
 				locRep(tt.in.Complement()),
-				locRep(shiftLocation(tt.in.Complement(), tt.i, tt.n)),
+				locRep(tt.in.Complement().Shift(tt.i, tt.n)),
 				locRep(tt.out.Complement()),
 			)
 		}
@@ -250,14 +250,6 @@ func (null NullLocation) Len() int {
 	return 0
 }
 
-func (null NullLocation) Shift(i, n int) Location {
-	return null
-}
-
-func (null NullLocation) Expand(i, n int) Location {
-	return null
-}
-
 func (null NullLocation) Less(loc Location) bool {
 	return false
 }
@@ -268,6 +260,22 @@ func (null NullLocation) Complement() Location {
 
 func (null NullLocation) Locate(seq Sequence) Sequence {
 	return WithBytes(seq, nil)
+}
+
+func (null NullLocation) Reverse(length int) Location {
+	return null
+}
+
+func (null NullLocation) Shift(i, n int) Location {
+	return null
+}
+
+func (null NullLocation) Expand(i, n int) Location {
+	return null
+}
+
+func (null NullLocation) Normalize(length int) Location {
+	return null
 }
 
 var locationLessTests = []struct {
@@ -438,7 +446,7 @@ var locationFlipTest = []struct {
 
 func TestLocationFlip(t *testing.T) {
 	for _, tt := range locationFlipTest {
-		out := flipLocation(tt.in, 10)
+		out := tt.in.Reverse(10)
 		testutils.Equals(t, out, tt.out)
 	}
 }
@@ -461,7 +469,7 @@ var locationNormalizeTest = []struct {
 
 func TestLocationNormalize(t *testing.T) {
 	for _, tt := range locationNormalizeTest {
-		out := normalizeLocation(tt.in, 10)
+		out := tt.in.Normalize(10)
 		testutils.Equals(t, out, tt.out)
 	}
 }
