@@ -176,7 +176,7 @@ var parseModifier = pars.Any(
 
 // AsModifier interprets the given string as a Modifier.
 func AsModifier(s string) (Modifier, error) {
-	result, err := parseModifier.Parse(pars.FromString(s))
+	result, err := pars.Exact(parseModifier).Parse(pars.FromString(s))
 	if err != nil {
 		return nil, err
 	}

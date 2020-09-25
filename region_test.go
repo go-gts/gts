@@ -188,6 +188,11 @@ var asModifierTests = []struct {
 	{"$-1..$-1", TailTail{-1, -1}},
 }
 
+var asModifierFailTests = []string{
+	"",
+	"^-2..0",
+}
+
 func TestAsModifier(t *testing.T) {
 	for _, tt := range asModifierTests {
 		out, err := AsModifier(tt.in)
@@ -200,8 +205,9 @@ func TestAsModifier(t *testing.T) {
 		}
 	}
 
-	in := ""
-	if _, err := AsModifier(in); err == nil {
-		t.Errorf("expected error in AsModifier(%q)", in)
+	for _, in := range asModifierFailTests {
+		if _, err := AsModifier(in); err == nil {
+			t.Errorf("expected error in AsModifier(%q)", in)
+		}
 	}
 }

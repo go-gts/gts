@@ -349,10 +349,16 @@ func featureExtract(ctx *flags.Context) error {
 	}
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
+	modstr := opt.String('m', "--range", "^..$", "location range modifier ()")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
+	}
+
+	mod, err := gts.AsModifier(*modstr)
+	if err != nil {
+		return ctx.Raise(fmt.Errorf("bad range modifier: %v", err))
 	}
 
 	seqinFile := os.Stdin
@@ -387,9 +393,11 @@ func featureExtract(ctx *flags.Context) error {
 		seq := scanner.Value()
 		ff := seq.Features().Filter(gts.Not(gts.Key("source")))
 		for _, f := range ff {
-			out := f.Location.Region().Locate(seq)
+			region := f.Location.Region()
+			region = region.Resize(mod)
+			out := region.Locate(seq)
 			formatter := seqio.NewFormatter(out, filetype)
-			if _, err := formatter.WriteTo(seqoutFile); err != nil {
+			if _, err := formatter.WriteTo(w); err != nil {
 				return ctx.Raise(err)
 			}
 		}
