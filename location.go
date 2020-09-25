@@ -25,21 +25,6 @@ type Location interface {
 	Expand(i, n int) Location
 }
 
-// LocationParser attempts to parse some location.
-var LocationParser pars.Parser
-
-func init() {
-	LocationParser = pars.Any(
-		RangeParser,
-		BetweenParser,
-		AmbiguousParser,
-		ComplementParser,
-		JoinParser,
-		OrderParser,
-		PointParser,
-	)
-}
-
 func shift(pos, i, n int, closed bool) int {
 	flag := i < pos
 	if closed {
@@ -131,38 +116,6 @@ func (between Between) Expand(i, n int) Location {
 	return Between(shift(int(between), i, n, false))
 }
 
-// BetweenParser will attempt to parse a Between loctation.
-func BetweenParser(state *pars.State, result *pars.Result) error {
-	state.Push()
-	if err := pars.Int(state, result); err != nil {
-		state.Pop()
-		return err
-	}
-	start := result.Value.(int)
-	c, err := pars.Next(state)
-	if err != nil {
-		state.Pop()
-		return err
-	}
-	if c != '^' {
-		err := pars.NewError("expected `^`", state.Position())
-		state.Pop()
-		return err
-	}
-	state.Advance()
-	if err := pars.Int(state, result); err != nil {
-		state.Pop()
-		return err
-	}
-	end := result.Value.(int)
-	if start+1 != end {
-		return fmt.Errorf("%d^%d is not a valid location: coordinates should be adjacent", start, end)
-	}
-	result.SetValue(Between(start))
-	state.Drop()
-	return nil
-}
-
 // Point represents a single base position in a sequence.
 type Point int
 
@@ -247,13 +200,6 @@ func (point Point) Expand(i, n int) Location {
 	}
 	return Point(shift(pos, i, n, true))
 }
-
-// PointParser will attempt to parse a Point loctation.
-var PointParser = pars.Parser(pars.Int).Map(func(result *pars.Result) error {
-	point := result.Value.(int)
-	result.SetValue(Point(point - 1))
-	return nil
-})
 
 // Partial represents the partiality of a location range.
 type Partial [2]bool
@@ -451,55 +397,115 @@ func (ranged Ranged) Expand(i, n int) Location {
 	return PartialRange(start, end, ranged.Partial)
 }
 
-// RangeParser attempts to parse a Ranged location.
-func RangeParser(state *pars.State, result *pars.Result) error {
-	state.Push()
-	c, err := pars.Next(state)
-	if err != nil {
-		state.Pop()
-		return err
-	}
-	partial5 := false
-	if c == '<' {
-		partial5 = true
-		state.Advance()
-	}
-	if err := pars.Int(state, result); err != nil {
-		state.Pop()
-		return err
-	}
-	start := result.Value.(int) - 1
-	if err := state.Request(2); err != nil {
-		state.Pop()
-		return err
-	}
-	if !bytes.Equal(state.Buffer(), []byte("..")) {
-		err := pars.NewError("expected `..`", state.Position())
-		state.Pop()
-		return err
-	}
-	state.Advance()
-	c, err = pars.Next(state)
-	partial3 := false
-	if c == '>' {
-		partial3 = true
-		state.Advance()
-	}
-	if err := pars.Int(state, result); err != nil {
-		state.Pop()
-		return err
-	}
-	end := result.Value.(int)
+// Ambiguous represents a single base within a given range.
+type Ambiguous [2]int
 
-	// Some legacy entries have the partial marker in the end.
-	c, err = pars.Next(state)
-	if err == nil && c == '>' {
-		partial3 = true
-		state.Advance()
+// String satisfies the fmt.Stringer interface.
+func (ambiguous Ambiguous) String() string {
+	return fmt.Sprintf("%d.%d", ambiguous[0]+1, ambiguous[1])
+}
+
+// Len returns the total length spanned by the location.
+func (ambiguous Ambiguous) Len() int {
+	return 1
+}
+
+// Less returns true if the location is less than the given location.
+func (ambiguous Ambiguous) Less(loc Location) bool {
+	switch v := loc.(type) {
+	case Between:
+		return ambiguous[0] < int(v)
+	case Point:
+		return ambiguous[0] <= int(v)
+	case Ranged:
+		switch {
+		case ambiguous[0] < v.Start:
+			return true
+		case v.Start < ambiguous[0]:
+			return false
+		case v.Partial[0]:
+			return false
+		case ambiguous[1] < v.End:
+			return true
+		case v.End < ambiguous[1]:
+			return false
+		case v.Partial[1]:
+			return true
+		default:
+			return false
+		}
+	case Complemented:
+		return ambiguous.Less(v[0])
+	case Joined:
+		for _, u := range v {
+			if !ambiguous.Less(u) {
+				return false
+			}
+		}
+		return true
+	case Ambiguous:
+		switch {
+		case ambiguous[0] < v[0]:
+			return true
+		case v[0] < ambiguous[0]:
+			return false
+		case ambiguous[1] < v[1]:
+			return true
+		default:
+			return false
+		}
+	case Ordered:
+		for _, u := range v {
+			if !ambiguous.Less(u) {
+				return false
+			}
+		}
+		return true
+	default:
+		return true
 	}
-	result.SetValue(Ranged{start, end, [2]bool{partial5, partial3}})
-	state.Drop()
-	return nil
+}
+
+// Region returns the region pointed to by the location.
+func (ambiguous Ambiguous) Region() Region {
+	head, tail := utils.Unpack(ambiguous)
+	return Forward{head, tail}
+}
+
+// Complement returns the complement location.
+func (ambiguous Ambiguous) Complement() Location {
+	return Complemented{ambiguous}
+}
+
+// Reverse returns the reversed location for the given length sequence.
+func (ambiguous Ambiguous) Reverse(length int) Location {
+	return Ambiguous{length - ambiguous[1], length - ambiguous[0]}
+}
+
+// Normalize returns a location normalized for the given length sequence.
+func (ambiguous Ambiguous) Normalize(length int) Location {
+	return Ambiguous{ambiguous[0] % length, ambiguous[1] % length}
+}
+
+// Shift the location beyond the given position i by n.
+func (ambiguous Ambiguous) Shift(i, n int) Location {
+	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
+	if end <= start {
+		return Between(start)
+	}
+	if i <= start || end <= i {
+		return Ambiguous{start, end}
+	}
+	return Order(Ambiguous{start, i}, Ambiguous{i + n, end})
+}
+
+// Expand the location beyond the given position i by n.
+func (ambiguous Ambiguous) Expand(i, n int) Location {
+	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
+	if end <= start {
+		return Between(start)
+	}
+	return Ambiguous{start, end}
 }
 
 // Complemented represents a location complemented for the given molecule type.
@@ -548,39 +554,6 @@ func (complement Complemented) Shift(i, n int) Location {
 // Expand the location beyond the given position i by n.
 func (complement Complemented) Expand(i, n int) Location {
 	return Complemented{complement[0].Expand(i, n)}
-}
-
-// ComplementParser attempts to parse a Complement location.
-func ComplementParser(state *pars.State, result *pars.Result) error {
-	state.Push()
-	if err := state.Request(11); err != nil {
-		state.Pop()
-		return err
-	}
-	if !bytes.Equal(state.Buffer(), []byte("complement(")) {
-		err := pars.NewError("expected `complement(`", state.Position())
-		state.Pop()
-		return err
-	}
-	state.Advance()
-	if err := LocationParser(state, result); err != nil {
-		state.Pop()
-		return err
-	}
-	c, err := pars.Next(state)
-	if err != nil {
-		state.Pop()
-		return err
-	}
-	if c != ')' {
-		err := pars.NewError("expected `)`", state.Position())
-		state.Pop()
-		return err
-	}
-	state.Advance()
-	result.SetValue(result.Value.(Location).Complement())
-	state.Drop()
-	return nil
 }
 
 // LocationList represents a singly linked list of Location objects.
@@ -796,197 +769,6 @@ func locationDelimiter(state *pars.State, result *pars.Result) bool {
 	return true
 }
 
-func multipleLocationParser(state *pars.State, result *pars.Result) error {
-	state.Push()
-	if err := LocationParser(state, result); err != nil {
-		state.Pop()
-		return err
-	}
-	locs := []Location{result.Value.(Location)}
-	for locationDelimiter(state, result) {
-		if err := LocationParser(state, result); err != nil {
-			state.Pop()
-			return err
-		}
-		locs = append(locs, result.Value.(Location))
-	}
-	result.SetValue(locs)
-	state.Drop()
-	return nil
-}
-
-// JoinParser attempts to parse a Joined location.
-func JoinParser(state *pars.State, result *pars.Result) error {
-	state.Push()
-	if err := state.Request(5); err != nil {
-		state.Pop()
-		return err
-	}
-	if !bytes.Equal(state.Buffer(), []byte("join(")) {
-		err := pars.NewError("expected `join(`", state.Position())
-		state.Pop()
-		return err
-	}
-	state.Advance()
-	if err := multipleLocationParser(state, result); err != nil {
-		return err
-	}
-	c, err := pars.Next(state)
-	if err != nil {
-		state.Pop()
-		return err
-	}
-	if c != ')' {
-		err := pars.NewError("expected `)`", state.Position())
-		state.Pop()
-		return err
-	}
-	state.Advance()
-	result.SetValue(Join(result.Value.([]Location)...))
-	state.Drop()
-	return nil
-}
-
-// Ambiguous represents a single base within a given range.
-type Ambiguous [2]int
-
-// String satisfies the fmt.Stringer interface.
-func (ambiguous Ambiguous) String() string {
-	return fmt.Sprintf("%d.%d", ambiguous[0]+1, ambiguous[1])
-}
-
-// Len returns the total length spanned by the location.
-func (ambiguous Ambiguous) Len() int {
-	return 1
-}
-
-// Less returns true if the location is less than the given location.
-func (ambiguous Ambiguous) Less(loc Location) bool {
-	switch v := loc.(type) {
-	case Between:
-		return ambiguous[0] < int(v)
-	case Point:
-		return ambiguous[0] <= int(v)
-	case Ranged:
-		switch {
-		case ambiguous[0] < v.Start:
-			return true
-		case v.Start < ambiguous[0]:
-			return false
-		case v.Partial[0]:
-			return false
-		case ambiguous[1] < v.End:
-			return true
-		case v.End < ambiguous[1]:
-			return false
-		case v.Partial[1]:
-			return true
-		default:
-			return false
-		}
-	case Complemented:
-		return ambiguous.Less(v[0])
-	case Joined:
-		for _, u := range v {
-			if !ambiguous.Less(u) {
-				return false
-			}
-		}
-		return true
-	case Ambiguous:
-		switch {
-		case ambiguous[0] < v[0]:
-			return true
-		case v[0] < ambiguous[0]:
-			return false
-		case ambiguous[1] < v[1]:
-			return true
-		default:
-			return false
-		}
-	case Ordered:
-		for _, u := range v {
-			if !ambiguous.Less(u) {
-				return false
-			}
-		}
-		return true
-	default:
-		return true
-	}
-}
-
-// Region returns the region pointed to by the location.
-func (ambiguous Ambiguous) Region() Region {
-	head, tail := utils.Unpack(ambiguous)
-	return Forward{head, tail}
-}
-
-// Complement returns the complement location.
-func (ambiguous Ambiguous) Complement() Location {
-	return Complemented{ambiguous}
-}
-
-// Reverse returns the reversed location for the given length sequence.
-func (ambiguous Ambiguous) Reverse(length int) Location {
-	return Ambiguous{length - ambiguous[1], length - ambiguous[0]}
-}
-
-// Normalize returns a location normalized for the given length sequence.
-func (ambiguous Ambiguous) Normalize(length int) Location {
-	return Ambiguous{ambiguous[0] % length, ambiguous[1] % length}
-}
-
-// Shift the location beyond the given position i by n.
-func (ambiguous Ambiguous) Shift(i, n int) Location {
-	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
-	if end <= start {
-		return Between(start)
-	}
-	if i <= start || end <= i {
-		return Ambiguous{start, end}
-	}
-	return Order(Ambiguous{start, i}, Ambiguous{i + n, end})
-}
-
-// Expand the location beyond the given position i by n.
-func (ambiguous Ambiguous) Expand(i, n int) Location {
-	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
-	if end <= start {
-		return Between(start)
-	}
-	return Ambiguous{start, end}
-}
-
-// AmbiguousParser attempts to parse a Ambiguous location.
-func AmbiguousParser(state *pars.State, result *pars.Result) error {
-	state.Push()
-	if err := pars.Int(state, result); err != nil {
-		state.Pop()
-		return err
-	}
-	start := result.Value.(int) - 1
-	c, err := pars.Next(state)
-	if err != nil {
-		state.Pop()
-		return err
-	}
-	if c != '.' {
-		err := pars.NewError("expected `.`", state.Position())
-		state.Pop()
-		return err
-	}
-	state.Advance()
-	if err := pars.Int(state, result); err != nil {
-		state.Pop()
-		return err
-	}
-	end := result.Value.(int)
-	result.SetValue(Ambiguous{start, end})
-	state.Drop()
-	return nil
-}
-
 // Ordered represents multiple locations.
 type Ordered []Location
 
@@ -1095,8 +877,204 @@ func (ordered Ordered) Expand(i, n int) Location {
 	return Order(locs...)
 }
 
-// OrderParser attempts to parse a Ordered location.
-func OrderParser(state *pars.State, result *pars.Result) error {
+func parseBetween(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	start := result.Value.(int)
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != '^' {
+		err := pars.NewError("expected `^`", state.Position())
+		state.Pop()
+		return err
+	}
+	state.Advance()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	end := result.Value.(int)
+	if start+1 != end {
+		return fmt.Errorf("%d^%d is not a valid location: coordinates should be adjacent", start, end)
+	}
+	result.SetValue(Between(start))
+	state.Drop()
+	return nil
+}
+
+var parsePoint = pars.Parser(pars.Int).Map(func(result *pars.Result) error {
+	point := result.Value.(int)
+	result.SetValue(Point(point - 1))
+	return nil
+})
+
+func parseRange(state *pars.State, result *pars.Result) error {
+	state.Push()
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	partial5 := false
+	if c == '<' {
+		partial5 = true
+		state.Advance()
+	}
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	start := result.Value.(int) - 1
+	if err := state.Request(2); err != nil {
+		state.Pop()
+		return err
+	}
+	if !bytes.Equal(state.Buffer(), []byte("..")) {
+		err := pars.NewError("expected `..`", state.Position())
+		state.Pop()
+		return err
+	}
+	state.Advance()
+	c, err = pars.Next(state)
+	partial3 := false
+	if c == '>' {
+		partial3 = true
+		state.Advance()
+	}
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	end := result.Value.(int)
+
+	// Some legacy entries have the partial marker in the end.
+	c, err = pars.Next(state)
+	if err == nil && c == '>' {
+		partial3 = true
+		state.Advance()
+	}
+	result.SetValue(Ranged{start, end, [2]bool{partial5, partial3}})
+	state.Drop()
+	return nil
+}
+
+func parseComplement(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := state.Request(11); err != nil {
+		state.Pop()
+		return err
+	}
+	if !bytes.Equal(state.Buffer(), []byte("complement(")) {
+		err := pars.NewError("expected `complement(`", state.Position())
+		state.Pop()
+		return err
+	}
+	state.Advance()
+	if err := parseLocation(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != ')' {
+		err := pars.NewError("expected `)`", state.Position())
+		state.Pop()
+		return err
+	}
+	state.Advance()
+	result.SetValue(result.Value.(Location).Complement())
+	state.Drop()
+	return nil
+}
+
+func multipleLocationParser(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := parseLocation(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	locs := []Location{result.Value.(Location)}
+	for locationDelimiter(state, result) {
+		if err := parseLocation(state, result); err != nil {
+			state.Pop()
+			return err
+		}
+		locs = append(locs, result.Value.(Location))
+	}
+	result.SetValue(locs)
+	state.Drop()
+	return nil
+}
+
+func parseAmbiguous(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	start := result.Value.(int) - 1
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != '.' {
+		err := pars.NewError("expected `.`", state.Position())
+		state.Pop()
+		return err
+	}
+	state.Advance()
+	if err := pars.Int(state, result); err != nil {
+		state.Pop()
+		return err
+	}
+	end := result.Value.(int)
+	result.SetValue(Ambiguous{start, end})
+	state.Drop()
+	return nil
+}
+
+func parseJoin(state *pars.State, result *pars.Result) error {
+	state.Push()
+	if err := state.Request(5); err != nil {
+		state.Pop()
+		return err
+	}
+	if !bytes.Equal(state.Buffer(), []byte("join(")) {
+		err := pars.NewError("expected `join(`", state.Position())
+		state.Pop()
+		return err
+	}
+	state.Advance()
+	if err := multipleLocationParser(state, result); err != nil {
+		return err
+	}
+	c, err := pars.Next(state)
+	if err != nil {
+		state.Pop()
+		return err
+	}
+	if c != ')' {
+		err := pars.NewError("expected `)`", state.Position())
+		state.Pop()
+		return err
+	}
+	state.Advance()
+	result.SetValue(Join(result.Value.([]Location)...))
+	state.Drop()
+	return nil
+}
+
+func parseOrder(state *pars.State, result *pars.Result) error {
 	state.Push()
 	if err := state.Request(6); err != nil {
 		state.Pop()
@@ -1125,4 +1103,18 @@ func OrderParser(state *pars.State, result *pars.Result) error {
 	result.SetValue(Order(result.Value.([]Location)...))
 	state.Drop()
 	return nil
+}
+
+var parseLocation pars.Parser
+
+func init() {
+	parseLocation = pars.Any(
+		parseRange,
+		parseBetween,
+		parseAmbiguous,
+		parseComplement,
+		parseJoin,
+		parseOrder,
+		parsePoint,
+	)
 }

@@ -327,7 +327,7 @@ func featureKeylineParser(prefix string, depth int) pars.Parser {
 			}
 			state.Advance()
 		}
-		if err := LocationParser(state, result); err != nil {
+		if err := parseLocation(state, result); err != nil {
 			return err
 		}
 		loc := result.Value.(Location)
@@ -344,7 +344,7 @@ func FeatureTableParser(prefix string) pars.Parser {
 	firstParser := pars.Seq(
 		prefix, pars.Spaces,
 		pars.Word(ascii.IsSnake), pars.Spaces,
-		LocationParser, pars.EOL,
+		parseLocation, pars.EOL,
 	).Map(func(result *pars.Result) error {
 		children := result.Children
 		pre := len(children[1].Token)

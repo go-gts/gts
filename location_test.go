@@ -556,65 +556,65 @@ var locationParserPassTests = []struct {
 	prs pars.Parser
 	loc Location
 }{
-	{BetweenParser, Between(0)},
-	{PointParser, Point(0)},
-	{RangeParser, Range(0, 2)},
-	{RangeParser, PartialRange(0, 2, Partial5)},
-	{RangeParser, PartialRange(0, 2, Partial3)},
-	{RangeParser, PartialRange(0, 2, PartialBoth)},
-	{RangeParser, PartialRange(0, 2, Partial3)},
-	{RangeParser, PartialRange(0, 2, PartialBoth)},
-	{ComplementParser, Range(0, 2).Complement()},
-	{JoinParser, Join(Range(0, 2), Range(3, 5))},
-	{AmbiguousParser, Ambiguous{0, 2}},
-	{OrderParser, Order(Range(0, 2), Range(2, 4))},
+	{parseBetween, Between(0)},
+	{parsePoint, Point(0)},
+	{parseRange, Range(0, 2)},
+	{parseRange, PartialRange(0, 2, Partial5)},
+	{parseRange, PartialRange(0, 2, Partial3)},
+	{parseRange, PartialRange(0, 2, PartialBoth)},
+	{parseRange, PartialRange(0, 2, Partial3)},
+	{parseRange, PartialRange(0, 2, PartialBoth)},
+	{parseComplement, Range(0, 2).Complement()},
+	{parseJoin, Join(Range(0, 2), Range(3, 5))},
+	{parseAmbiguous, Ambiguous{0, 2}},
+	{parseOrder, Order(Range(0, 2), Range(2, 4))},
 }
 
 var locationParserFailTests = []struct {
 	prs pars.Parser
 	in  string
 }{
-	{BetweenParser, ""},
-	{BetweenParser, "?"},
-	{BetweenParser, "1"},
-	{BetweenParser, "1?"},
-	{BetweenParser, "1^?"},
-	{BetweenParser, "1^3"},
+	{parseBetween, ""},
+	{parseBetween, "?"},
+	{parseBetween, "1"},
+	{parseBetween, "1?"},
+	{parseBetween, "1^?"},
+	{parseBetween, "1^3"},
 
-	{PointParser, ""},
-	{PointParser, "?"},
+	{parsePoint, ""},
+	{parsePoint, "?"},
 
-	{RangeParser, ""},
-	{RangeParser, "?"},
-	{RangeParser, "1"},
-	{RangeParser, "1??"},
-	{RangeParser, "1..?"},
+	{parseRange, ""},
+	{parseRange, "?"},
+	{parseRange, "1"},
+	{parseRange, "1??"},
+	{parseRange, "1..?"},
 
-	{ComplementParser, ""},
-	{ComplementParser, "complement?"},
-	{ComplementParser, "complement(?"},
-	{ComplementParser, "complement(1..2"},
-	{ComplementParser, "complement(1..2?"},
+	{parseComplement, ""},
+	{parseComplement, "complement?"},
+	{parseComplement, "complement(?"},
+	{parseComplement, "complement(1..2"},
+	{parseComplement, "complement(1..2?"},
 
-	{JoinParser, ""},
-	{JoinParser, "join?"},
-	{JoinParser, "join("},
-	{JoinParser, "join(1..2,?"},
-	{JoinParser, "join(1..2,3..5"},
-	{JoinParser, "join(1..2,3..5?"},
+	{parseJoin, ""},
+	{parseJoin, "join?"},
+	{parseJoin, "join("},
+	{parseJoin, "join(1..2,?"},
+	{parseJoin, "join(1..2,3..5"},
+	{parseJoin, "join(1..2,3..5?"},
 
-	{OrderParser, ""},
-	{OrderParser, "order?"},
-	{OrderParser, "order("},
-	{OrderParser, "order(1..2,?"},
-	{OrderParser, "order(1..2,3..5"},
-	{OrderParser, "order(1..2,3..5?"},
+	{parseOrder, ""},
+	{parseOrder, "order?"},
+	{parseOrder, "order("},
+	{parseOrder, "order(1..2,?"},
+	{parseOrder, "order(1..2,3..5"},
+	{parseOrder, "order(1..2,3..5?"},
 
-	{AmbiguousParser, ""},
-	{AmbiguousParser, "?"},
-	{AmbiguousParser, "1"},
-	{AmbiguousParser, "1?"},
-	{AmbiguousParser, "1.?"},
+	{parseAmbiguous, ""},
+	{parseAmbiguous, "?"},
+	{parseAmbiguous, "1"},
+	{parseAmbiguous, "1?"},
+	{parseAmbiguous, "1.?"},
 }
 
 func TestLocationParsers(t *testing.T) {
@@ -665,7 +665,7 @@ var locationParserTests = []struct {
 
 func TestLocationParser(t *testing.T) {
 	for _, tt := range locationParserTests {
-		res, err := LocationParser.Parse(pars.FromString(tt.in))
+		res, err := parseLocation.Parse(pars.FromString(tt.in))
 		if err != nil {
 			t.Errorf("failed to parse %q: %v", tt.in, err)
 			continue
