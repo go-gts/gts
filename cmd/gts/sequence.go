@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/go-gts/gts"
@@ -11,11 +13,68 @@ import (
 )
 
 func init() {
-	flags.Register("insert", "insert a sequence into another sequence", sequenceInsert)
-	flags.Register("delete", "delete a region of the sequence", sequenceDelete)
-	flags.Register("reverse", "reverse order of the given sequence", sequenceReverse)
-	flags.Register("complement", "compute the complement of the given sequence", sequenceComplement)
+	flags.Register("length", "report the length of the sequence(s)", sequenceLength)
+	flags.Register("insert", "insert a sequence into another sequence(s)", sequenceInsert)
+	flags.Register("delete", "delete a region of the given sequence(s)", sequenceDelete)
+	flags.Register("reverse", "reverse order of the given sequence(s)", sequenceReverse)
+	flags.Register("complement", "compute the complement of the given sequence(s)", sequenceComplement)
 	flags.Register("rotate", "shift the coordinates of a circular sequence", sequenceRotate)
+}
+
+func sequenceLength(ctx *flags.Context) error {
+	pos, opt := flags.Flags()
+
+	var seqinPath *string
+	if cmd.IsTerminal(os.Stdin.Fd()) {
+		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
+	}
+
+	outPath := opt.String('o', "output", "-", "output table file (specifying `-` will force standard output)")
+
+	if err := ctx.Parse(pos, opt); err != nil {
+		return err
+	}
+
+	seqinFile := os.Stdin
+	if seqinPath != nil && *seqinPath != "-" {
+		f, err := os.Open(*seqinPath)
+		if err != nil {
+			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
+		}
+		seqinFile = f
+		defer seqinFile.Close()
+	}
+
+	outFile := os.Stdout
+	if *outPath != "-" {
+		f, err := os.Create(*outPath)
+		if err != nil {
+			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *outPath, err))
+		}
+		outFile = f
+		defer outFile.Close()
+	}
+
+	w := bufio.NewWriter(outFile)
+
+	scanner := seqio.NewAutoScanner(seqinFile)
+	for scanner.Scan() {
+		seq := scanner.Value()
+		_, err := io.WriteString(w, fmt.Sprintf("%d\n", gts.Len(seq)))
+		if err != nil {
+			return ctx.Raise(err)
+		}
+	}
+
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))
+	}
+
+	return nil
 }
 
 func sequenceInsert(ctx *flags.Context) error {
