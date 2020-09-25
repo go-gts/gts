@@ -191,6 +191,7 @@ var asModifierTests = []struct {
 var asModifierFailTests = []string{
 	"",
 	"^-2..0",
+	"$..^",
 }
 
 func TestAsModifier(t *testing.T) {
