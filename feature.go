@@ -183,10 +183,12 @@ func shiftSelector(s string) (string, string) {
 }
 
 func toQualifier(s string) (Filter, error) {
-	if i := strings.IndexByte(s, '='); i >= 0 {
+	switch i := strings.IndexByte(s, '='); i {
+	case -1:
+		return Qualifier(s, "")
+	default:
 		return Qualifier(s[:i], s[i+1:])
 	}
-	return Qualifier(s, "")
 }
 
 // Selector generates a new Filter which will return true if a given Feature
