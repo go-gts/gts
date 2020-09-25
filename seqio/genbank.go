@@ -11,6 +11,7 @@ import (
 
 	"github.com/go-ascii/ascii"
 	"github.com/go-gts/gts"
+	"github.com/go-gts/gts/utils"
 	"github.com/go-pars/pars"
 	"github.com/go-wrap/wrap"
 )
@@ -99,7 +100,7 @@ func NewOrigin(p []byte) Origin {
 		io.WriteString(w, prefix)
 		for j := 0; j < 60 && i+j < len(p); j += 10 {
 			start := i + j
-			end := min(start+10, len(p))
+			end := utils.Min(start+10, len(p))
 			io.WriteString(w, " ")
 			w.Write(p[start:end])
 		}
@@ -119,7 +120,7 @@ func (o *Origin) Bytes() []byte {
 		i, j := iter.Next()
 
 		for i < len(o.Buffer) {
-			n := min(10, len(o.Buffer)-i)
+			n := utils.Min(10, len(o.Buffer)-i)
 			copy(p[j:j+n], o.Buffer[i:i+n])
 			i, j = iter.Next()
 		}

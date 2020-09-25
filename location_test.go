@@ -11,6 +11,52 @@ import (
 	"github.com/go-test/deep"
 )
 
+type NullLocation int
+
+func (null NullLocation) String() string {
+	return "nil"
+}
+
+func (null NullLocation) Len() int {
+	return 0
+}
+
+func (null NullLocation) Head() int {
+	return int(null)
+}
+
+func (null NullLocation) Tail() int {
+	return int(null)
+}
+
+func (null NullLocation) Less(loc Location) bool {
+	return false
+}
+
+func (null NullLocation) Region() Region {
+	return Forward{}
+}
+
+func (null NullLocation) Complement() Location {
+	return Complemented{null}
+}
+
+func (null NullLocation) Reverse(length int) Location {
+	return null
+}
+
+func (null NullLocation) Normalize(length int) Location {
+	return null
+}
+
+func (null NullLocation) Shift(i, n int) Location {
+	return null
+}
+
+func (null NullLocation) Expand(i, n int) Location {
+	return null
+}
+
 func locRep(loc Location) string {
 	switch v := loc.(type) {
 	case Between:
@@ -44,25 +90,26 @@ var locationAccessorTests = []struct {
 	in  Location
 	str string
 	len int
+	reg Region
 }{
-	{Between(0), "0^1", 0},
-	{Point(0), "1", 1},
-	{Range(0, 2), "1..2", 2},
+	{Between(0), "0^1", 0, Forward{0, 0}},
+	{Point(0), "1", 1, Forward{0, 1}},
+	{Range(0, 2), "1..2", 2, Forward{0, 2}},
 
-	{PartialRange(0, 2, Complete), "1..2", 2},
-	{PartialRange(0, 2, Partial5), "<1..2", 2},
-	{PartialRange(0, 2, Partial3), "1..>2", 2},
-	{PartialRange(0, 2, PartialBoth), "<1..>2", 2},
+	{PartialRange(0, 2, Complete), "1..2", 2, Forward{0, 2}},
+	{PartialRange(0, 2, Partial5), "<1..2", 2, Forward{0, 2}},
+	{PartialRange(0, 2, Partial3), "1..>2", 2, Forward{0, 2}},
+	{PartialRange(0, 2, PartialBoth), "<1..>2", 2, Forward{0, 2}},
 
-	{Join(Range(0, 2), Range(3, 5)), "join(1..2,4..5)", 4},
-	{Join(Range(0, 2), Join(Range(3, 5), Range(6, 8))), "join(1..2,4..5,7..8)", 6},
-	{Join(Point(0), Point(2)), "join(1,3)", 2},
+	{Join(Range(0, 2), Range(3, 5)), "join(1..2,4..5)", 4, Regions{Forward{0, 2}, Forward{3, 5}}},
+	{Join(Range(0, 2), Join(Range(3, 5), Range(6, 8))), "join(1..2,4..5,7..8)", 6, Regions{Forward{0, 2}, Forward{3, 5}, Forward{6, 8}}},
+	{Join(Point(0), Point(2)), "join(1,3)", 2, Regions{Forward{0, 1}, Forward{2, 3}}},
 
-	{Ambiguous{0, 2}, "1.2", 1},
+	{Ambiguous{0, 2}, "1.2", 1, Forward{0, 2}},
 
-	{Order(Range(0, 2), Range(2, 4)), "order(1..2,3..4)", 4},
-	{Order(Range(0, 2), Order(Range(2, 4), Range(4, 6))), "order(1..2,3..4,5..6)", 6},
-	{Order(Point(0), Point(2)), "order(1,3)", 2},
+	{Order(Range(0, 2), Range(2, 4)), "order(1..2,3..4)", 4, Regions{Forward{0, 2}, Forward{2, 4}}},
+	{Order(Range(0, 2), Order(Range(2, 4), Range(4, 6))), "order(1..2,3..4,5..6)", 6, Regions{Forward{0, 2}, Forward{2, 4}, Forward{4, 6}}},
+	{Order(Point(0), Point(2)), "order(1,3)", 2, Regions{Forward{0, 1}, Forward{2, 3}}},
 }
 
 func TestLocationAccessors(t *testing.T) {
@@ -74,12 +121,228 @@ func TestLocationAccessors(t *testing.T) {
 			if tt.in.Len() != tt.len {
 				t.Errorf("%s.Len() = %d, want %d", locRep(tt.in), tt.in.Len(), tt.len)
 			}
+			if !reflect.DeepEqual(tt.in.Region(), tt.reg) {
+				t.Errorf("%s.Region() = %v, want %v", locRep(tt.in), tt.in.Region(), tt.reg)
+			}
 			in := tt.in.Complement()
 			if in.Len() != tt.len {
 				t.Errorf("%s.Len() = %d, want %d", locRep(in), in.Len(), tt.len)
 			}
+			if !reflect.DeepEqual(in.Region(), tt.reg.Complement()) {
+				t.Errorf("%s.Region() = %v, want %v", locRep(in), in.Region(), tt.reg.Complement())
+			}
 		})
 	}
+}
+
+var locationLessTests = []struct {
+	loc  Location
+	pass []Location
+	fail []Location
+}{
+	{
+		Between(1),
+		[]Location{
+			Between(2),
+			Point(1),
+			Range(1, 3),
+			Join(Range(1, 3), Range(4, 6)),
+			Ambiguous{1, 3},
+			Order(Range(1, 3), Range(4, 6)),
+			NullLocation(0),
+		},
+		[]Location{
+			Between(1),
+			Point(0),
+			Range(0, 2),
+			Join(Range(0, 2), Range(3, 5)),
+			Ambiguous{0, 2},
+			Order(Range(0, 2), Range(3, 5)),
+		},
+	},
+	{
+		Point(0),
+		[]Location{
+			Between(1),
+			Point(1),
+			Range(1, 3),
+			Join(Range(1, 3), Range(4, 6)),
+			Ambiguous{1, 3},
+			Order(Range(1, 3), Range(4, 6)),
+			NullLocation(0),
+		},
+		[]Location{
+			Between(0),
+			Point(0),
+			Range(0, 2),
+			Join(Range(0, 2), Range(3, 5)),
+			Ambiguous{0, 2},
+			Order(Range(0, 2), Range(3, 5)),
+		},
+	},
+	{
+		Range(1, 3),
+		[]Location{
+			Between(2),
+			Point(1),
+			Range(2, 3),
+			Range(1, 4),
+			Join(Range(2, 4), Range(5, 7)),
+			Ambiguous{2, 3},
+			Ambiguous{1, 4},
+			Order(Range(2, 4), Range(5, 7)),
+			NullLocation(0),
+		},
+		[]Location{
+			Between(1),
+			Point(0),
+			Range(0, 3),
+			Range(1, 2),
+			Range(1, 3),
+			Join(Range(1, 3), Range(4, 6)),
+			Ambiguous{0, 3},
+			Ambiguous{1, 2},
+			Ambiguous{1, 3},
+			Order(Range(1, 3), Range(4, 6)),
+		},
+	},
+	{PartialRange(1, 3, Partial5), []Location{Range(1, 3), Ambiguous{1, 3}}, nil},
+	{PartialRange(1, 3, Partial3), nil, []Location{Range(1, 3), Ambiguous{1, 3}}},
+	{Range(1, 3), nil, []Location{PartialRange(1, 3, Partial5)}},
+	{Range(1, 3), []Location{PartialRange(1, 3, Partial3)}, nil},
+	{
+		Join(Range(0, 2), Range(3, 5)),
+		[]Location{Join(Range(1, 2), Range(3, 5))},
+		[]Location{Join(Range(0, 2), Range(3, 5))},
+	},
+	{
+		Ambiguous{1, 3},
+		[]Location{
+			Between(2),
+			Point(1),
+			Range(2, 3),
+			Range(1, 4),
+			PartialRange(1, 3, Partial3),
+			Join(Range(2, 4), Range(5, 7)),
+			Ambiguous{2, 3},
+			Ambiguous{1, 4},
+			Order(Range(2, 4), Range(5, 7)),
+			NullLocation(0),
+		},
+		[]Location{
+			Between(1),
+			Point(0),
+			Range(0, 3),
+			PartialRange(1, 3, Partial5),
+			Range(1, 2),
+			Range(1, 3),
+			Join(Range(1, 3), Range(4, 6)),
+			Ambiguous{0, 3},
+			Ambiguous{1, 3},
+			Order(Range(1, 3), Range(4, 6)),
+		},
+	},
+	{
+		Order(Range(0, 2), Range(3, 5)),
+		[]Location{Order(Range(1, 2), Range(3, 5))},
+		[]Location{Order(Range(0, 2), Range(3, 5))},
+	},
+}
+
+func locationLessPassTest(t *testing.T, lhs, rhs Location) {
+	if !lhs.Less(rhs) {
+		t.Errorf("expected %s < %s", locRep(lhs), locRep(rhs))
+	}
+	if _, ok := lhs.(Complemented); !ok {
+		locationLessPassTest(t, lhs.Complement(), rhs)
+	}
+	if _, ok := rhs.(Complemented); !ok {
+		locationLessPassTest(t, lhs, rhs.Complement())
+	}
+}
+
+func locationLessFailTest(t *testing.T, lhs, rhs Location) {
+	if lhs.Less(rhs) {
+		t.Errorf("expected %s >= %s", locRep(lhs), locRep(rhs))
+	}
+	if _, ok := lhs.(Complemented); !ok {
+		locationLessFailTest(t, lhs.Complement(), rhs)
+	}
+	if _, ok := rhs.(Complemented); !ok {
+		locationLessFailTest(t, lhs, rhs.Complement())
+	}
+}
+
+func TestLocationLess(t *testing.T) {
+	for _, tt := range locationLessTests {
+		for _, loc := range tt.pass {
+			locationLessPassTest(t, tt.loc, loc)
+		}
+		for _, loc := range tt.fail {
+			locationLessFailTest(t, tt.loc, loc)
+		}
+	}
+}
+
+var locationReverseTest = []struct {
+	in  Location
+	out Location
+}{
+	{NullLocation(0), NullLocation(0)},
+	{Between(0), Between(9)},
+	{Point(0), Point(9)},
+	{Range(0, 3), Range(7, 10)},
+	{PartialRange(0, 3, Partial5), PartialRange(7, 10, Partial3)},
+	{PartialRange(0, 3, Partial3), PartialRange(7, 10, Partial5)},
+	{PartialRange(0, 3, PartialBoth), PartialRange(7, 10, PartialBoth)},
+	{Join(Range(0, 3), Range(5, 8)), Join(Range(2, 5), Range(7, 10))},
+	{Range(0, 3).Complement(), Range(7, 10).Complement()},
+	{Ambiguous{0, 3}, Ambiguous{7, 10}},
+	{Order(Range(0, 3), Range(5, 8)), Order(Range(2, 5), Range(7, 10))},
+}
+
+func TestLocationReverse(t *testing.T) {
+	for _, tt := range locationReverseTest {
+		out := tt.in.Reverse(10)
+		testutils.Equals(t, out, tt.out)
+	}
+}
+
+var locationNormalizeTest = []struct {
+	in  Location
+	out Location
+}{
+	{NullLocation(0), NullLocation(0)},
+	{Between(10), Between(0)},
+	{Point(10), Point(0)},
+	{Range(10, 13), Range(0, 3)},
+	{Range(8, 12), Join(Range(8, 10), Range(0, 2))},
+	{PartialRange(8, 12, PartialBoth), Join(PartialRange(8, 10, Partial5), PartialRange(0, 2, Partial3))},
+	{Join(Range(10, 13), Range(5, 8)), Join(Range(0, 3), Range(5, 8))},
+	{Range(10, 13).Complement(), Range(0, 3).Complement()},
+	{Ambiguous{10, 13}, Ambiguous{0, 3}},
+	{Order(Range(10, 13), Range(5, 8)), Order(Range(0, 3), Range(5, 8))},
+}
+
+func TestLocationNormalize(t *testing.T) {
+	for _, tt := range locationNormalizeTest {
+		out := tt.in.Normalize(10)
+		testutils.Equals(t, out, tt.out)
+	}
+}
+
+var locationReductionTests = []struct {
+	in  Location
+	out Location
+}{
+	// DISCUSS: should a complete, one base range be reduced to a Point?
+	// {Range(0, 1), Point(0)},
+	{Join(Point(0), Point(0)), Point(0)},
+	{Join(Point(0), Range(0, 2)), Range(0, 2)},
+	{Join(Range(0, 2), Point(2)), Range(0, 2)},
+	{Join(Range(0, 2), Range(2, 4)), Range(0, 4)},
+	{Join(Range(2, 4).Complement(), Range(0, 2).Complement()), Range(0, 4).Complement()},
+	{Order(Range(0, 2)), Range(0, 2)},
 }
 
 var locationShiftTests = []struct {
@@ -240,276 +503,17 @@ func TestLocationExpand(t *testing.T) {
 	}
 }
 
-type NullLocation int
-
-func (null NullLocation) String() string {
-	return "nil"
-}
-
-func (null NullLocation) Len() int {
-	return 0
-}
-
-func (null NullLocation) Less(loc Location) bool {
-	return false
-}
-
-func (null NullLocation) Complement() Location {
-	return Complemented{null}
-}
-
-func (null NullLocation) Locate(seq Sequence) Sequence {
-	return WithBytes(seq, nil)
-}
-
-func (null NullLocation) Reverse(length int) Location {
-	return null
-}
-
-func (null NullLocation) Shift(i, n int) Location {
-	return null
-}
-
-func (null NullLocation) Expand(i, n int) Location {
-	return null
-}
-
-func (null NullLocation) Normalize(length int) Location {
-	return null
-}
-
-var locationLessTests = []struct {
-	loc  Location
-	pass []Location
-	fail []Location
-}{
-	{
-		Between(1),
-		[]Location{
-			Between(2),
-			Point(1),
-			Range(1, 3),
-			Join(Range(1, 3), Range(4, 6)),
-			Ambiguous{1, 3},
-			Order(Range(1, 3), Range(4, 6)),
-			NullLocation(0),
-		},
-		[]Location{
-			Between(1),
-			Point(0),
-			Range(0, 2),
-			Join(Range(0, 2), Range(3, 5)),
-			Ambiguous{0, 2},
-			Order(Range(0, 2), Range(3, 5)),
-		},
-	},
-	{
-		Point(0),
-		[]Location{
-			Between(1),
-			Point(1),
-			Range(1, 3),
-			Join(Range(1, 3), Range(4, 6)),
-			Ambiguous{1, 3},
-			Order(Range(1, 3), Range(4, 6)),
-			NullLocation(0),
-		},
-		[]Location{
-			Between(0),
-			Point(0),
-			Range(0, 2),
-			Join(Range(0, 2), Range(3, 5)),
-			Ambiguous{0, 2},
-			Order(Range(0, 2), Range(3, 5)),
-		},
-	},
-	{
-		Range(1, 3),
-		[]Location{
-			Between(2),
-			Point(1),
-			Range(2, 3),
-			Range(1, 4),
-			Join(Range(2, 4), Range(5, 7)),
-			Ambiguous{2, 3},
-			Ambiguous{1, 4},
-			Order(Range(2, 4), Range(5, 7)),
-			NullLocation(0),
-		},
-		[]Location{
-			Between(1),
-			Point(0),
-			Range(0, 3),
-			Range(1, 2),
-			Range(1, 3),
-			Join(Range(1, 3), Range(4, 6)),
-			Ambiguous{0, 3},
-			Ambiguous{1, 2},
-			Ambiguous{1, 3},
-			Order(Range(1, 3), Range(4, 6)),
-		},
-	},
-	{PartialRange(1, 3, Partial5), []Location{Range(1, 3), Ambiguous{1, 3}}, nil},
-	{PartialRange(1, 3, Partial3), nil, []Location{Range(1, 3), Ambiguous{1, 3}}},
-	{Range(1, 3), nil, []Location{PartialRange(1, 3, Partial5)}},
-	{Range(1, 3), []Location{PartialRange(1, 3, Partial3)}, nil},
-	{
-		Join(Range(0, 2), Range(3, 5)),
-		[]Location{Join(Range(1, 2), Range(3, 5))},
-		[]Location{Join(Range(0, 2), Range(3, 5))},
-	},
-	{
-		Ambiguous{1, 3},
-		[]Location{
-			Between(2),
-			Point(1),
-			Range(2, 3),
-			Range(1, 4),
-			PartialRange(1, 3, Partial3),
-			Join(Range(2, 4), Range(5, 7)),
-			Ambiguous{2, 3},
-			Ambiguous{1, 4},
-			Order(Range(2, 4), Range(5, 7)),
-			NullLocation(0),
-		},
-		[]Location{
-			Between(1),
-			Point(0),
-			Range(0, 3),
-			PartialRange(1, 3, Partial5),
-			Range(1, 2),
-			Range(1, 3),
-			Join(Range(1, 3), Range(4, 6)),
-			Ambiguous{0, 3},
-			Ambiguous{1, 3},
-			Order(Range(1, 3), Range(4, 6)),
-		},
-	},
-	{
-		Order(Range(0, 2), Range(3, 5)),
-		[]Location{Order(Range(1, 2), Range(3, 5))},
-		[]Location{Order(Range(0, 2), Range(3, 5))},
-	},
-}
-
-func locationLessPassTest(t *testing.T, lhs, rhs Location) {
-	if !lhs.Less(rhs) {
-		t.Errorf("expected %s < %s", locRep(lhs), locRep(rhs))
-	}
-	if _, ok := lhs.(Complemented); !ok {
-		locationLessPassTest(t, lhs.Complement(), rhs)
-	}
-	if _, ok := rhs.(Complemented); !ok {
-		locationLessPassTest(t, lhs, rhs.Complement())
-	}
-}
-
-func locationLessFailTest(t *testing.T, lhs, rhs Location) {
-	if lhs.Less(rhs) {
-		t.Errorf("expected %s >= %s", locRep(lhs), locRep(rhs))
-	}
-	if _, ok := lhs.(Complemented); !ok {
-		locationLessFailTest(t, lhs.Complement(), rhs)
-	}
-	if _, ok := rhs.(Complemented); !ok {
-		locationLessFailTest(t, lhs, rhs.Complement())
-	}
-}
-
-func TestLocationLess(t *testing.T) {
-	for _, tt := range locationLessTests {
-		for _, loc := range tt.pass {
-			locationLessPassTest(t, tt.loc, loc)
-		}
-		for _, loc := range tt.fail {
-			locationLessFailTest(t, tt.loc, loc)
-		}
-	}
-}
-
-var locationFlipTest = []struct {
-	in  Location
-	out Location
-}{
-	{NullLocation(0), NullLocation(0)},
-	{Between(0), Between(9)},
-	{Point(0), Point(9)},
-	{Range(0, 3), Range(7, 10)},
-	{PartialRange(0, 3, Partial5), PartialRange(7, 10, Partial3)},
-	{PartialRange(0, 3, Partial3), PartialRange(7, 10, Partial5)},
-	{PartialRange(0, 3, PartialBoth), PartialRange(7, 10, PartialBoth)},
-	{Join(Range(0, 3), Range(5, 8)), Join(Range(2, 5), Range(7, 10))},
-	{Range(0, 3).Complement(), Range(7, 10).Complement()},
-	{Ambiguous{0, 3}, Ambiguous{7, 10}},
-	{Order(Range(0, 3), Range(5, 8)), Order(Range(2, 5), Range(7, 10))},
-}
-
-func TestLocationFlip(t *testing.T) {
-	for _, tt := range locationFlipTest {
-		out := tt.in.Reverse(10)
-		testutils.Equals(t, out, tt.out)
-	}
-}
-
-var locationNormalizeTest = []struct {
-	in  Location
-	out Location
-}{
-	{NullLocation(0), NullLocation(0)},
-	{Between(10), Between(0)},
-	{Point(10), Point(0)},
-	{Range(10, 13), Range(0, 3)},
-	{Range(8, 12), Join(Range(8, 10), Range(0, 2))},
-	{PartialRange(8, 12, PartialBoth), Join(PartialRange(8, 10, Partial5), PartialRange(0, 2, Partial3))},
-	{Join(Range(10, 13), Range(5, 8)), Join(Range(0, 3), Range(5, 8))},
-	{Range(10, 13).Complement(), Range(0, 3).Complement()},
-	{Ambiguous{10, 13}, Ambiguous{0, 3}},
-	{Order(Range(10, 13), Range(5, 8)), Order(Range(0, 3), Range(5, 8))},
-}
-
-func TestLocationNormalize(t *testing.T) {
-	for _, tt := range locationNormalizeTest {
-		out := tt.in.Normalize(10)
-		testutils.Equals(t, out, tt.out)
-	}
-}
-
-var locationReductionTests = []struct {
-	in  Location
-	out Location
-}{
-	// DISCUSS: should a complete, one base range be reduced to a Point?
-	// {Range(0, 1), Point(0)},
-	{Join(Point(0), Point(0)), Point(0)},
-	{Join(Point(0), Range(0, 2)), Range(0, 2)},
-	{Join(Range(0, 2), Point(2)), Range(0, 2)},
-	{Join(Range(0, 2), Range(2, 4)), Range(0, 4)},
-	{Join(Range(2, 4).Complement(), Range(0, 2).Complement()), Range(0, 4).Complement()},
-	{Order(Range(0, 2)), Range(0, 2)},
-}
-
-func TestLocationReduction(t *testing.T) {
-	for _, tt := range locationReductionTests {
-		testutils.Equals(t, tt.in, tt.out)
-	}
-}
-
-var locateTests = []struct {
+var locationRegionLocateTests = []struct {
 	in  Location
 	out Sequence
 }{
-	{Between(0), New(nil, nil, []byte(""))},
-	{Point(0), New(nil, nil, []byte("a"))},
-	{Range(0, 2), New(nil, nil, []byte("at"))},
-	{Ambiguous{0, 2}, New(nil, nil, []byte("at"))},
 	{Join(Range(0, 2), Range(3, 5)), New(nil, nil, []byte("atca"))},
-	{Order(Range(0, 2), Range(3, 5)), New(nil, nil, []byte("atca"))},
 }
 
-func TestLocate(t *testing.T) {
+func TestLocationRegionLocate(t *testing.T) {
 	seq := New(nil, nil, []byte("atgcatgc"))
-	for _, tt := range locateTests {
-		out, exp := tt.in.Locate(seq), tt.out
+	for _, tt := range locationRegionLocateTests {
+		out, exp := tt.in.Region().Locate(seq), tt.out
 		if !reflect.DeepEqual(out.Info(), exp.Info()) {
 			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
 		}
@@ -521,28 +525,30 @@ func TestLocate(t *testing.T) {
 		}
 
 		cmp := tt.in.Complement()
-		cmpstr := fmt.Sprintf("complement(%s)", tt.in)
-		if cmp.String() != cmpstr {
-			t.Errorf("%s.String() = %q, want %q", locRep(cmp), cmp, cmpstr)
-		}
 		if cmp.Len() != tt.in.Len() {
-			t.Errorf("%s.Len() = %d, want %d", locRep(cmp), cmp.Len(), tt.in.Len())
+			t.Errorf("%s.Len() = %d, want %d", cmp, cmp.Len(), tt.in.Len())
 		}
-		if cmp.Complement().String() != tt.in.String() {
+		if !reflect.DeepEqual(cmp.Complement(), tt.in) {
 			t.Errorf(
 				"%s.Complement() = %s, want %s",
-				locRep(cmp), locRep(cmp.Complement()), locRep(tt.in),
+				cmp, cmp.Complement(), tt.in,
 			)
 		}
-		out = cmp.Locate(seq)
+		out = cmp.Region().Locate(seq)
 		exp = Reverse(Complement(tt.out))
 		if !Equal(out, exp) {
 			t.Errorf(
 				"%s.Locate(%q) = %q, want %q",
-				locRep(cmp), string(seq.Bytes()),
+				cmp, string(seq.Bytes()),
 				string(out.Bytes()), string(exp.Bytes()),
 			)
 		}
+	}
+}
+
+func TestLocationReduction(t *testing.T) {
+	for _, tt := range locationReductionTests {
+		testutils.Equals(t, tt.in, tt.out)
 	}
 }
 

@@ -387,7 +387,7 @@ func featureExtract(ctx *flags.Context) error {
 		seq := scanner.Value()
 		ff := seq.Features().Filter(gts.Not(gts.Key("source")))
 		for _, f := range ff {
-			out := f.Location.Locate(seq)
+			out := f.Location.Region().Locate(seq)
 			formatter := seqio.NewFormatter(out, filetype)
 			if _, err := formatter.WriteTo(seqoutFile); err != nil {
 				return ctx.Raise(err)

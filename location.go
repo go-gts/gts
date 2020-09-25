@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-ascii/ascii"
+	"github.com/go-gts/gts/utils"
 	"github.com/go-pars/pars"
 )
 
@@ -16,7 +17,7 @@ type Location interface {
 	fmt.Stringer
 	Len() int
 	Less(loc Location) bool
-	Locate(seq Sequence) Sequence
+	Region() Region
 	Complement() Location
 	Reverse(length int) Location
 	Normalize(length int) Location
@@ -99,9 +100,10 @@ func (between Between) Less(loc Location) bool {
 	}
 }
 
-// Locate the sequence region represented by the location.
-func (between Between) Locate(seq Sequence) Sequence {
-	return Slice(seq, int(between), 0)
+// Region returns the region pointed to by the location.
+func (between Between) Region() Region {
+	head := int(between)
+	return Forward{head, head}
 }
 
 // Complement returns the complement location.
@@ -211,9 +213,10 @@ func (point Point) Less(loc Location) bool {
 	}
 }
 
-// Locate the sequence region represented by the location.
-func (point Point) Locate(seq Sequence) Sequence {
-	return Slice(seq, int(point), int(point)+1)
+// Region returns the region pointed to by the location.
+func (point Point) Region() Region {
+	head := int(point)
+	return Forward{head, head + 1}
 }
 
 // Complement returns the complement location.
@@ -377,9 +380,10 @@ func (ranged Ranged) Less(loc Location) bool {
 	}
 }
 
-// Locate the sequence region represented by the location.
-func (ranged Ranged) Locate(seq Sequence) Sequence {
-	return Slice(seq, ranged.Start, ranged.End)
+// Region returns the region pointed to by the location.
+func (ranged Ranged) Region() Region {
+	head, tail := ranged.Start, ranged.End
+	return Forward{head, tail}
 }
 
 // Complement returns the complement location.
@@ -516,9 +520,9 @@ func (complement Complemented) Less(loc Location) bool {
 	return complement[0].Less(loc)
 }
 
-// Locate the sequence region represented by the location.
-func (complement Complemented) Locate(seq Sequence) Sequence {
-	return Reverse(Complement(complement[0].Locate(seq)))
+// Region returns the region pointed to by the location.
+func (complement Complemented) Region() Region {
+	return complement[0].Region().Complement()
 }
 
 // Complement returns the complement location.
@@ -721,13 +725,13 @@ func (joined Joined) Less(loc Location) bool {
 	return false
 }
 
-// Locate the sequence region represented by the location.
-func (joined Joined) Locate(seq Sequence) Sequence {
-	slices := make([]Sequence, len(joined))
-	for i, loc := range joined {
-		slices[i] = loc.Locate(seq)
+// Region returns the region pointed to by the location.
+func (joined Joined) Region() Region {
+	rr := make(Regions, len(joined))
+	for i, l := range joined {
+		rr[i] = l.Region()
 	}
-	return Concat(slices...)
+	return rr
 }
 
 // Complement returns the complement location.
@@ -912,9 +916,10 @@ func (ambiguous Ambiguous) Less(loc Location) bool {
 	}
 }
 
-// Locate the sequence region represented by the location.
-func (ambiguous Ambiguous) Locate(seq Sequence) Sequence {
-	return Slice(seq, int(ambiguous[0]), int(ambiguous[1]))
+// Region returns the region pointed to by the location.
+func (ambiguous Ambiguous) Region() Region {
+	head, tail := utils.Unpack(ambiguous)
+	return Forward{head, tail}
 }
 
 // Complement returns the complement location.
@@ -1040,13 +1045,13 @@ func (ordered Ordered) Less(loc Location) bool {
 	return false
 }
 
-// Locate the sequence region represented by the location.
-func (ordered Ordered) Locate(seq Sequence) Sequence {
-	slices := make([]Sequence, len(ordered))
-	for i, loc := range ordered {
-		slices[i] = loc.Locate(seq)
+// Region returns the region pointed to by the location.
+func (ordered Ordered) Region() Region {
+	rr := make(Regions, len(ordered))
+	for i, l := range ordered {
+		rr[i] = l.Region()
 	}
-	return Concat(slices...)
+	return rr
 }
 
 // Complement returns the complement location.
