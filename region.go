@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/go-gts/gts/utils"
+	"github.com/go-pars/pars"
 )
 
 // Modifier is an interface required to modify coordinate regions.
@@ -118,6 +119,68 @@ func (mod TailTail) Complement() Modifier {
 func (mod TailTail) String() string {
 	p, q := utils.Unpack(mod)
 	return fmt.Sprintf("%s..%s", Tail(p), Tail(q))
+}
+
+var parseHead = pars.Any(
+	pars.Seq('^', pars.Int).Child(1),
+	pars.Byte('^').Bind(0),
+).Map(func(result *pars.Result) error {
+	n := result.Value.(int)
+	result.SetValue(Head(n))
+	return nil
+})
+
+var parseTail = pars.Any(
+	pars.Seq('$', pars.Int).Child(1),
+	pars.Byte('$').Bind(0),
+).Map(func(result *pars.Result) error {
+	n := result.Value.(int)
+	result.SetValue(Tail(n))
+	return nil
+})
+
+func mapHeadTail(result *pars.Result) error {
+	p := int(result.Children[0].Value.(Head))
+	q := int(result.Children[2].Value.(Tail))
+	result.SetValue(HeadTail{p, q})
+	return nil
+}
+
+var parseHeadTail = pars.Seq(parseHead, "..", parseTail).Map(mapHeadTail)
+
+func mapHeadHead(result *pars.Result) error {
+	p := int(result.Children[0].Value.(Head))
+	q := int(result.Children[2].Value.(Head))
+	result.SetValue(HeadHead{p, q})
+	return nil
+}
+
+var parseHeadHead = pars.Seq(parseHead, "..", parseHead).Map(mapHeadHead)
+
+func mapTailTail(result *pars.Result) error {
+	p := int(result.Children[0].Value.(Tail))
+	q := int(result.Children[2].Value.(Tail))
+	result.SetValue(TailTail{p, q})
+	return nil
+}
+
+var parseTailTail = pars.Seq(parseTail, "..", parseTail).Map(mapTailTail)
+
+var parseModifier = pars.Any(
+	parseHeadTail,
+	parseHeadHead,
+	parseTailTail,
+	parseHead,
+	parseTail,
+)
+
+// AsModifier interprets the given string as a Modifier.
+func AsModifier(s string) (Modifier, error) {
+	result, err := parseModifier.Parse(pars.FromString(s))
+	if err != nil {
+		return nil, err
+	}
+	return result.Value.(Modifier), nil
 }
 
 // Region represents a coordinate region which can be resized and used to
