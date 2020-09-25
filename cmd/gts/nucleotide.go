@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 
@@ -55,14 +56,20 @@ func sequenceComplement(ctx *flags.Context) error {
 		filetype = seqio.ToFileType(*format)
 	}
 
+	w := bufio.NewWriter(seqoutFile)
+
 	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		seq = gts.Complement(seq)
 		formatter := seqio.NewFormatter(seq, filetype)
-		if _, err := formatter.WriteTo(seqoutFile); err != nil {
+		if _, err := formatter.WriteTo(w); err != nil {
 			return ctx.Raise(err)
 		}
+	}
+
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -127,6 +134,8 @@ func sequenceSearch(ctx *flags.Context) error {
 		filetype = seqio.ToFileType(*format)
 	}
 
+	w := bufio.NewWriter(seqoutFile)
+
 	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
@@ -139,9 +148,13 @@ func sequenceSearch(ctx *flags.Context) error {
 		}
 		seq = gts.WithFeatures(seq, ff)
 		formatter := seqio.NewFormatter(seq, filetype)
-		if _, err := formatter.WriteTo(seqoutFile); err != nil {
+		if _, err := formatter.WriteTo(w); err != nil {
 			return ctx.Raise(err)
 		}
+	}
+
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
 	}
 
 	if err := scanner.Err(); err != nil {

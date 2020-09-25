@@ -75,7 +75,9 @@ func featureClear(ctx *flags.Context) error {
 		}
 	}
 
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
+	}
 
 	if err := scanner.Err(); err != nil {
 		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))
@@ -149,7 +151,9 @@ func featureSelect(ctx *flags.Context) error {
 		}
 	}
 
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
+	}
 
 	if err := scanner.Err(); err != nil {
 		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))
@@ -225,7 +229,9 @@ func featureAnnotate(ctx *flags.Context) error {
 		}
 	}
 
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
+	}
 
 	if err := scanner.Err(); err != nil {
 		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))
@@ -331,7 +337,9 @@ func featureQuery(ctx *flags.Context) error {
 		}
 	}
 
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
+	}
 
 	if err := scanner.Err(); err != nil {
 		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))
@@ -403,7 +411,9 @@ func featureExtract(ctx *flags.Context) error {
 		}
 	}
 
-	w.Flush()
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
+	}
 
 	if err := scanner.Err(); err != nil {
 		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))

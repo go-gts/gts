@@ -136,6 +136,8 @@ func sequenceInsert(ctx *flags.Context) error {
 		ctx.Raise(fmt.Errorf("guest sequence file %q does not contain a sequence", *guestPath))
 	}
 
+	w := bufio.NewWriter(seqoutFile)
+
 	scanner = seqio.NewAutoScanner(hostFile)
 	for scanner.Scan() {
 		host := scanner.Value()
@@ -147,10 +149,14 @@ func sequenceInsert(ctx *flags.Context) error {
 				out = gts.Insert(host, *i, guest)
 			}
 			formatter := seqio.NewFormatter(out, filetype)
-			if _, err := formatter.WriteTo(seqoutFile); err != nil {
+			if _, err := formatter.WriteTo(w); err != nil {
 				return ctx.Raise(err)
 			}
 		}
+	}
+
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -203,14 +209,20 @@ func sequenceDelete(ctx *flags.Context) error {
 		filetype = seqio.ToFileType(*format)
 	}
 
+	w := bufio.NewWriter(seqoutFile)
+
 	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		seq = gts.Delete(seq, *i, *n)
 		formatter := seqio.NewFormatter(seq, filetype)
-		if _, err := formatter.WriteTo(seqoutFile); err != nil {
+		if _, err := formatter.WriteTo(w); err != nil {
 			return ctx.Raise(err)
 		}
+	}
+
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -260,14 +272,20 @@ func sequenceReverse(ctx *flags.Context) error {
 		filetype = seqio.ToFileType(*format)
 	}
 
+	w := bufio.NewWriter(seqoutFile)
+
 	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		seq = gts.Reverse(seq)
 		formatter := seqio.NewFormatter(seq, filetype)
-		if _, err := formatter.WriteTo(seqoutFile); err != nil {
+		if _, err := formatter.WriteTo(w); err != nil {
 			return ctx.Raise(err)
 		}
+	}
+
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -324,14 +342,20 @@ func sequenceRotate(ctx *flags.Context) error {
 		filetype = seqio.ToFileType(*format)
 	}
 
+	w := bufio.NewWriter(seqoutFile)
+
 	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		seq = gts.Rotate(seq, *n)
 		formatter := seqio.NewFormatter(seq, filetype)
-		if _, err := formatter.WriteTo(seqoutFile); err != nil {
+		if _, err := formatter.WriteTo(w); err != nil {
 			return ctx.Raise(err)
 		}
+	}
+
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
 	}
 
 	if err := scanner.Err(); err != nil {
