@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/go-gts/gts"
 	"github.com/go-gts/gts/cmd"
@@ -91,10 +92,21 @@ func sequenceSearch(ctx *flags.Context) error {
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
 	featureKey := opt.String('k', "key", "misc_feature", "key for the reported oligomer region features")
+	qfstrs := opt.StringSlice('q', "qualifier", nil, "qualifier key-value pairs (syntax: key=value))")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
+	}
+
+	qfs := gts.Values{}
+	for _, s := range *qfstrs {
+		switch i := strings.IndexByte(s, '='); i {
+		case -1:
+			qfs.Add(s, "")
+		default:
+			qfs.Add(s[:i], s[i+1:])
+		}
 	}
 
 	queries := []gts.Sequence{}
@@ -143,7 +155,11 @@ func sequenceSearch(ctx *flags.Context) error {
 		for _, query := range queries {
 			locs := gts.Search(seq, query)
 			for _, loc := range locs {
-				ff = ff.Insert(gts.Feature{Key: *featureKey, Location: loc})
+				ff = ff.Insert(gts.Feature{
+					Key:        *featureKey,
+					Location:   loc,
+					Qualifiers: qfs,
+				})
 			}
 		}
 		seq = gts.WithFeatures(seq, ff)
