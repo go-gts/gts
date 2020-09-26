@@ -63,7 +63,7 @@ func (between Between) Less(loc Location) bool {
 	case Ranged:
 		return int(between) <= v.Start
 	case Complemented:
-		return between.Less(v[0])
+		return between.Less(v.Location)
 	case Joined:
 		for _, u := range v {
 			if !between.Less(u) {
@@ -144,7 +144,7 @@ func (point Point) Less(loc Location) bool {
 			return false
 		}
 	case Complemented:
-		return point.Less(v[0])
+		return point.Less(v.Location)
 	case Joined:
 		for _, u := range v {
 			if !point.Less(u) {
@@ -289,7 +289,7 @@ func (ranged Ranged) Less(loc Location) bool {
 			return false
 		}
 	case Complemented:
-		return ranged.Less(v[0])
+		return ranged.Less(v.Location)
 	case Joined:
 		for _, u := range v {
 			if !ranged.Less(u) {
@@ -435,7 +435,7 @@ func (ambiguous Ambiguous) Less(loc Location) bool {
 			return false
 		}
 	case Complemented:
-		return ambiguous.Less(v[0])
+		return ambiguous.Less(v.Location)
 	case Joined:
 		for _, u := range v {
 			if !ambiguous.Less(u) {
@@ -586,8 +586,8 @@ func (ll *LocationList) Push(loc Location) {
 
 	case Complemented:
 		if u, ok := loc.(Complemented); ok {
-			tmp := LocationList{u[0], nil}
-			tmp.Push(v[0])
+			tmp := LocationList{u.Location, nil}
+			tmp.Push(v.Location)
 			ll.Data = Complemented{Join(tmp.Slice()...)}
 		}
 		return
@@ -830,51 +830,53 @@ func (ordered Ordered) Expand(i, n int) Location {
 }
 
 // Complemented represents a location complemented for the given molecule type.
-type Complemented [1]Location
+type Complemented struct {
+	Location Location
+}
 
 // String satisfies the fmt.Stringer interface.
 func (complement Complemented) String() string {
-	return fmt.Sprintf("complement(%s)", complement[0])
+	return fmt.Sprintf("complement(%s)", complement.Location)
 }
 
 // Len returns the total length spanned by the location.
 func (complement Complemented) Len() int {
-	return complement[0].Len()
+	return complement.Location.Len()
 }
 
 // Less returns true if the location is less than the given location.
 func (complement Complemented) Less(loc Location) bool {
-	return complement[0].Less(loc)
+	return complement.Location.Less(loc)
 }
 
 // Region returns the region pointed to by the location.
 func (complement Complemented) Region() Region {
-	return complement[0].Region().Complement()
+	return complement.Location.Region().Complement()
 }
 
 // Complement returns the complement location.
 func (complement Complemented) Complement() Location {
-	return complement[0]
+	return complement.Location
 }
 
 // Reverse returns the reversed location for the given length sequence.
 func (complement Complemented) Reverse(length int) Location {
-	return Complemented{complement[0].Reverse(length)}
+	return Complemented{complement.Location.Reverse(length)}
 }
 
 // Normalize returns a location normalized for the given length sequence.
 func (complement Complemented) Normalize(length int) Location {
-	return Complemented{complement[0].Normalize(length)}
+	return Complemented{complement.Location.Normalize(length)}
 }
 
 // Shift the location beyond the given position i by n.
 func (complement Complemented) Shift(i, n int) Location {
-	return Complemented{complement[0].Shift(i, n)}
+	return Complemented{complement.Location.Shift(i, n)}
 }
 
 // Expand the location beyond the given position i by n.
 func (complement Complemented) Expand(i, n int) Location {
-	return Complemented{complement[0].Expand(i, n)}
+	return Complemented{complement.Location.Expand(i, n)}
 }
 
 func parseBetween(state *pars.State, result *pars.Result) error {

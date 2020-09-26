@@ -66,7 +66,7 @@ func locRep(loc Location) string {
 	case Ranged:
 		return fmt.Sprintf("Ranged(%d, %d, %v)", v.Start, v.End, v.Partial)
 	case Complemented:
-		return fmt.Sprintf("Complemented(%s)", locRep(v[0]))
+		return fmt.Sprintf("Complemented(%s)", locRep(v.Location))
 	case Joined:
 		ss := make([]string, len(v))
 		for i, u := range v {
