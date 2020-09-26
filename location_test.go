@@ -331,20 +331,6 @@ func TestLocationNormalize(t *testing.T) {
 	}
 }
 
-var locationReductionTests = []struct {
-	in  Location
-	out Location
-}{
-	// DISCUSS: should a complete, one base range be reduced to a Point?
-	// {Range(0, 1), Point(0)},
-	{Join(Point(0), Point(0)), Point(0)},
-	{Join(Point(0), Range(0, 2)), Range(0, 2)},
-	{Join(Range(0, 2), Point(2)), Range(0, 2)},
-	{Join(Range(0, 2), Range(2, 4)), Range(0, 4)},
-	{Join(Range(2, 4).Complement(), Range(0, 2).Complement()), Range(0, 4).Complement()},
-	{Order(Range(0, 2)), Range(0, 2)},
-}
-
 var locationShiftTests = []struct {
 	in, out Location
 	i, n    int
@@ -546,6 +532,20 @@ func TestLocationRegionLocate(t *testing.T) {
 	}
 }
 
+var locationReductionTests = []struct {
+	in  Location
+	out Location
+}{
+	// DISCUSS: should a complete, one base range be reduced to a Point?
+	// {Range(0, 1), Point(0)},
+	{Join(Point(0), Point(0)), Point(0)},
+	{Join(Point(0), Range(0, 2)), Range(0, 2)},
+	{Join(Range(0, 2), Point(2)), Range(0, 2)},
+	{Join(Range(0, 2), Range(2, 4)), Range(0, 4)},
+	{Join(Range(2, 4).Complement(), Range(0, 2).Complement()), Range(0, 4).Complement()},
+	{Order(Range(0, 2)), Range(0, 2)},
+}
+
 func TestLocationReduction(t *testing.T) {
 	for _, tt := range locationReductionTests {
 		testutils.Equals(t, tt.in, tt.out)
@@ -564,7 +564,7 @@ var locationParserPassTests = []struct {
 	{parseRange, PartialRange(0, 2, PartialBoth)},
 	{parseRange, PartialRange(0, 2, Partial3)},
 	{parseRange, PartialRange(0, 2, PartialBoth)},
-	{parseComplement, Range(0, 2).Complement()},
+	{parseComplementDefault, Range(0, 2).Complement()},
 	{parseJoin, Join(Range(0, 2), Range(3, 5))},
 	{parseAmbiguous, Ambiguous{0, 2}},
 	{parseOrder, Order(Range(0, 2), Range(2, 4))},
@@ -590,11 +590,11 @@ var locationParserFailTests = []struct {
 	{parseRange, "1??"},
 	{parseRange, "1..?"},
 
-	{parseComplement, ""},
-	{parseComplement, "complement?"},
-	{parseComplement, "complement(?"},
-	{parseComplement, "complement(1..2"},
-	{parseComplement, "complement(1..2?"},
+	{parseComplementDefault, ""},
+	{parseComplementDefault, "complement?"},
+	{parseComplementDefault, "complement(?"},
+	{parseComplementDefault, "complement(1..2"},
+	{parseComplementDefault, "complement(1..2?"},
 
 	{parseJoin, ""},
 	{parseJoin, "join?"},

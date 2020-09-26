@@ -508,54 +508,6 @@ func (ambiguous Ambiguous) Expand(i, n int) Location {
 	return Ambiguous{start, end}
 }
 
-// Complemented represents a location complemented for the given molecule type.
-type Complemented [1]Location
-
-// String satisfies the fmt.Stringer interface.
-func (complement Complemented) String() string {
-	return fmt.Sprintf("complement(%s)", complement[0])
-}
-
-// Len returns the total length spanned by the location.
-func (complement Complemented) Len() int {
-	return complement[0].Len()
-}
-
-// Less returns true if the location is less than the given location.
-func (complement Complemented) Less(loc Location) bool {
-	return complement[0].Less(loc)
-}
-
-// Region returns the region pointed to by the location.
-func (complement Complemented) Region() Region {
-	return complement[0].Region().Complement()
-}
-
-// Complement returns the complement location.
-func (complement Complemented) Complement() Location {
-	return complement[0]
-}
-
-// Reverse returns the reversed location for the given length sequence.
-func (complement Complemented) Reverse(length int) Location {
-	return Complemented{complement[0].Reverse(length)}
-}
-
-// Normalize returns a location normalized for the given length sequence.
-func (complement Complemented) Normalize(length int) Location {
-	return Complemented{complement[0].Normalize(length)}
-}
-
-// Shift the location beyond the given position i by n.
-func (complement Complemented) Shift(i, n int) Location {
-	return Complemented{complement[0].Shift(i, n)}
-}
-
-// Expand the location beyond the given position i by n.
-func (complement Complemented) Expand(i, n int) Location {
-	return Complemented{complement[0].Expand(i, n)}
-}
-
 // LocationList represents a singly linked list of Location objects.
 type LocationList struct {
 	Data Location
@@ -877,6 +829,54 @@ func (ordered Ordered) Expand(i, n int) Location {
 	return Order(locs...)
 }
 
+// Complemented represents a location complemented for the given molecule type.
+type Complemented [1]Location
+
+// String satisfies the fmt.Stringer interface.
+func (complement Complemented) String() string {
+	return fmt.Sprintf("complement(%s)", complement[0])
+}
+
+// Len returns the total length spanned by the location.
+func (complement Complemented) Len() int {
+	return complement[0].Len()
+}
+
+// Less returns true if the location is less than the given location.
+func (complement Complemented) Less(loc Location) bool {
+	return complement[0].Less(loc)
+}
+
+// Region returns the region pointed to by the location.
+func (complement Complemented) Region() Region {
+	return complement[0].Region().Complement()
+}
+
+// Complement returns the complement location.
+func (complement Complemented) Complement() Location {
+	return complement[0]
+}
+
+// Reverse returns the reversed location for the given length sequence.
+func (complement Complemented) Reverse(length int) Location {
+	return Complemented{complement[0].Reverse(length)}
+}
+
+// Normalize returns a location normalized for the given length sequence.
+func (complement Complemented) Normalize(length int) Location {
+	return Complemented{complement[0].Normalize(length)}
+}
+
+// Shift the location beyond the given position i by n.
+func (complement Complemented) Shift(i, n int) Location {
+	return Complemented{complement[0].Shift(i, n)}
+}
+
+// Expand the location beyond the given position i by n.
+func (complement Complemented) Expand(i, n int) Location {
+	return Complemented{complement[0].Expand(i, n)}
+}
+
 func parseBetween(state *pars.State, result *pars.Result) error {
 	state.Push()
 	if err := pars.Int(state, result); err != nil {
@@ -960,38 +960,6 @@ func parseRange(state *pars.State, result *pars.Result) error {
 		state.Advance()
 	}
 	result.SetValue(Ranged{start, end, [2]bool{partial5, partial3}})
-	state.Drop()
-	return nil
-}
-
-func parseComplement(state *pars.State, result *pars.Result) error {
-	state.Push()
-	if err := state.Request(11); err != nil {
-		state.Pop()
-		return err
-	}
-	if !bytes.Equal(state.Buffer(), []byte("complement(")) {
-		err := pars.NewError("expected `complement(`", state.Position())
-		state.Pop()
-		return err
-	}
-	state.Advance()
-	if err := parseLocation(state, result); err != nil {
-		state.Pop()
-		return err
-	}
-	c, err := pars.Next(state)
-	if err != nil {
-		state.Pop()
-		return err
-	}
-	if c != ')' {
-		err := pars.NewError("expected `)`", state.Position())
-		state.Pop()
-		return err
-	}
-	state.Advance()
-	result.SetValue(result.Value.(Location).Complement())
 	state.Drop()
 	return nil
 }
@@ -1105,6 +1073,43 @@ func parseOrder(state *pars.State, result *pars.Result) error {
 	return nil
 }
 
+func parseComplement(q interface{}) pars.Parser {
+	parser := pars.AsParser(q)
+	return func(state *pars.State, result *pars.Result) error {
+		state.Push()
+		if err := state.Request(11); err != nil {
+			state.Pop()
+			return err
+		}
+		if !bytes.Equal(state.Buffer(), []byte("complement(")) {
+			err := pars.NewError("expected `complement(`", state.Position())
+			state.Pop()
+			return err
+		}
+		state.Advance()
+		if err := parser(state, result); err != nil {
+			state.Pop()
+			return err
+		}
+		c, err := pars.Next(state)
+		if err != nil {
+			state.Pop()
+			return err
+		}
+		if c != ')' {
+			err := pars.NewError("expected `)`", state.Position())
+			state.Pop()
+			return err
+		}
+		state.Advance()
+		result.SetValue(result.Value.(Location).Complement())
+		state.Drop()
+		return nil
+	}
+}
+
+var parseComplementDefault = parseComplement(&parseLocation)
+
 var parseLocation pars.Parser
 
 func init() {
@@ -1112,7 +1117,7 @@ func init() {
 		parseRange,
 		parseBetween,
 		parseAmbiguous,
-		parseComplement,
+		parseComplementDefault,
 		parseJoin,
 		parseOrder,
 		parsePoint,
