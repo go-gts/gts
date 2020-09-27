@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 
 	"github.com/go-gts/gts"
 	"github.com/go-gts/gts/cmd"
@@ -80,7 +81,7 @@ func sequenceLength(ctx *flags.Context) error {
 func sequenceInsert(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	i := pos.Int("position", "a zero-indexed position to insert the guest sequence")
+	locstr := pos.String("locator", "a locator string ([Select|Point|Range][@Modifier])")
 	guestPath := pos.String("guest", "guest sequence file")
 
 	var hostPath *string
@@ -94,6 +95,11 @@ func sequenceInsert(ctx *flags.Context) error {
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
+	}
+
+	locate, err := gts.AsLocator(*locstr)
+	if err != nil {
+		return ctx.Raise(err)
 	}
 
 	hostFile := os.Stdin
@@ -138,15 +144,26 @@ func sequenceInsert(ctx *flags.Context) error {
 
 	w := bufio.NewWriter(seqoutFile)
 
+	insert := gts.Insert
+	if *embed {
+		insert = gts.Embed
+	}
+
 	scanner = seqio.NewAutoScanner(hostFile)
 	for scanner.Scan() {
 		host := scanner.Value()
+
+		rr := locate(host.Features())
+		indices := make([]int, len(rr))
+		for i, r := range rr {
+			indices[i] = r.Head()
+		}
+		sort.Sort(sort.Reverse(sort.IntSlice(indices)))
+
 		for _, guest := range guests {
-			var out gts.Sequence
-			if *embed {
-				out = gts.Embed(host, *i, guest)
-			} else {
-				out = gts.Insert(host, *i, guest)
+			out := gts.Sequence(gts.Copy(host))
+			for _, index := range indices {
+				out = insert(out, index, guest)
 			}
 			formatter := seqio.NewFormatter(out, filetype)
 			if _, err := formatter.WriteTo(w); err != nil {

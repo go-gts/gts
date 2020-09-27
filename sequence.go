@@ -119,37 +119,37 @@ func insert(p []byte, pos int, q []byte) []byte {
 	return append(p[:pos], append(q, p[pos:]...)...)
 }
 
-// Insert a sequence at the given position. For any feature whose location
-// covers a region containing the point of insertion, the location will be
-// split at the positions before and after the guest sequence.
-func Insert(host Sequence, pos int, guest Sequence) Sequence {
+// Insert a sequence at the given index. For any feature whose location covers
+// a region containing the point of insertion, the location will be split at
+// the positions before and after the guest sequence.
+func Insert(host Sequence, index int, guest Sequence) Sequence {
 	var ff FeatureTable
 	for _, f := range host.Features() {
-		f.Location = f.Location.Shift(pos, Len(guest))
+		f.Location = f.Location.Shift(index, Len(guest))
 		ff = ff.Insert(f)
 	}
 	for _, f := range guest.Features() {
-		f.Location = f.Location.Expand(0, pos)
+		f.Location = f.Location.Expand(0, index)
 		ff = ff.Insert(f)
 	}
-	p := insert(host.Bytes(), pos, guest.Bytes())
+	p := insert(host.Bytes(), index, guest.Bytes())
 	return WithBytes(WithFeatures(host, ff), p)
 }
 
-// Embed a sequence at the given position. For any feature whose location
-// covers a region containing the point of insertion, the location will be
-// extended by the length of the guest Sequence.
-func Embed(host Sequence, pos int, guest Sequence) Sequence {
+// Embed a sequence at the given index. For any feature whose location covers
+// a region containing the point of insertion, the location will be extended
+// by the length of the guest Sequence.
+func Embed(host Sequence, index int, guest Sequence) Sequence {
 	var ff FeatureTable
 	for _, f := range host.Features() {
-		f.Location = f.Location.Expand(pos, Len(guest))
+		f.Location = f.Location.Expand(index, Len(guest))
 		ff = ff.Insert(f)
 	}
 	for _, f := range guest.Features() {
-		f.Location = f.Location.Expand(0, pos)
+		f.Location = f.Location.Expand(0, index)
 		ff = ff.Insert(f)
 	}
-	p := insert(host.Bytes(), pos, guest.Bytes())
+	p := insert(host.Bytes(), index, guest.Bytes())
 	return WithBytes(WithFeatures(host, ff), p)
 }
 
