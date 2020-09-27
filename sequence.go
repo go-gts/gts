@@ -134,7 +134,6 @@ func Insert(host Sequence, pos int, guest Sequence) Sequence {
 	}
 	p := insert(host.Bytes(), pos, guest.Bytes())
 	return WithBytes(WithFeatures(host, ff), p)
-
 }
 
 // Embed a sequence at the given position. For any feature whose location
