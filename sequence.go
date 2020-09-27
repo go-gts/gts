@@ -153,22 +153,22 @@ func Embed(host Sequence, index int, guest Sequence) Sequence {
 	return WithBytes(WithFeatures(host, ff), p)
 }
 
-// Delete a region of the sequence at the given position and length. Any
+// Delete a region of the sequence at the given offset and length. Any
 // features with a location containing the point of deletion will be
 // shortened by the length of deletion. If the entirety of the feature is
-// shortened as a result, the location will be described as a position in
+// shortened as a result, the location will be described as a offset in
 // between the bases where the deletion occurred.
-func Delete(seq Sequence, i, n int) Sequence {
+func Delete(seq Sequence, offset, length int) Sequence {
 	ff := make([]Feature, len(seq.Features()))
 	for i, f := range seq.Features() {
 		ff[i].Key = f.Key
-		ff[i].Location = f.Location.Expand(i, -n)
+		ff[i].Location = f.Location.Expand(i, -length)
 		ff[i].Qualifiers = f.Qualifiers
 	}
 	q := seq.Bytes()
-	p := make([]byte, len(q)-n)
-	copy(p[:i], q[:i])
-	copy(p[i:], q[i+n:])
+	p := make([]byte, len(q)-length)
+	copy(p[:offset], q[:offset])
+	copy(p[offset:], q[offset+length:])
 	return WithBytes(WithFeatures(seq, ff), p)
 }
 
