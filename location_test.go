@@ -339,6 +339,9 @@ var locationShiftTests = []struct {
 	{Between(0), Between(0), 0, -1},
 	{Between(1), Between(2), 0, 1},
 	{Between(1), Between(0), 0, -1},
+	{Between(1), Between(1), 1, -1},
+	{Between(1), Between(1), 1, -1},
+	{Between(1), Between(0), 0, -2},
 
 	{Point(0), Point(1), 0, 1},
 	{Point(0), Between(0), 0, -1},

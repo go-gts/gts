@@ -26,7 +26,7 @@ type Location interface {
 
 func shift(pos, i, n int, closed bool) int {
 	flag := i < pos
-	if closed {
+	if closed && n >= 0 {
 		flag = i <= pos
 	}
 	if flag {
