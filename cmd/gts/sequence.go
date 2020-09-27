@@ -7,6 +7,7 @@ import (
 	"os"
 	"sort"
 
+	"github.com/go-flip/flip"
 	"github.com/go-gts/gts"
 	"github.com/go-gts/gts/cmd"
 	"github.com/go-gts/gts/flags"
@@ -186,8 +187,7 @@ func sequenceInsert(ctx *flags.Context) error {
 func sequenceDelete(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	i := pos.Int("position", "a zero-indexed position in the sequence to start deleting from")
-	n := pos.Int("length", "the length of the region to delete")
+	locstr := pos.String("locator", "a locator string ([Select|Point|Range][@Modifier])")
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
@@ -199,6 +199,11 @@ func sequenceDelete(ctx *flags.Context) error {
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
+	}
+
+	locate, err := gts.AsLocator(*locstr)
+	if err != nil {
+		return ctx.Raise(err)
 	}
 
 	seqinFile := os.Stdin
@@ -231,7 +236,12 @@ func sequenceDelete(ctx *flags.Context) error {
 	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
-		seq = gts.Delete(seq, *i, *n)
+		ss := gts.Minimize(locate(seq.Features()))
+		flip.Flip(gts.BySegment(ss))
+		for _, s := range ss {
+			i, n := s.Head(), s.Len()
+			seq = gts.Delete(seq, i, n)
+		}
 		formatter := seqio.NewFormatter(seq, filetype)
 		if _, err := formatter.WriteTo(w); err != nil {
 			return ctx.Raise(err)
