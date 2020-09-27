@@ -162,7 +162,7 @@ func Delete(seq Sequence, offset, length int) Sequence {
 	ff := make([]Feature, len(seq.Features()))
 	for i, f := range seq.Features() {
 		ff[i].Key = f.Key
-		ff[i].Location = f.Location.Expand(i, -length)
+		ff[i].Location = f.Location.Expand(offset, -length)
 		ff[i].Qualifiers = f.Qualifiers
 	}
 	q := seq.Bytes()
