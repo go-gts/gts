@@ -1,4 +1,4 @@
-# GTS: Genomics Tools and Subprograms
+# GTS: Genome Transformation Subprograms
 An application and library package for genome manipulation.
 
 ## Installing the GTS CLI tools
