@@ -34,7 +34,7 @@ func (null NullLocation) Less(loc Location) bool {
 }
 
 func (null NullLocation) Region() Region {
-	return Forward{}
+	return Segment{}
 }
 
 func (null NullLocation) Complement() Location {
@@ -92,24 +92,24 @@ var locationAccessorTests = []struct {
 	len int
 	reg Region
 }{
-	{Between(0), "0^1", 0, Forward{0, 0}},
-	{Point(0), "1", 1, Forward{0, 1}},
-	{Range(0, 2), "1..2", 2, Forward{0, 2}},
+	{Between(0), "0^1", 0, Segment{0, 0}},
+	{Point(0), "1", 1, Segment{0, 1}},
+	{Range(0, 2), "1..2", 2, Segment{0, 2}},
 
-	{PartialRange(0, 2, Complete), "1..2", 2, Forward{0, 2}},
-	{PartialRange(0, 2, Partial5), "<1..2", 2, Forward{0, 2}},
-	{PartialRange(0, 2, Partial3), "1..>2", 2, Forward{0, 2}},
-	{PartialRange(0, 2, PartialBoth), "<1..>2", 2, Forward{0, 2}},
+	{PartialRange(0, 2, Complete), "1..2", 2, Segment{0, 2}},
+	{PartialRange(0, 2, Partial5), "<1..2", 2, Segment{0, 2}},
+	{PartialRange(0, 2, Partial3), "1..>2", 2, Segment{0, 2}},
+	{PartialRange(0, 2, PartialBoth), "<1..>2", 2, Segment{0, 2}},
 
-	{Join(Range(0, 2), Range(3, 5)), "join(1..2,4..5)", 4, Regions{Forward{0, 2}, Forward{3, 5}}},
-	{Join(Range(0, 2), Join(Range(3, 5), Range(6, 8))), "join(1..2,4..5,7..8)", 6, Regions{Forward{0, 2}, Forward{3, 5}, Forward{6, 8}}},
-	{Join(Point(0), Point(2)), "join(1,3)", 2, Regions{Forward{0, 1}, Forward{2, 3}}},
+	{Join(Range(0, 2), Range(3, 5)), "join(1..2,4..5)", 4, Regions{Segment{0, 2}, Segment{3, 5}}},
+	{Join(Range(0, 2), Join(Range(3, 5), Range(6, 8))), "join(1..2,4..5,7..8)", 6, Regions{Segment{0, 2}, Segment{3, 5}, Segment{6, 8}}},
+	{Join(Point(0), Point(2)), "join(1,3)", 2, Regions{Segment{0, 1}, Segment{2, 3}}},
 
-	{Ambiguous{0, 2}, "1.2", 1, Forward{0, 2}},
+	{Ambiguous{0, 2}, "1.2", 1, Segment{0, 2}},
 
-	{Order(Range(0, 2), Range(2, 4)), "order(1..2,3..4)", 4, Regions{Forward{0, 2}, Forward{2, 4}}},
-	{Order(Range(0, 2), Order(Range(2, 4), Range(4, 6))), "order(1..2,3..4,5..6)", 6, Regions{Forward{0, 2}, Forward{2, 4}, Forward{4, 6}}},
-	{Order(Point(0), Point(2)), "order(1,3)", 2, Regions{Forward{0, 1}, Forward{2, 3}}},
+	{Order(Range(0, 2), Range(2, 4)), "order(1..2,3..4)", 4, Regions{Segment{0, 2}, Segment{2, 4}}},
+	{Order(Range(0, 2), Order(Range(2, 4), Range(4, 6))), "order(1..2,3..4,5..6)", 6, Regions{Segment{0, 2}, Segment{2, 4}, Segment{4, 6}}},
+	{Order(Point(0), Point(2)), "order(1,3)", 2, Regions{Segment{0, 1}, Segment{2, 3}}},
 }
 
 func TestLocationAccessors(t *testing.T) {

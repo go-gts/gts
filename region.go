@@ -1,256 +1,56 @@
 package gts
 
-import (
-	"fmt"
-
-	"github.com/go-gts/gts/utils"
-	"github.com/go-pars/pars"
-)
-
-// Modifier is an interface required to modify coordinate regions.
-type Modifier interface {
-	Apply(head, tail int) (int, int)
-	Complement() Modifier
-	fmt.Stringer
-}
-
-// Head collapses a region onto its head, offset by the value given.
-type Head int
-
-// Apply the modifier to the given bounds.
-func (mod Head) Apply(head, tail int) (int, int) {
-	n := int(mod) + head
-	return n, n
-}
-
-// Complement returns the equivalent Modifier for the complement strand.
-func (mod Head) Complement() Modifier {
-	return Tail(-mod)
-}
-
-// String returns the textual representation of the Modifier.
-func (mod Head) String() string {
-	if mod == 0 {
-		return "^"
-	}
-	return fmt.Sprintf("^%+d", mod)
-}
-
-// Tail collapses a region onto its tail, offset by the value given.
-type Tail int
-
-// Apply the modifier to the given bounds.
-func (mod Tail) Apply(head, tail int) (int, int) {
-	n := int(mod) + tail
-	return n, n
-}
-
-// Complement returns the equivalent Modifier for the complement strand.
-func (mod Tail) Complement() Modifier {
-	return Head(-mod)
-}
-
-// String returns the textual representation of the Modifier.
-func (mod Tail) String() string {
-	if mod == 0 {
-		return "$"
-	}
-	return fmt.Sprintf("$%+d", mod)
-}
-
-// HeadTail offsets the head and tail coordinates by the values given.
-type HeadTail [2]int
-
-// Apply the modifier to the given bounds.
-func (mod HeadTail) Apply(head, tail int) (int, int) {
-	p, q := utils.Unpack(mod)
-	return head + p, tail + q
-}
-
-// Complement returns the equivalent Modifier for the complement strand.
-func (mod HeadTail) Complement() Modifier {
-	p, q := utils.Unpack(mod)
-	return HeadTail{-q, -p}
-}
-
-// String returns the textual representation of the Modifier.
-func (mod HeadTail) String() string {
-	p, q := utils.Unpack(mod)
-	return fmt.Sprintf("%s..%s", Head(p), Tail(q))
-}
-
-// HeadHead offsets the head coordinate by the values given.
-type HeadHead [2]int
-
-// Apply the modifier to the given bounds.
-func (mod HeadHead) Apply(head, tail int) (int, int) {
-	p, q := utils.Unpack(mod)
-	return head + p, head + q
-}
-
-// Complement returns the equivalent Modifier for the complement strand.
-func (mod HeadHead) Complement() Modifier {
-	p, q := utils.Unpack(mod)
-	return TailTail{-q, -p}
-}
-
-// String returns the textual representation of the Modifier.
-func (mod HeadHead) String() string {
-	p, q := utils.Unpack(mod)
-	return fmt.Sprintf("%s..%s", Head(p), Head(q))
-}
-
-// TailTail offsets the tail coordinate by the values given.
-type TailTail [2]int
-
-// Apply the modifier to the given bounds.
-func (mod TailTail) Apply(head, tail int) (int, int) {
-	p, q := utils.Unpack(mod)
-	return tail + p, tail + q
-}
-
-// Complement returns the equivalent Modifier for the complement strand.
-func (mod TailTail) Complement() Modifier {
-	p, q := utils.Unpack(mod)
-	return HeadHead{-q, -p}
-}
-
-// String returns the textual representation of the Modifier.
-func (mod TailTail) String() string {
-	p, q := utils.Unpack(mod)
-	return fmt.Sprintf("%s..%s", Tail(p), Tail(q))
-}
-
-var parseHead = pars.Any(
-	pars.Seq('^', pars.Int).Child(1),
-	pars.Byte('^').Bind(0),
-).Map(func(result *pars.Result) error {
-	n := result.Value.(int)
-	result.SetValue(Head(n))
-	return nil
-})
-
-var parseTail = pars.Any(
-	pars.Seq('$', pars.Int).Child(1),
-	pars.Byte('$').Bind(0),
-).Map(func(result *pars.Result) error {
-	n := result.Value.(int)
-	result.SetValue(Tail(n))
-	return nil
-})
-
-func mapHeadTail(result *pars.Result) error {
-	p := int(result.Children[0].Value.(Head))
-	q := int(result.Children[2].Value.(Tail))
-	result.SetValue(HeadTail{p, q})
-	return nil
-}
-
-var parseHeadTail = pars.Seq(parseHead, "..", parseTail).Map(mapHeadTail)
-
-func mapHeadHead(result *pars.Result) error {
-	p := int(result.Children[0].Value.(Head))
-	q := int(result.Children[2].Value.(Head))
-	result.SetValue(HeadHead{p, q})
-	return nil
-}
-
-var parseHeadHead = pars.Seq(parseHead, "..", parseHead).Map(mapHeadHead)
-
-func mapTailTail(result *pars.Result) error {
-	p := int(result.Children[0].Value.(Tail))
-	q := int(result.Children[2].Value.(Tail))
-	result.SetValue(TailTail{p, q})
-	return nil
-}
-
-var parseTailTail = pars.Seq(parseTail, "..", parseTail).Map(mapTailTail)
-
-var parseModifier = pars.Any(
-	parseHeadTail,
-	parseHeadHead,
-	parseTailTail,
-	parseHead,
-	parseTail,
-)
-
-// AsModifier interprets the given string as a Modifier.
-func AsModifier(s string) (Modifier, error) {
-	result, err := pars.Exact(parseModifier).Parse(pars.FromString(s))
-	if err != nil {
-		return nil, err
-	}
-	return result.Value.(Modifier), nil
-}
-
 // Region represents a coordinate region which can be resized and used to
 // locate the subsequence within a given sequence corresponding to the region
 // that is being represented.
 type Region interface {
 	Len() int
+	Head() int
+	Tail() int
 	Resize(mod Modifier) Region
 	Complement() Region
 	Locate(seq Sequence) Sequence
 }
 
-// Forward represents a Region on the forward strand.
-type Forward [2]int
+// Segment represents a contiguous region.
+type Segment [2]int
 
-// Len returns the length spanned by the Region.
-func (r Forward) Len() int {
-	head, tail := utils.Unpack(r)
-	return tail - head
+// Len returns the length spanned by the region.
+func (s Segment) Len() int {
+	start, end := Unpack(s)
+	return Abs(end - start)
+}
+
+// Head returns the 5' boundary of the region.
+func (s Segment) Head() int {
+	return s[0]
+}
+
+// Tail returns the 3' boundary of the region.
+func (s Segment) Tail() int {
+	return s[1]
 }
 
 // Resize the region using the given Modifier.
-func (r Forward) Resize(mod Modifier) Region {
-	head, tail := utils.Unpack(r)
+func (s Segment) Resize(mod Modifier) Region {
+	head, tail := Unpack(s)
 	head, tail = mod.Apply(head, tail)
-	if head < tail {
-		return Forward{head, tail}
-	}
-	return Forward{head, head}
+	return Segment{head, tail}
 }
 
-// Complement returns the equivalent Region on the complement strand.
-func (r Forward) Complement() Region {
-	return Backward(r)
+// Complement returns the equivalent region for the complement strand.
+func (s Segment) Complement() Region {
+	head, tail := Unpack(s)
+	return Segment{tail, head}
 }
 
 // Locate the subsequence corresponding to the region in the given sequence.
-func (r Forward) Locate(seq Sequence) Sequence {
-	head, tail := utils.Unpack(r)
+func (s Segment) Locate(seq Sequence) Sequence {
+	head, tail := Unpack(s)
+	if tail < head {
+		return Reverse(Complement(Slice(seq, tail, head)))
+	}
 	return Slice(seq, head, tail)
-}
-
-// Backward represents a Region on the backward strand.
-type Backward [2]int
-
-// Len returns the length spanned by the Region.
-func (r Backward) Len() int {
-	head, tail := utils.Unpack(r)
-	return tail - head
-}
-
-// Resize the region using the given Modifier.
-func (r Backward) Resize(mod Modifier) Region {
-	head, tail := utils.Unpack(r)
-	head, tail = mod.Complement().Apply(head, tail)
-	if head < tail {
-		return Backward{head, tail}
-	}
-	return Backward{tail, tail}
-}
-
-// Complement returns the equivalent Region on the complement strand.
-func (r Backward) Complement() Region {
-	return Forward(r)
-}
-
-// Locate the subsequence corresponding to the region in the given sequence.
-func (r Backward) Locate(seq Sequence) Sequence {
-	head, tail := utils.Unpack(r)
-	return Reverse(Complement(Slice(seq, head, tail)))
 }
 
 // Regions is a slice or Region objects.
@@ -263,6 +63,22 @@ func (rr Regions) Len() int {
 		total += r.Len()
 	}
 	return total
+}
+
+// Head returns the 5' boundary of the region.
+func (rr Regions) Head() int {
+	if len(rr) > 0 {
+		return rr[0].Head()
+	}
+	return 0
+}
+
+// Tail returns the 3' boundary of the region.
+func (rr Regions) Tail() int {
+	if len(rr) > 0 {
+		return rr[len(rr)-1].Tail()
+	}
+	return 0
 }
 
 // Resize the region using the given Modifier.
@@ -281,12 +97,12 @@ func (rr Regions) Resize(mod Modifier) Region {
 		lower = int(mod) + ret.Len()
 		upper = lower
 	case HeadHead:
-		lower, upper = utils.Unpack(mod)
+		lower, upper = Unpack(mod)
 	case HeadTail:
-		lower, upper = utils.Unpack(mod)
+		lower, upper = Unpack(mod)
 		upper += ret.Len()
 	case TailTail:
-		lower, upper = utils.Unpack(mod)
+		lower, upper = Unpack(mod)
 		lower += ret.Len()
 		upper += ret.Len()
 	}
@@ -304,7 +120,7 @@ func (rr Regions) Resize(mod Modifier) Region {
 		}
 	}
 
-	switch utils.Compare(left, right) {
+	switch Compare(left, right) {
 	case 1:
 		return ret[left].Resize(Head(lower))
 	case 0:

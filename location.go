@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"github.com/go-ascii/ascii"
-	"github.com/go-gts/gts/utils"
 	"github.com/go-pars/pars"
 )
 
@@ -88,7 +87,7 @@ func (between Between) Less(loc Location) bool {
 // Region returns the region pointed to by the location.
 func (between Between) Region() Region {
 	head := int(between)
-	return Forward{head, head}
+	return Segment{head, head}
 }
 
 // Complement returns the complement location.
@@ -169,7 +168,7 @@ func (point Point) Less(loc Location) bool {
 // Region returns the region pointed to by the location.
 func (point Point) Region() Region {
 	head := int(point)
-	return Forward{head, head + 1}
+	return Segment{head, head + 1}
 }
 
 // Complement returns the complement location.
@@ -329,7 +328,7 @@ func (ranged Ranged) Less(loc Location) bool {
 // Region returns the region pointed to by the location.
 func (ranged Ranged) Region() Region {
 	head, tail := ranged.Start, ranged.End
-	return Forward{head, tail}
+	return Segment{head, tail}
 }
 
 // Complement returns the complement location.
@@ -468,8 +467,8 @@ func (ambiguous Ambiguous) Less(loc Location) bool {
 
 // Region returns the region pointed to by the location.
 func (ambiguous Ambiguous) Region() Region {
-	head, tail := utils.Unpack(ambiguous)
-	return Forward{head, tail}
+	head, tail := Unpack(ambiguous)
+	return Segment{head, tail}
 }
 
 // Complement returns the complement location.
