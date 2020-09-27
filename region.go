@@ -1,5 +1,9 @@
 package gts
 
+import (
+	"sort"
+)
+
 // Region represents a coordinate region which can be resized and used to
 // locate the subsequence within a given sequence corresponding to the region
 // that is being represented.
@@ -149,4 +153,70 @@ func (rr Regions) Locate(seq Sequence) Sequence {
 		seqs[i] = r.Locate(seq)
 	}
 	return Concat(seqs...)
+}
+
+// BySegment attaches the methods of sort.Interface to []Segment, sorting in
+// increasing order.
+type BySegment []Segment
+
+// Len is the number of elements in the collection.
+func (ss BySegment) Len() int {
+	return len(ss)
+}
+
+// Less reports whether the element with index i should sort before the element
+// with index j.
+func (ss BySegment) Less(i, j int) bool {
+	l, r := ss[i], ss[j]
+	if l[0] < r[0] {
+		return true
+	}
+	if r[0] < l[0] {
+		return false
+	}
+	if l[1] < r[1] {
+		return true
+	}
+	return false
+}
+
+// Swap the elements with indexes i and j.
+func (ss BySegment) Swap(i, j int) {
+	ss[i], ss[j] = ss[j], ss[i]
+}
+
+func flattenRegion(arg Region) []Segment {
+	switch rr := arg.(type) {
+	case Regions:
+		ss := []Segment{}
+		for _, r := range rr {
+			ss = append(ss, flattenRegion(r)...)
+		}
+		return ss
+	default:
+		s := rr.(Segment)
+		if s[1] < s[0] {
+			s = Segment{s[1], s[0]}
+		}
+		return []Segment{s}
+	}
+}
+
+// Minimimize the representation of the given region. A minimized region will
+// be flattened, sorted, and overlapping areas removed.
+func Minimize(arg Region) []Segment {
+	ss := flattenRegion(arg)
+	sort.Sort(BySegment(ss))
+	i := 0
+	for i < len(ss)-1 {
+		l, r := ss[i], ss[i+1]
+		if l[1] < r[0] {
+			i++
+		} else {
+			ss[i] = Segment{Min(l[0], r[0]), Max(l[1], r[1])}
+			copy(ss[i+1:], ss[i+2:])
+			ss = ss[:len(ss)-1]
+		}
+	}
+	return ss
 }

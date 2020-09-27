@@ -186,3 +186,12 @@ func TestRegionLocate(t *testing.T) {
 		}
 	}
 }
+
+func TestMinimize(t *testing.T) {
+	in := Regions{Segment{1, 3}, Segment{6, 9}, Segment{5, 3}, Segment{6, 8}, Segment{1, 3}}
+	exp := []Segment{{1, 5}, {6, 9}}
+	out := Minimize(in)
+	if !reflect.DeepEqual(out, exp) {
+		t.Errorf("Minimize(%#v) = %#v, want %#v", in, out, exp)
+	}
+}
