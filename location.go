@@ -31,8 +31,8 @@ func shift(pos, i, n int, closed bool) int {
 	}
 	if flag {
 		pos += n
-		if pos < 0 {
-			return 0
+		if pos < i {
+			return i
 		}
 	}
 	return pos

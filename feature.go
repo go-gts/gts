@@ -75,11 +75,52 @@ func listQualifiers(f Feature) []QualifierIO {
 // boolean value upon receiveing a Feature object.
 type Filter func(f Feature) bool
 
+// And generates a new Filter which will only return true if all of the given
+// filters return true for a given Feature object.
+func And(filters ...Filter) Filter {
+	return func(f Feature) bool {
+		for _, filter := range filters {
+			if !filter(f) {
+				return false
+			}
+		}
+		return true
+	}
+}
+
+// Or generates a new Filter which will return true if any one of the given
+// filters return true for a given Feature object.
+func Or(filters ...Filter) Filter {
+	return func(f Feature) bool {
+		for _, filter := range filters {
+			if filter(f) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// Not generates a new Filter which will return true if the given Filter
+// returns false for a given Feature object.
+func Not(filter Filter) Filter {
+	return func(f Feature) bool {
+		return !filter(f)
+	}
+}
+
 // TrueFilter always returns true.
 func TrueFilter(f Feature) bool { return true }
 
 // FalseFilter always return false.
 func FalseFilter(f Feature) bool { return false }
+
+// Within returns true if the location of the key is within the given bounds.
+func Within(lower, upper int) Filter {
+	return func(f Feature) bool {
+		return f.Location.Region().Within(lower, upper)
+	}
+}
 
 // Key returns true if the key of a feature matches the given key string. If
 // an empty string was given, the filter will always return true.
@@ -129,40 +170,6 @@ func Qualifier(name, query string) (Filter, error) {
 		}
 		return false
 	}, nil
-}
-
-// And generates a new Filter which will only return true if all of the given
-// filters return true for a given Feature object.
-func And(filters ...Filter) Filter {
-	return func(f Feature) bool {
-		for _, filter := range filters {
-			if !filter(f) {
-				return false
-			}
-		}
-		return true
-	}
-}
-
-// Or generates a new Filter which will return true if any one of the given
-// filters return true for a given Feature object.
-func Or(filters ...Filter) Filter {
-	return func(f Feature) bool {
-		for _, filter := range filters {
-			if filter(f) {
-				return true
-			}
-		}
-		return false
-	}
-}
-
-// Not generates a new Filter which will return true if the given Filter
-// returns false for a given Feature object.
-func Not(filter Filter) Filter {
-	return func(f Feature) bool {
-		return !filter(f)
-	}
 }
 
 func shiftSelector(s string) (string, string) {

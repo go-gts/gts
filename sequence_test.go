@@ -106,23 +106,59 @@ func TestDelete(t *testing.T) {
 	qfs := Values{}
 	qfs.Add("organism", "Genus species")
 	qfs.Add("mol_type", "Genomic DNA")
-	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	ff := []Feature{
+		{"source", Range(0, len(p)), qfs, nil},
+		{"gene", Range(4, 5), qfs, nil},
+	}
 	info := "info"
 	in := New(info, ff, p)
-	out := Delete(in, 3, 2)
+	out := Delete(in, 3, 4)
 
-	q := []byte("atgtgc")
-	gg := []Feature{{"source", Range(0, len(q)), qfs, nil}}
+	q := []byte("atgc")
+	gg := []Feature{
+		{"source", Range(0, len(q)), qfs, nil},
+		{"gene", Between(3), qfs, nil},
+	}
 	exp := New(info, gg, q)
 
 	if !reflect.DeepEqual(out.Info(), exp.Info()) {
-		t.Errorf("Delete(seq, 2, seq).Info() = %v, want %v", out.Info(), exp.Info())
+		t.Errorf("Delete(seq, 3, 4).Info() = %v, want %v", out.Info(), exp.Info())
 	}
 	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
-		t.Errorf("Delete(seq, 2, seq).Features() = %v, want %v", out.Features(), exp.Features())
+		t.Errorf("Delete(seq, 3, 4).Features() = %v, want %v", out.Features(), exp.Features())
 	}
 	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
-		t.Errorf("Delete(seq, 2, seq).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+		t.Errorf("Delete(seq, 3, 4).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+	}
+}
+
+func TestErase(t *testing.T) {
+	p := []byte("atgcatgc")
+	qfs := Values{}
+	qfs.Add("organism", "Genus species")
+	qfs.Add("mol_type", "Genomic DNA")
+	ff := []Feature{
+		{"source", Range(0, len(p)), qfs, nil},
+		{"gene", Range(4, 5), qfs, nil},
+	}
+	info := "info"
+	in := New(info, ff, p)
+	out := Erase(in, 3, 4)
+
+	q := []byte("atgc")
+	gg := []Feature{
+		{"source", Range(0, len(q)), qfs, nil},
+	}
+	exp := New(info, gg, q)
+
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Erase(seq, 3, 4).Info() = %v, want %v", out.Info(), exp.Info())
+	}
+	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		t.Errorf("Erase(seq, 3, 4).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		t.Errorf("Erase(seq, 3, 4).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
 	}
 }
 
@@ -150,16 +186,16 @@ func TestSlice(t *testing.T) {
 	})
 
 	t.Run("Backward", func(t *testing.T) {
-		gg := []Feature{{"source", Range(0, 4), qfs, nil}, {"gene", Range(1, 3), qfs, nil}}
-		out, exp := Slice(in, 6, 2), Reverse(New(info, gg, p[2:6]))
+		gg := []Feature{{"source", Range(0, 4), qfs, nil}}
+		out, exp := Slice(in, 6, 2), New(info, gg, append(p[6:], p[:2]...))
 		if !reflect.DeepEqual(out.Info(), exp.Info()) {
-			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
+			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 6, 2, out.Info(), exp.Info())
 		}
-		if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
-			t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 2, 6, out.Features(), exp.Features())
+		if !reflect.DeepEqual(out.Features(), exp.Features()) {
+			t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 6, 2, out.Features(), exp.Features())
 		}
-		if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
-			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 2, 6, out.Bytes(), exp.Bytes())
+		if !reflect.DeepEqual(out.Bytes(), exp.Bytes()) {
+			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 6, 2, out.Bytes(), exp.Bytes())
 		}
 	})
 }

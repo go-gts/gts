@@ -172,12 +172,24 @@ func Delete(seq Sequence, offset, length int) Sequence {
 	return WithBytes(WithFeatures(seq, ff), p)
 }
 
+// Erase a region of the sequence at the given offset and length. Any
+// features with a location containing the point of deletion will be
+// shortened by the length of deletion. If the entirety of the feature is
+// shortened as a result, the location will be removed from the sequence.
+func Erase(seq Sequence, offset, length int) Sequence {
+	f := Or(Key("source"), Not(Within(offset, offset+length)))
+	ff := seq.Features().Filter(f)
+	seq = WithFeatures(seq, ff)
+	return Delete(seq, offset, length)
+}
+
 // Slice returns a subsequence of the given sequence starting at start and up
 // to end. The target sequence region is copied. Any features with locations
 // overlapping with the sliced region will be left in the sliced sequence.
 func Slice(seq Sequence, start, end int) Sequence {
 	if end < start {
-		return Reverse(Slice(seq, end, start))
+		seq = Erase(seq, end, start-end)
+		return Rotate(seq, -end)
 	}
 	p := make([]byte, end-start)
 	copy(p, seq.Bytes()[start:end])

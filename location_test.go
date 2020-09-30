@@ -358,6 +358,7 @@ var locationShiftTests = []struct {
 	{Range(1, 3), Range(0, 2), 0, -1},
 	{Range(0, 2), Range(0, 2), 2, 1},
 	{Range(0, 2), Range(0, 2), 2, -1},
+	{Range(39, 42), Between(30), 30, -20},
 	{PartialRange(0, 4, PartialBoth), Join(PartialRange(0, 2, Partial5), PartialRange(3, 5, Partial3)), 2, 1},
 
 	{Join(Range(0, 2), Range(3, 5)), Join(Range(1, 3), Range(4, 6)), 0, 1},

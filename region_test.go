@@ -142,6 +142,39 @@ func TestRegionResize(t *testing.T) {
 	}
 }
 
+var regionWithinTests = []struct {
+	in   Region
+	l, u int
+	out  bool
+}{
+	{Segment{3, 6}, 2, 7, true},
+	{Segment{3, 6}, 3, 6, true},
+	{Segment{3, 6}, 4, 6, false},
+	{Segment{3, 6}, 3, 5, false},
+	{Segment{3, 6}, 4, 5, false},
+	{Segment{3, 6}, 6, 3, false},
+
+	{Segment{6, 3}, 2, 7, true},
+	{Segment{6, 3}, 3, 6, true},
+	{Segment{6, 3}, 4, 6, false},
+	{Segment{6, 3}, 3, 5, false},
+	{Segment{6, 3}, 4, 5, false},
+	{Segment{6, 3}, 6, 3, false},
+
+	{Regions{Segment{3, 6}, Segment{13, 16}}, 3, 16, true},
+	{Regions{Segment{3, 6}, Segment{13, 16}}, 3, 6, false},
+	{Regions{Segment{3, 6}, Segment{13, 16}}, 13, 16, false},
+}
+
+func TestRegionWithin(t *testing.T) {
+	for _, tt := range regionWithinTests {
+		out := tt.in.Within(tt.l, tt.u)
+		if out != tt.out {
+			t.Errorf("%v.Within(%d, %d) = %t, want %t", tt.in, tt.l, tt.u, out, tt.out)
+		}
+	}
+}
+
 var regionLocateTests = []struct {
 	in  Region
 	out Sequence
