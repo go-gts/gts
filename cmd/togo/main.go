@@ -192,7 +192,7 @@ func search(ctx *flags.Context) error {
 func listdb(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	tool := pos.String("tool", "TogoWS tool name (entry or search")
+	tool := pos.String("tool", "TogoWS tool name (entry or search)")
 
 	outpath := opt.String('o', "output", "-", "file to output (specifying `-` will force standard output)")
 	format := opt.String('F', "format", "", "output data format")
