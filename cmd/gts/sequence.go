@@ -98,6 +98,11 @@ func sequenceInsert(ctx *flags.Context) error {
 		return err
 	}
 
+	insert := gts.Insert
+	if *embed {
+		insert = gts.Embed
+	}
+
 	locate, err := gts.AsLocator(*locstr)
 	if err != nil {
 		return ctx.Raise(err)
@@ -145,11 +150,6 @@ func sequenceInsert(ctx *flags.Context) error {
 
 	w := bufio.NewWriter(seqoutFile)
 
-	insert := gts.Insert
-	if *embed {
-		insert = gts.Embed
-	}
-
 	scanner = seqio.NewAutoScanner(hostFile)
 	for scanner.Scan() {
 		host := scanner.Value()
@@ -195,10 +195,16 @@ func sequenceDelete(ctx *flags.Context) error {
 	}
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
+	erase := opt.Switch('e', "erase", "remove features contained in the deleted regions")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
+	}
+
+	delete := gts.Delete
+	if *erase {
+		delete = gts.Erase
 	}
 
 	locate, err := gts.AsLocator(*locstr)
@@ -240,7 +246,7 @@ func sequenceDelete(ctx *flags.Context) error {
 		flip.Flip(gts.BySegment(ss))
 		for _, s := range ss {
 			i, n := s.Head(), s.Len()
-			seq = gts.Delete(seq, i, n)
+			seq = delete(seq, i, n)
 		}
 		formatter := seqio.NewFormatter(seq, filetype)
 		if _, err := formatter.WriteTo(w); err != nil {
