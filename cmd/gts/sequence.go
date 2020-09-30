@@ -82,7 +82,7 @@ func sequenceLength(ctx *flags.Context) error {
 func sequenceInsert(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	locstr := pos.String("locator", "a locator string ([Select|Point|Range][@Modifier])")
+	locstr := pos.String("locator", "a locator string ([Selector|Point|Range][@Modifier])")
 	guestPath := pos.String("guest", "guest sequence file")
 
 	var hostPath *string
@@ -187,7 +187,7 @@ func sequenceInsert(ctx *flags.Context) error {
 func sequenceDelete(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	locstr := pos.String("locator", "a locator string ([Select|Point|Range][@Modifier])")
+	locstr := pos.String("locator", "a locator string ([Selector|Point|Range][@Modifier])")
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
