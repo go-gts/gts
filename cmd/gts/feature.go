@@ -357,7 +357,7 @@ func featureExtract(ctx *flags.Context) error {
 	}
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
-	modstr := opt.String('m', "--range", "^..$", "location range modifier ()")
+	modstr := opt.String('m', "--range", "^..$", "location range modifier")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
