@@ -202,7 +202,7 @@ func flattenRegion(arg Region) []Segment {
 	}
 }
 
-// Minimimize the representation of the given region. A minimized region will
+// Minimize the representation of the given region. A minimized region will
 // be flattened, sorted, and overlapping areas removed.
 func Minimize(arg Region) []Segment {
 	ss := flattenRegion(arg)
