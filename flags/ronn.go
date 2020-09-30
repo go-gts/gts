@@ -28,7 +28,7 @@ func Ronn(ctx *Context, pos *Positional, opt *Optional) error {
 	w := bufio.NewWriter(f)
 
 	parts := []string{
-		fmt.Sprintf("# %s -- %s", name, desc),
+		fmt.Sprintf("# %s(1) -- %s", name, desc),
 		"## SYNOPSIS",
 		name + " " + usage,
 		"## DESCRIPTION",
@@ -40,8 +40,9 @@ func Ronn(ctx *Context, pos *Positional, opt *Optional) error {
 
 	for _, name := range pos.Order {
 		arg := pos.Args[name]
-		usage := sentencify(arg.Usage)
-		options = append(options, fmt.Sprintf("  * `<%s>`:\n    %s", name, usage))
+		usage := wrap.Space(sentencify(arg.Usage), 76)
+		usage = strings.ReplaceAll(usage, "\n", "    \n")
+		options = append(options, fmt.Sprintf("  * `<%s>`:\n%s", name, usage))
 	}
 
 	names := []optionalName{}
@@ -60,7 +61,8 @@ func Ronn(ctx *Context, pos *Positional, opt *Optional) error {
 	for _, name := range names {
 		short, long := name.Short, name.Long
 		arg := opt.Args[long]
-		usage := sentencify(arg.Usage)
+		usage := wrap.Space(sentencify(arg.Usage), 76)
+		usage = strings.ReplaceAll(usage, "\n", "    \n")
 		var flag string
 
 		switch arg.Value.(type) {
