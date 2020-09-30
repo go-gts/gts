@@ -38,6 +38,7 @@ func TypeOf(s string) ArgumentType {
 }
 
 var errHelp = errors.New("help")
+var errRonn = errors.New("ronn")
 
 // Parse will parse the argument list according to the positional and optional
 // argument lists provided and return extraneous argument elements and an error
@@ -56,6 +57,10 @@ func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 
 			if long == "help" {
 				return nil, errHelp
+			}
+
+			if long == "ronn" {
+				return nil, errRonn
 			}
 
 			switch i := strings.IndexByte(long, '='); i {

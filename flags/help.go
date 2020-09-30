@@ -77,7 +77,7 @@ func Help(pos *Positional, opt *Optional) string {
 			case SliceValue:
 				switch short {
 				case 0:
-					flag = fmt.Sprintf("--%[1]s <%[1]s> [--%[1]s <%[1]s> ...]", long)
+					flag = fmt.Sprintf("--%[1]s=<%[1]s> [--%[1]s=<%[1]s> ...]", long)
 				default:
 					flag = fmt.Sprintf("-%[1]c <%[2]s> [-%[1]c <%[2]s> ...]", short, long)
 				}
@@ -86,7 +86,7 @@ func Help(pos *Positional, opt *Optional) string {
 				case 0:
 					flag = fmt.Sprintf("--%[1]s <%[1]s>", long)
 				default:
-					flag = fmt.Sprintf("-%c <%s>, --%s", short, long, long)
+					flag = fmt.Sprintf("-%c <%[2]s>, --%[2]s=<%[2]s>", short, long)
 				}
 			}
 			parts = append(parts, formatHelp(flag, usage))

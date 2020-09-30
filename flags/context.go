@@ -35,20 +35,26 @@ func (ctx Context) Value(key interface{}) interface{} {
 
 // Parse will parse the Context arguments based on the given positional and
 // optional argument definition objects.
-func (ctx Context) Parse(pos *Positional, opt *Optional) error {
+func (ctx *Context) Parse(pos *Positional, opt *Optional) error {
 	args, err := Parse(pos, opt, ctx.Args)
 	if err != nil {
 		builder := strings.Builder{}
 		name := ctx.Name
 		usage := wrap.Space(Usage(pos, opt), 72-len(name))
 
-		if err == errHelp {
+		switch err {
+		case errHelp:
 			builder.WriteString(fmt.Sprintf("%s: %s\n\n", name, ctx.Desc))
 			builder.WriteString(fmt.Sprintf("usage: %s %s\n", name, usage))
 			builder.WriteString(Help(pos, opt))
-		} else {
+
+		case errRonn:
+			return Ronn(ctx, pos, opt)
+
+		default:
 			builder.WriteString(fmt.Sprintf("%v\n\nusage: %s %s", err, name, usage))
 		}
+
 		return errors.New(builder.String())
 	}
 	ctx.Args = args
