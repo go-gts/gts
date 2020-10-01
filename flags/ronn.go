@@ -42,7 +42,7 @@ func Ronn(ctx *Context, pos *Positional, opt *Optional) error {
 		arg := pos.Args[name]
 		usage := wrap.Space(sentencify(arg.Usage), 76)
 		usage = strings.ReplaceAll(usage, "\n", "    \n")
-		options = append(options, fmt.Sprintf("  * `<%s>`:\n%s", name, usage))
+		options = append(options, fmt.Sprintf("  * `<%s>`:\n    %s", name, usage))
 	}
 
 	names := []optionalName{}
