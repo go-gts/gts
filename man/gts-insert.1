@@ -1,0 +1,77 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS\-INSERT" "1" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\-insert\fR \- insert a sequence into another sequence(s)
+.
+.SH "SYNOPSIS"
+gts\-insert [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIlocator\fR \fIguest\fR \fIhost\fR
+.
+.SH "DESCRIPTION"
+\fBgts\-insert\fR takes two sequence inputs and inserts the contents of the first \fIguest\fR sequence into the specified locations of the second \fIhost\fR sequence\. The point of insertion is specified using a \fBlocator\fR\. Each \fIguest\fR sequence will be inserted into all specified \fBlocator\fR positions of each \fIhost\fR sequence\. A locator is a combination of one of \fBpoint location\fR, \fBrange location\fR, or \fBselector\fR, and a \fBmodifier\fR in the form \fB[selector|point|range][@modifier]\fR\. See gts\-locator(7) for a more in\-depth explanation of a locator\. Refer to the EXAMPLES for some examples to get started\.
+.
+.P
+Features that were present at the point of insertion will be split to form a \fBjoin\fRed location\. Such features can be instead expanded if the \fB\-e\fR or \fB\-\-embed\fR option is provided\. Any features present in the \fIguest\fR sequence will be transferred to the corresponding locations after being inesrted into the \fIhost\fR sequence\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB<locator>\fR
+A locator string ([selector|point|range][@modifier])\. See gts\-locator(7) for more details\.
+.
+.TP
+\fB<guest>\fR
+Guest sequence file\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
+.
+.TP
+\fB<host>\fR
+Host sequence file (may be omitted if standard input is provided)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
+.
+.TP
+\fB\-F <format>\fR, \fB\-\-format=<format>\fR
+Output file format (defaults to same as input)\. See gts\-seqout(7) for a list of currently supported list of sequence formats\. The format specified with this option will override the file type detection from the output filename\.
+.
+.TP
+\fB\-e\fR, \fB\-\-embed\fR
+Extend existing feature locations when inserting instead of splitting them\.
+.
+.TP
+\fB\-o <output>\fR, \fB\-\-output=<output>\fR
+Output sequence file (specifying \fB\-\fR will force standard output)\. The output file format will be automatically detected from the filename if none is specified with the \fB\-F\fR or \fB\-\-format\fR option\.
+.
+.SH "EXMAMPLES"
+Insert a sequence at position 100:
+.
+.IP "" 4
+.
+.nf
+
+$ gts insert 100 <guest> <host>
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Insert a sequence 20 bases upstream of each CDS:
+.
+.IP "" 4
+.
+.nf
+
+$ gts insert CDS@^\-20 <guest> <host>
+.
+.fi
+.
+.IP "" 0
+.
+.SH "BUGS"
+\fBgts\-insert\fR currently has no known bugs\.
+.
+.SH "AUTHORS"
+\fBgts\-insert\fR is written and maintained by Kotone Itaya\.
+.
+.SH "SEE ALSO"
+gts(1), gts\-delete(1), gts\-locator(7), gts\-selector(7), gts\-seqin(7), gts\-seqout(7)

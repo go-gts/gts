@@ -1,0 +1,40 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS\-SUMMARY" "1" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\-summary\fR \- report a brief summary of the sequence(s)
+.
+.SH "SYNOPSIS"
+gts\-summary [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIseqin\fR
+.
+.SH "DESCRIPTION"
+\fBgts\-summary\fR takes a single sequence input and returns a brief summary of its contents\. By defalt, it will report the description, length, sequence composition, feature counts, and qualifier counts\. Use gts\-query(1) to retrieve more elaborate information of features\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB<seqin>\fR
+Input sequence file (may be omitted if standard input is provided)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
+.
+.TP
+\fB\-\-no\-feature\fR
+Suppress feature summary\.
+.
+.TP
+\fB\-\-no\-qualifier\fR
+Suppress qualifier summary\.
+.
+.TP
+\fB\-o <output>\fR, \fB\-\-output=<output>\fR
+Output file (specifying \fB\-\fR will force standard output)\.
+.
+.SH "BUGS"
+\fBgts\-summary\fR currently has no known bugs\.
+.
+.SH "AUTHORS"
+\fBgts\-summary\fR is written and maintained by @AUTHOR@\.
+.
+.SH "SEE ALSO"
+gts(1), gts\-query(1), gts\-seqin(7)

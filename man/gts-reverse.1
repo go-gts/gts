@@ -1,0 +1,36 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS\-REVERSE" "1" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\-reverse\fR \- reverse order of the given sequence(s)
+.
+.SH "SYNOPSIS"
+gts\-reverse [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIseqin\fR
+.
+.SH "DESCRIPTION"
+\fBgts\-reverse\fR takes a single sequence input and reverses the sequence\. Any features present in the seqeuence will be relocated to match the reversed location\. This command \fIwill not\fR complement the sequence\. To obtain the complemented sequence, use \fBgts\-complement(1)\fR\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB<seqin>\fR
+Input sequence file (may be omitted if standard input is provided)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
+.
+.TP
+\fB\-F <format>\fR, \fB\-\-format=<format>\fR
+Output file format (defaults to same as input)\. See gts\-seqout(7) for a list of currently supported list of sequence formats\. The format specified with this option will override the file type detection from the output filename\.
+.
+.TP
+\fB\-o <output>\fR, \fB\-\-output=<output>\fR
+Output sequence file (specifying \fB\-\fR will force standard output)\. The output file format will be automatically detected from the filename if none is specified with the \fB\-F\fR or \fB\-\-format\fR option\.
+.
+.SH "BUGS"
+\fBgts\-reverse\fR currently has no known bugs\.
+.
+.SH "AUTHORS"
+\fBgts\-reverse\fR is written and maintained by Kotone Itaya\.
+.
+.SH "SEE ALSO"
+gts(1), gts\-complement(1), gts\-seqin(7), gts\-seqout(7)

@@ -1,0 +1,83 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS\-SELECTOR" "7" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\-selector\fR
+.
+.SH "gts\-selector(7) \-\- patterns to select sequence features"
+.
+.SH "SYNOPSIS"
+[feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]\.\.\.
+.
+.SH "DESCRIPTION"
+\fBgts\-selector\fRs are patterns for selecting sequence features that match the given \fIselector\fR\. A \fIselector\fR consists of a single feature key and/or multiple qualifier matchers\. A feature key must currently be a perfect match (case sensitive) and if omitted all feature keys will match\. A qualifier matcher has two parts: a qualifier name and a regular expression delimited by the \fB=\fR sign\. The qualifier name must currently be a perfect match (case sensitive) and if omitted all qualifier names will match\. The regular expression will be tested against the contents of the qualifier value\. If omitted, any features that has the qualifier with the given qualifier name will match\.
+.
+.SH "EXAMPLES"
+Select all \fBgene\fR features:
+.
+.IP "" 4
+.
+.nf
+
+gene
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Select all \fBCDS\fR features that produce a DNA\-binding \fBproduct\fR:
+.
+.IP "" 4
+.
+.nf
+
+CDS/product=DNA\-binding
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Select all features with \fBlocus_tag\fR of \fBb0001\fR:
+.
+.IP "" 4
+.
+.nf
+
+/locus_tag=b0001
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Select all features with the qualifier \fBtranslation\fR:
+.
+.IP "" 4
+.
+.nf
+
+/translation
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Select all features with a qualifier value matching \fBrecombinase\fR
+.
+.IP "" 4
+.
+.nf
+
+/=recombinase
+.
+.fi
+.
+.IP "" 0
+.
+.SH "SEE ALSO"
+gts(1), gts\-select(1), gts\-locator(7)

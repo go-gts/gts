@@ -1,0 +1,71 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS\-SEARCH" "1" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\-search\fR \- search for a subsequence and annotate its results
+.
+.SH "SYNOPSIS"
+gts\-search [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIquery\fR \fIseqin\fR
+.
+.SH "DESCRIPTION"
+\fBgts\-search\fR takes a \fIquery\fR and a single input sequence, and marks the regions where the \fIquery\fR sequences were found\. If a file with a filename equivalent to the \fIquery\fR value exists, it will be opened and read by the command\. If it does not, the command will interpret the \fIquery\fR string as a sequence\. The \fIquery\fR sequence(s) will be treated as an oligomer\. In order to find perfect matches only, use the \fB\-e\fR or \fB\-\-exact\fR option\. By default, regions are marked as \fBmisc_feature\fRs without any qualifiers\. Use the \fB\-k\fR or \fB\-\-key\fR option and \fB\-q\fR or \fB\-\-qualifier\fR option so you can easily discover these features later on with gts\-select(1)\. See the EXAMPLES section for more insight\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB<query>\fR
+Query sequence (will attempt to open as file)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
+.
+.TP
+\fB<seqin>\fR
+Input sequence file (may be omitted if standard input is provided)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
+.
+.TP
+\fB\-F <format>\fR, \fB\-\-format=<format>\fR
+Output file format (defaults to same as input)\. See gts\-seqout(7) for a list of currently supported list of sequence formats\. The format specified with this option will override the file type detection from the output filename\.
+.
+.TP
+\fB\-e\fR, \fB\-\-exact\fR
+Match the exact pattern even for ambiguous letters\.
+.
+.TP
+\fB\-k <key>\fR, \fB\-\-key=<key>\fR
+Key for the reported oligomer region features\. The default feature key is \fBmisc_feature\fR\.
+.
+.TP
+\fB\-\-no\-complement\fR
+Do not match the complement strand\.
+.
+.TP
+\fB\-o <output>\fR, \fB\-\-output=<output>\fR
+Output sequence file (specifying \fB\-\fR will force standard output)\. The output file format will be automatically detected from the filename if none is specified with the \fB\-F\fR or \fB\-\-format\fR option\.
+.
+.TP
+\fB\-q <qualifier>\fR, \fB\-\-qualifier=<qualifier>\fR
+Qualifier key\-value pairs (syntax: key=value))\. Multiple values may be set by repeatedly passing this option to the command\.
+.
+.SH "EXAMPLES"
+Search for \fIquery\fR and retrieve the regions 100 bases around the matches\.
+.
+.IP "" 4
+.
+.nf
+
+$ gts search \-q note=search <query> <seqin> | \e
+  gts select misc_feature/note=search | \e
+  gts extract \-m \'^\-100\.\.$+100\'
+.
+.fi
+.
+.IP "" 0
+.
+.SH "BUGS"
+\fBgts\-search\fR currently has no known bugs\.
+.
+.SH "AUTHORS"
+\fBgts\-search\fR is written and maintained by @AUTHOR@\.
+.
+.SH "SEE ALSO"
+gts(1), gts\-seqin(7), gts\-seqout(7)

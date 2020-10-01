@@ -1,0 +1,57 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS\-LOCATOR" "7" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\-locator\fR
+.
+.SH "gts\-locator(7) \-\- patterns to refer to locations in a sequence"
+.
+.SH "SYNOPSIS"
+[selector|point|range][@modifier]
+.
+.SH "DESCRIPTION"
+\fBgts\-locator\fRs are patterns for specifying locations within a sequence\. A \fIlocator\fR consists of a \fIlocation specifier\fR and/or a \fImodifier\fR\. A \fIlocation specifier\fR is one of either a \fBselector\fR, \fBpoint location\fR, or \fBrange location\fR\. A \fIselector\fR takes the form \fB[feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]\.\.\.\fR\. See gts\-selector(7) for more details\. A \fIpoint location\fR is simply a single integer that directly specifies a single point in the sequence (starting at 1)\. A \fIrange location\fR is a pair of integers connected with \fB\.\.\fR (starting at 1), which is identical to the notation of a feature range location\. The locations specified by the \fIlocation specifier\fR can be modified using a \fImodifier\fR\. A \fImodifier\fR can take one of five forms: \fB^[(+|\-)n]\fR, \fB$[[(+|\-)m]]\fR, \fB^[(+|\-)n]\.\.$[(+|\-)m]\fR, \fB^[(+|\-)n]\.\.^[(+|\-)m]\fR, or \fB$[(+|\-)n]\.\.$[(+|\-)m]\fR\. See gts\-modifier(7) for more details\.
+.
+.SH "EXAMPLES"
+Locate the sequence 100 bases upstream of a \fBCDS\fR:
+.
+.IP "" 4
+.
+.nf
+
+CDS@^\-100\.\.^
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Extend a location 20 bases upstream and downstream of a gene:
+.
+.IP "" 4
+.
+.nf
+
+gene@^\-20\.\.$+20
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Locate a range between 100 and 200 bases:
+.
+.IP "" 4
+.
+.nf
+
+100\.\.200
+.
+.fi
+.
+.IP "" 0
+.
+.SH "SEE ALSO"
+gts(1), gts\-delete(1), gts\-insert(1), gts\-selector(7)

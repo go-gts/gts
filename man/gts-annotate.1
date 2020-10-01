@@ -1,0 +1,40 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS\-ANNOTATE" "1" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\-annotate\fR \- merge features from a feature list file into a sequence
+.
+.SH "SYNOPSIS"
+gts\-annotate [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIfeature_table\fR \fIseqin\fR
+.
+.SH "DESCRIPTION"
+\fBgts\-annotate\fR takes two inputs: one file containing a list of features and another containing a sequence, and annotates the sequence with the contents of the feature file\. No attempts to check if the features being annotated make logical sense in the given sequence will be made\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB<feature_table>\fR
+Feature table file containing features to merge\. This file should be formatted in the INSDC feature table format\. For more information, visit the INSDC feature table documentation located at the following URL\. http://www\.insdc\.org/documents/feature\-table
+.
+.TP
+\fB<seqin>\fR
+Input sequence file (may be omitted if standard input is provided)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
+.
+.TP
+\fB\-F <format>\fR, \fB\-\-format=<format>\fR
+Output file format (defaults to same as input)\. See gts\-seqout(7) for a list of currently supported list of sequence formats\. The format specified with this option will override the file type detection from the output filename\.
+.
+.TP
+\fB\-o <output>\fR, \fB\-\-output=<output>\fR
+Output sequence file (specifying \fB\-\fR will force standard output)\. The output file format will be automatically detected from the filename if none is specified with the \fB\-F\fR or \fB\-\-format\fR option\.
+.
+.SH "BUGS"
+\fBgts\-annotate\fR currently has no known bugs\.
+.
+.SH "AUTHORS"
+\fBgts\-annotate\fR is written and maintained by Kotone Itaya\.
+.
+.SH "SEE ALSO"
+gts(1), gts\-seqin(7), gts\-seqout(7)

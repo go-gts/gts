@@ -1,0 +1,107 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS\-QUERY" "1" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\-query\fR \- query information from the given sequence
+.
+.SH "SYNOPSIS"
+gts\-query [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIseqin\fR
+.
+.SH "DESCRIPTION"
+\fBgts\-query\fR takes a single sequence input and reports various information about its features\. By default, it will output the sequence ID (or a unique sequence number if there are no IDs available), a feature key, its location, and any qualifiers that are common to all of the features present\. A single line represents a single feature entry\.
+.
+.P
+This command is best utilized in combination with the gts\-select(1) command\. Use gts\-select(1) to narrow down the features to be extracted, and then apply \fBgts\-extract\fR to retrieve information\. See the EXAMPLES section for more insight\. For a brief summary of a sequence, consider using gts\-summary(1)\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB<seqin>\fR
+Input sequence file (may be omitted if standard input is provided)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
+.
+.TP
+\fB\-d <delimiter>\fR, \fB\-\-delimiter=<delimiter>\fR
+String to insert between columns\. The default delimiter is a tab \fB\et\fR character\.
+.
+.TP
+\fB\-\-empty\fR
+Allow missing qualifiers to be reported\. Unlink GFFs, these columns will be completely empty\.
+.
+.TP
+\fB\-\-no\-header\fR
+Do not print the header line\.
+.
+.TP
+\fB\-\-no\-key\fR
+Do not report the feature key\.
+.
+.TP
+\fB\-\-no\-location\fR
+Do not report the feature location\.
+.
+.TP
+\fB\-n <name>\fR, \fB\-\-name=<name>\fR
+Qualifier name(s) to select\. Multiple values may be set by repeatedly passing this option to the command\. If set, only qualifiers that have the given name will be reported\.
+.
+.TP
+\fB\-o <output>\fR, \fB\-\-output=<output>\fR
+Output table file (specifying \fB\-\fR will force standard output)\.
+.
+.TP
+\fB\-\-source\fR
+Include the source feature(s)\.
+.
+.TP
+\fB\-t <separator>\fR, \fB\-\-separator=<separator>\fR
+String to insert between qualifier values\. The default separator is a comma \fB,\fR character\. By default, the qualifier values will be reported in a CSV format\. All commas and double quotes will be escaped, and all newline characters will be replaced with a whitespace\.
+.
+.SH "EXAMPLES"
+Report information of all CDS features:
+.
+.IP "" 4
+.
+.nf
+
+$ gts select CDS <seqin> | gts query
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Report information of a CDS feature with \fBlocus_tag\fR of \fBb0001\fR:
+.
+.IP "" 4
+.
+.nf
+
+$ gts select CDS/locus_tag=b0001 <seqin> | gts query
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Report all of the \fBdb_xref\fR qualifiers for every gene in the sequence:
+.
+.IP "" 4
+.
+.nf
+
+$ gts select gene | gts query \-n db_xref
+$ gts select gene | gts query \-\-name db_xref
+.
+.fi
+.
+.IP "" 0
+.
+.SH "BUGS"
+\fBgts\-query\fR currently has no known bugs\.
+.
+.SH "AUTHORS"
+\fBgts\-query\fR is written and maintained by @AUTHOR@\.
+.
+.SH "SEE ALSO"
+gts(1), gts\-select(1), gts\-summary(1), gts\-seqin(7), gts\-seqout(7)

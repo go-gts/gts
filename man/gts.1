@@ -1,0 +1,76 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS" "1" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\fR \- the genome transformation subprograms command line tool
+.
+.SH "SYNOPSIS"
+usage: gts [\-\-version] [\-h | \-\-help] \fIcommand\fR [\fIargs\fR]
+.
+.SH "DESCRIPTION"
+\fBGTS\fR provides basic manipulation utilities for genome flatfiles\. The command consists of a number of subcommands listed in the \fBCOMMANDS\fR section\.
+.
+.SH "COMMANDS"
+.
+.TP
+\fBgts\-annotate(1)\fR
+Merge features from a feature list file into a sequence\.
+.
+.TP
+\fBgts\-clear(1)\fR
+Remove all features from the sequence (excluding source features)\.
+.
+.TP
+\fBgts\-complement(1)\fR
+Compute the complement of the given sequence(s)\.
+.
+.TP
+\fBgts\-delete(1)\fR
+Delete a region of the given sequence(s)\.
+.
+.TP
+\fBgts\-extract(1)\fR
+Extract the sequences referenced by the features\.
+.
+.TP
+\fBgts\-insert(1)\fR
+Insert a sequence into another sequence(s)\.
+.
+.TP
+\fBgts\-length(1)\fR
+Report the length of the sequence(s)\.
+.
+.TP
+\fBgts\-query(1)\fR
+Query information from the given sequence\.
+.
+.TP
+\fBgts\-reverse(1)\fR
+Reverse order of the given sequence(s)\.
+.
+.TP
+\fBgts\-rotate(1)\fR
+Shift the coordinates of a circular sequence\.
+.
+.TP
+\fBgts\-search(1)\fR
+Search for a subsequence and annotate its results\.
+.
+.TP
+\fBgts\-select(1)\fR
+Select features using the given feature selector(s)\.
+.
+.TP
+\fBgts\-summary(1)\fR
+Report a brief summary of the sequence(s)\.
+.
+.SH "BUGS"
+\fBgts\fR currently has no known bugs\.
+.
+.SH "AUTHORS"
+\fBgts\fR is written and maintained by @AUTHOR@\.
+.
+.SH "SEE ALSO"
+gts\-annotate(1), gts\-clear(1), gts\-complement(1), gts\-delete(1), gts\-extract(1), gts\-insert(1), gts\-length(1), gts\-query(1), gts\-reverse(1), gts\-rotate(1), gts\-search(1), gts\-select(1), gts\-summary(1), gts\-locator(7), gts\-modifier(7), gts\-selector(7), gts\-seqin(7), gts\-seqout(7)

@@ -1,0 +1,99 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS\-SELECT" "1" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\-select\fR \- select features using the given feature selector(s)
+.
+.SH "SYNOPSIS"
+gts\-select [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIselector\fR \fIseqin\fR
+.
+.SH "DESCRIPTION"
+\fBgts\-select\fR takes a \fIselector\fR and a single sequence input, and selects the features which satisfy the \fIselector\fR criteria\. A \fIselector\fR takes the form \fB[feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]\.\.\.\fR\. See gts\-selector(7) for more details\.
+.
+.P
+\fBgts\-select\fR serves as a central command, allowing the user to filter out features for use in other commands like gts\-extract(1) and gts\-query(1)\. See the EXAMPLES section for more insight\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB<selector>\fR
+Feature selector (syntax: [feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]\.\.\.)\. See gts\-selector(7) for more details\.
+.
+.TP
+\fB<seqin>\fR
+Input sequence file (may be omitted if standard input is provided)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
+.
+.TP
+\fB\-F <format>\fR, \fB\-\-format=<format>\fR
+Output file format (defaults to same as input)\. See gts\-seqout(7) for a list of currently supported list of sequence formats\. The format specified with this option will override the file type detection from the output filename\.
+.
+.TP
+\fB\-o <output>\fR, \fB\-\-output=<output>\fR
+Output sequence file (specifying \fB\-\fR will force standard output)\. The output file format will be automatically detected from the filename if none is specified with the \fB\-F\fR or \fB\-\-format\fR option\.
+.
+.TP
+\fB\-v\fR, \fB\-\-invert\-match\fR
+Select features that do not match the given criteria\.
+.
+.SH "EXAMPLES"
+Select all of the CDS features:
+.
+.IP "" 4
+.
+.nf
+
+$ gts select CDS <seqin>
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Select all features with \fBlocus_tag\fR of \fBb0001\fR:
+.
+.IP "" 4
+.
+.nf
+
+$ gts select /locus_tag=b0001 <seqin>
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Select all features with the qualifier \fBtranslation\fR:
+.
+.IP "" 4
+.
+.nf
+
+$ gts select /translation <seqin>
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Select all features with a qualifier value matching \fBrecombinase\fR
+.
+.IP "" 4
+.
+.nf
+
+$ gts select /=recombinase <seqin>
+.
+.fi
+.
+.IP "" 0
+.
+.SH "BUGS"
+\fBgts\-select\fR currently has no known bugs\.
+.
+.SH "AUTHORS"
+\fBgts\-select\fR is written and maintained by Kotone Itaya\.
+.
+.SH "SEE ALSO"
+gts(1), gts\-query(1), gts\-locator(7), gts\-selector(7), gts\-seqin(7), gts\-seqout(7)
