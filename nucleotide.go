@@ -3,6 +3,7 @@ package gts
 import (
 	"bytes"
 	"regexp"
+	"sort"
 	"strings"
 )
 
@@ -49,9 +50,9 @@ func Transcribe(seq Sequence) Sequence {
 	return WithBytes(seq, p)
 }
 
-// Search for an oligomer within a sequence. The ambiguous nucleotides in the
+// Match for an oligomer within a sequence. The ambiguous nucleotides in the
 // query sequence will match any of the respective nucleotides.
-func Search(seq Sequence, query Sequence) []Location {
+func Match(seq Sequence, query Sequence) []Segment {
 	if Len(seq) == 0 || Len(query) == 0 {
 		return nil
 	}
@@ -92,10 +93,11 @@ func Search(seq Sequence, query Sequence) []Location {
 	p := bytes.ToLower(seq.Bytes())
 
 	re := regexp.MustCompile(s)
-	locs := re.FindAllIndex(p, -1)
-	ret := make([]Location, len(locs))
-	for i, loc := range locs {
-		ret[i] = Range(loc[0], loc[1])
+	pairs := re.FindAllIndex(p, -1)
+	segments := make([]Segment, len(pairs))
+	for i, pair := range pairs {
+		segments[i] = Segment{pair[0], pair[1]}
 	}
-	return ret
+	sort.Sort(BySegment(segments))
+	return segments
 }

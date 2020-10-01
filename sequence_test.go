@@ -349,3 +349,21 @@ func TestWithInterface(t *testing.T) {
 	out = WithBytes(in, p)
 	testutils.Equals(t, out, newWithTest(nil, nil, p))
 }
+
+var searchTests = []struct {
+	in  Sequence
+	out []Segment
+}{
+	{New(nil, nil, []byte("atgc")), []Segment{{0, 4}, {4, 8}, {8, 12}}},
+	{New(nil, nil, []byte("")), nil},
+}
+
+func TestSearch(t *testing.T) {
+	seq := New(nil, nil, []byte("atgcatgcatgc"))
+	for _, tt := range searchTests {
+		out := Search(seq, tt.in)
+		if !reflect.DeepEqual(out, tt.out) {
+			t.Errorf("Search(%v, %v) = %v, want %v", seq, tt.in, out, tt.out)
+		}
+	}
+}

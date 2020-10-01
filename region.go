@@ -188,6 +188,12 @@ func (ss BySegment) Len() int {
 // with index j.
 func (ss BySegment) Less(i, j int) bool {
 	l, r := ss[i], ss[j]
+	if l[1] < l[0] {
+		l[0], l[1] = l[1], l[0]
+	}
+	if r[1] < r[0] {
+		r[0], r[1] = r[1], r[0]
+	}
 	if l[0] < r[0] {
 		return true
 	}

@@ -1,7 +1,9 @@
 package gts
 
 import (
+	"math/rand"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/go-test/deep"
@@ -216,6 +218,32 @@ func TestRegionLocate(t *testing.T) {
 				cmp, string(seq.Bytes()),
 				string(out.Bytes()), string(exp.Bytes()),
 			)
+		}
+	}
+}
+
+var bySegmentTests = [][]Segment{
+	{{3, 13}, {4, 13}, {6, 14}, {6, 16}},
+	{{13, 3}, {13, 4}, {14, 6}, {16, 6}},
+}
+
+func TestBySegment(t *testing.T) {
+	for _, tt := range bySegmentTests {
+		in := make([]Segment, len(tt))
+		exp := make([]Segment, len(tt))
+		out := make([]Segment, len(tt))
+		copy(in, tt)
+		copy(exp, tt)
+		copy(out, tt)
+		for reflect.DeepEqual(out, exp) {
+			rand.Shuffle(len(out), func(i, j int) {
+				in[i], in[j] = in[j], in[i]
+				out[i], out[j] = out[j], out[i]
+			})
+		}
+		sort.Sort(BySegment(out))
+		if !reflect.DeepEqual(out, exp) {
+			t.Errorf("sort.Sort(BySegment(%v)) = %v, want %v", in, out, exp)
 		}
 	}
 }

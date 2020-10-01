@@ -26,7 +26,7 @@ func TestTranscribe(t *testing.T) {
 	testutils.Equals(t, out, exp)
 }
 
-var searchTests = []struct {
+var matchTests = []struct {
 	base  byte
 	match string
 }{
@@ -49,15 +49,15 @@ var searchTests = []struct {
 	{'n', "acgturykmswbdhvn"},
 }
 
-func TestSearch(t *testing.T) {
-	for _, tt := range searchTests {
+func TestMatch(t *testing.T) {
+	for _, tt := range matchTests {
 		query := New(nil, nil, []byte{tt.base})
 		seq := New(nil, nil, []byte(tt.match))
-		exp := make([]Location, len(tt.match))
+		exp := make([]Segment, len(tt.match))
 		for i := range exp {
-			exp[i] = Range(i, i+1)
+			exp[i] = Segment{i, i + 1}
 		}
-		out := Search(seq, query)
+		out := Match(seq, query)
 		if len(out) != len(exp) {
 			testutils.Equals(t, out, exp)
 		}

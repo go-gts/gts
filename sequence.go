@@ -2,7 +2,9 @@ package gts
 
 import (
 	"bytes"
+	"index/suffixarray"
 	"reflect"
+	"sort"
 
 	"github.com/go-flip/flip"
 )
@@ -259,4 +261,27 @@ func Rotate(seq Sequence, n int) Sequence {
 	p := seq.Bytes()
 	p = append(p[n:], p[:n]...)
 	return WithBytes(WithFeatures(seq, ff), p)
+}
+
+func bytesIndexAll(s, sep []byte) []int {
+	index := suffixarray.New(s)
+	return index.Lookup(sep, -1)
+}
+
+// Search for a subsequence within a sequence.
+func Search(seq Sequence, query Sequence) []Segment {
+	if Len(seq) == 0 || Len(query) == 0 {
+		return nil
+	}
+
+	s := bytes.ToLower(seq.Bytes())
+	sep := bytes.ToLower(query.Bytes())
+
+	indices := bytesIndexAll(s, sep)
+	segments := make([]Segment, len(indices))
+	for i, index := range indices {
+		segments[i] = Segment{index, index + len(sep)}
+	}
+	sort.Sort(BySegment(segments))
+	return segments
 }
