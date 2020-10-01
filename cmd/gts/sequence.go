@@ -61,6 +61,8 @@ func sequenceSummary(ctx *flags.Context) error {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
+	nofeature := opt.Switch('F', "no-feature", "suppress feature summary")
+	noqualifier := opt.Switch('Q', "no-qualifier", "suppress qualifier summary")
 	outPath := opt.String('o', "output", "-", "output file (specifying `-` will force standard output)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
@@ -160,21 +162,28 @@ func sequenceSummary(ctx *flags.Context) error {
 		}
 
 		format := fmt.Sprintf("%%%ds:\t%%s\n", longest)
+
 		b.WriteString("Sequence Summary\n")
 		b.WriteString(fmt.Sprintf(format, "Length", humanize.Comma(int64(gts.Len(seq)))))
 		for _, p := range bases {
 			b.WriteString(fmt.Sprintf(format, p.Key, humanize.Comma(int64(p.Value))))
 		}
-		b.WriteString("Feature Summary\n")
-		b.WriteString(fmt.Sprintf(format, "Features", humanize.Comma(int64(len(ff)))))
-		for _, p := range keys {
-			b.WriteString(fmt.Sprintf(format, p.Key, humanize.Comma(int64(p.Value))))
+
+		if !*nofeature {
+			b.WriteString("Feature Summary\n")
+			b.WriteString(fmt.Sprintf(format, "Features", humanize.Comma(int64(len(ff)))))
+			for _, p := range keys {
+				b.WriteString(fmt.Sprintf(format, p.Key, humanize.Comma(int64(p.Value))))
+			}
 		}
-		b.WriteString("Qualifier Summary\n")
-		for _, p := range qfs {
-			b.WriteString(fmt.Sprintf(format, p.Key, humanize.Comma(int64(p.Value))))
+
+		if !*noqualifier {
+			b.WriteString("Qualifier Summary\n")
+			for _, p := range qfs {
+				b.WriteString(fmt.Sprintf(format, p.Key, humanize.Comma(int64(p.Value))))
+			}
+			b.WriteString("//\n")
 		}
-		b.WriteString("//\n")
 
 		if _, err := io.WriteString(w, b.String()); err != nil {
 			return ctx.Raise(err)
