@@ -5,6 +5,6 @@ import "github.com/go-gts/gts/flags"
 // Version represents the GTS software version.
 var Version = flags.Version{
 	Major: 0,
-	Minor: 20,
+	Minor: 21,
 	Patch: 0,
 }
