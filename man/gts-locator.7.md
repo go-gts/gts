@@ -1,0 +1,39 @@
+## gts-locator(7) -- patterns to refer to locations in a sequence
+
+## SYNOPSIS
+
+[selector|point|range][@modifier]
+
+## DESCRIPTION
+
+**gts-locator**s are patterns for specifying locations within a sequence.
+A _locator_ consists of a _location specifier_ and/or a _modifier_. A
+_location specifier_ is one of either a `selector`, `point location`, or
+`range location`. A _selector_ takes the form
+`[feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]...`. See
+gts-selector(7) for more details. A _point location_ is simply a single integer
+that directly specifies a single point in the sequence (starting at 1). A
+_range location_ is a pair of integers connected with `..` (starting at 1),
+which is identical to the notation of a feature range location. The locations
+specified by the _location specifier_ can be modified using a _modifier_. A
+_modifier_ can take one of five forms: `^[(+|-)n]`, `$[[(+|-)m]]`,
+`^[(+|-)n]..$[(+|-)m]`, `^[(+|-)n]..^[(+|-)m]`, or `$[(+|-)n]..$[(+|-)m]`.
+See gts-modifier(7) for more details.
+
+## EXAMPLES
+
+Locate the sequence 100 bases upstream of a `CDS`:
+
+    CDS@^-100..^
+
+Extend a location 20 bases upstream and downstream of a gene:
+
+    gene@^-20..$+20
+
+Locate a range between 100 and 200 bases:
+
+    100..200
+
+## SEE ALSO
+
+gts(1), gts-delete(1), gts-insert(1), gts-selector(7)

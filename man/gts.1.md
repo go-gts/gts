@@ -1,0 +1,66 @@
+# gts -- the genome transformation subprograms command line tool
+
+## SYNOPSIS
+
+usage: gts [--version] [-h | --help] <command> [<args>]
+
+## DESCRIPTION
+
+**GTS** provides basic manipulation utilities for genome flatfiles. The command
+consists of a number of subcommands listed in the **COMMANDS** section.
+
+## COMMANDS
+
+  * `gts-annotate(1)`:
+    Merge features from a feature list file into a sequence.
+
+  * `gts-clear(1)`:
+    Remove all features from the sequence (excluding source features).
+
+  * `gts-complement(1)`:
+    Compute the complement of the given sequence(s).
+
+  * `gts-delete(1)`:
+    Delete a region of the given sequence(s).
+
+  * `gts-extract(1)`:
+    Extract the sequences referenced by the features.
+
+  * `gts-insert(1)`:
+    Insert a sequence into another sequence(s).
+
+  * `gts-length(1)`:
+    Report the length of the sequence(s).
+
+  * `gts-query(1)`:
+    Query information from the given sequence.
+
+  * `gts-reverse(1)`:
+    Reverse order of the given sequence(s).
+
+  * `gts-rotate(1)`:
+    Shift the coordinates of a circular sequence.
+
+  * `gts-search(1)`:
+    Search for a subsequence and annotate its results.
+
+  * `gts-select(1)`:
+    Select features using the given feature selector(s).
+
+  * `gts-summary(1)`:
+    Report a brief summary of the sequence(s).
+
+## BUGS
+
+**gts** currently has no known bugs.
+
+## AUTHORS
+
+**gts** is written and maintained by @AUTHOR@.
+
+## SEE ALSO
+
+gts-annotate(1), gts-clear(1), gts-complement(1), gts-delete(1),
+gts-extract(1), gts-insert(1), gts-length(1), gts-query(1), gts-reverse(1),
+gts-rotate(1), gts-search(1), gts-select(1), gts-summary(1), gts-locator(7),
+gts-modifier(7), gts-selector(7), gts-seqin(7), gts-seqout(7)

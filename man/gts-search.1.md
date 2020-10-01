@@ -1,0 +1,73 @@
+# gts-search(1) -- search for a subsequence and annotate its results
+
+## SYNOPSIS
+
+gts-search [--version] [-h | --help] [<args>] <query> <input>
+
+## DESCRIPTION
+
+**gts-search** takes a _query_ and a single input sequence, and marks the
+regions where the _query_ sequences were found. If a file with a filename
+equivalent to the _query_ value exists, it will be opened and read by the
+command. If it does not, the command will interpret the _query_ string as a
+sequence. The _query_ sequence(s) will be treated as an oligomer. In order to
+find perfect matches only, use the `-e` or `--exact` option. By default,
+regions are marked as `misc_feature`s without any qualifiers. Use the `-k` or
+`--key` option and `-q` or `--qualifier` option so you can easily discover
+these features later on with gts-select(1). See the EXAMPLES section for more
+insight.
+
+## OPTIONS
+
+  * `<query>`:
+    Query sequence (will attempt to open as file). See gts-seqin(7) for a list
+    of currently supported list of sequence formats.
+
+  * `<input>`:
+    Input sequence file (may be omitted if standard input is provided). See
+    gts-seqin(7) for a list of currently supported list of sequence formats.
+
+  * `-F <format>`, `--format=<format>`:
+    Output file format (defaults to same as input). See gts-seqout(7) for a
+    list of currently supported list of sequence formats. The format specified
+    with this option will override the file type detection from the output
+    filename.
+
+  * `-e`, `--exact`:
+    Match the exact pattern even for ambiguous letters.
+
+  * `-k <key>`, `--key=<key>`:
+    Key for the reported oligomer region features. The default feature key is
+    `misc_feature`.
+
+  * `--no-complement`:
+    Do not match the complement strand.
+
+  * `-o <output>`, `--output=<output>`:
+    Output sequence file (specifying `-` will force standard output). The
+    output file format will be automatically detected from the filename if none
+    is specified with the `-F` or `--format` option.
+
+  * `-q <qualifier>`, `--qualifier=<qualifier>`:
+    Qualifier key-value pairs (syntax: key=value)). Multiple values may be set
+    by repeatedly passing this option to the command.
+
+## EXAMPLES
+
+Search for <query> and retrieve the regions 100 bases around the matches.
+
+    $ gts search -q note=search <query> <input> | \
+      gts select misc_feature/note=search | \
+      gts extract -m '^-100..$+100'
+
+## BUGS
+
+**gts-search** currently has no known bugs.
+
+## AUTHORS
+
+**gts-search** is written and maintained by @AUTHOR@.
+
+## SEE ALSO
+
+gts(1), gts-seqin(7), gts-seqout(7)

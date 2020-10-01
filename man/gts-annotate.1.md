@@ -1,0 +1,47 @@
+# gts-annotate(1) -- merge features from a feature list file into a sequence
+
+## SYNOPSIS
+
+gts-annotate [--version] [-h | --help] [<args>] <feature_table> <input>
+
+## DESCRIPTION
+
+**gts-annotate** takes two inputs: one file containing a list of features and
+another containing a sequence, and annotates the sequence with the contents of
+the feature file. No attempts to check if the features being annotated make
+logical sense in the given sequence will be made.
+
+## OPTIONS
+
+  * `<feature_table>`:
+    Feature table file containing features to merge. This file should be 
+    formatted in the INSDC feature table format. For more information, visit
+    the INSDC feature table documentation located at the following URL.
+    http://www.insdc.org/documents/feature-table
+
+  * `<input>`:
+    Input sequence file (may be omitted if standard input is provided). See
+    gts-seqin(7) for a list of currently supported list of sequence formats.
+
+  * `-F <format>`, `--format=<format>`:
+    Output file format (defaults to same as input). See gts-seqout(7) for a
+    list of currently supported list of sequence formats. The format specified
+    with this option will override the file type detection from the output
+    filename.
+
+  * `-o <output>`, `--output=<output>`:
+    Output sequence file (specifying `-` will force standard output). The
+    output file format will be automatically detected from the filename if none
+    is specified with the `-F` or `--format` option.
+
+## BUGS
+
+**gts-annotate** currently has no known bugs.
+
+## AUTHORS
+
+**gts-annotate** is written and maintained by Kotone Itaya.
+
+## SEE ALSO
+
+gts(1), gts-seqin(7), gts-seqout(7)

@@ -1,0 +1,83 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS\-MODIFIER" "7" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\-modifier\fR
+.
+.SH "gts\-modifier(7) \-\- patterns for modifying sequence locations"
+.
+.SH "SYNOPSIS"
+^[(+|\-)n] $[(+|\-)m] ^[(+|\-)n]\.\.$[(+|\-)m] ^[(+|\-)n]\.\.^[(+|\-)m] $[(+|\-)n]\.\.$[(+|\-)m]
+.
+.SH "DESCRIPTION"
+\fBgts\-modifier\fRs are patterns for modifying locations within a sequence\. A \fImodifier\fR can take one of five forms: \fB^[(+|\-)n]\fR, \fB$[[(+|\-)m]]\fR, \fB^[(+|\-)n]\.\.$[(+|\-)m]\fR, \fB^[(+|\-)n]\.\.^[(+|\-)m]\fR, or \fB$[(+|\-)n]\.\.$[(+|\-)m]\fR\. A caret \fB^\fR character denotes the beginning of the location and a dollar \fB$\fR character denotes the end of the location\. The numbers following these characters denote the offset of the position, where a negative number represents the 5\' region and a positive number represents the 3\' region\. The first two forms of the \fImodifier\fR will return a singular point location and the latter three forms will return a modified range location\. The positions and offset values will be flipped for complement locations\.
+.
+.SH "EXAMPLES"
+Collapse the location to the start of the region:
+.
+.IP "" 4
+.
+.nf
+
+^
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Collapse the location to the end of the region:
+.
+.IP "" 4
+.
+.nf
+
+$
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Leave the entire region as is:
+.
+.IP "" 4
+.
+.nf
+
+^\.\.$
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Extend the region 20 bases upstream:
+.
+.IP "" 4
+.
+.nf
+
+^\-20\.\.$
+.
+.fi
+.
+.IP "" 0
+.
+.P
+Focus the 20 bases around the end of the region:
+.
+.IP "" 4
+.
+.nf
+
+$\-20\.\.$+20
+.
+.fi
+.
+.IP "" 0
+.
+.SH "SEE ALSO"
+gts(1), gts\-extract(1), gts\-locator(7)

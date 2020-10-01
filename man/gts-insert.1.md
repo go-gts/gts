@@ -1,0 +1,75 @@
+# gts-insert(1) -- insert a sequence into another sequence(s)
+
+## SYNOPSIS
+
+gts-insert [--version] [-h | --help] [<args>] <locator> <guest> <host>
+
+## DESCRIPTION
+
+**gts-insert** takes two sequence inputs and inserts the contents of the first
+_guest_ sequence into the specified locations of the second _host_ sequence.
+The point of insertion is specified using a `locator`. Each _guest_ sequence
+will be inserted into all specified `locator` positions of each _host_
+sequence. A locator is a combination of one of `point location`,
+`range location`, or `selector`, and a `modifier` in the form
+`[selector|point|range][@modifier]`. See gts-locator(7) for a more in-depth
+explanation of a locator. Refer to the EXAMPLES for some examples to get
+started.
+
+
+Features that were present at the point of insertion will be split to form
+a `join`ed location. Such features can be instead expanded if the `-e` or
+`--embed` option is provided. Any features present in the _guest_ sequence
+will be transferred to the corresponding locations after being inesrted into
+the _host_ sequence.
+
+## OPTIONS
+
+  * `<locator>`:
+    A locator string ([selector|point|range][@modifier]). See gts-locator(7)
+    for more details.
+
+  * `<guest>`:
+    Guest sequence file. See gts-seqin(7) for a list of currently supported
+    list of sequence formats.
+
+  * `<host>`:
+    Host sequence file (may be omitted if standard input is provided). See
+    gts-seqin(7) for a list of currently supported list of sequence formats.
+
+  * `-F <format>`, `--format=<format>`:
+    Output file format (defaults to same as input). See gts-seqout(7) for a
+    list of currently supported list of sequence formats. The format specified
+    with this option will override the file type detection from the output
+    filename.
+
+  * `-e`, `--embed`:
+    Extend existing feature locations when inserting instead of splitting them.
+
+  * `-o <output>`, `--output=<output>`:
+    Output sequence file (specifying `-` will force standard output). The
+    output file format will be automatically detected from the filename if none
+    is specified with the `-F` or `--format` option.
+
+## EXMAMPLES
+
+Insert a sequence at position 100:
+
+    $ gts insert 100 <guest> <host>
+
+Insert a sequence 20 bases upstream of each CDS:
+
+    $ gts insert CDS@^-20 <guest> <host>
+
+## BUGS
+
+**gts-insert** currently has no known bugs.
+
+## AUTHORS
+
+**gts-insert** is written and maintained by Kotone Itaya.
+
+## SEE ALSO
+
+gts(1), gts-delete(1), gts-locator(7), gts-selector(7), gts-seqin(7),
+gts-seqout(7)

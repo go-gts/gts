@@ -1,0 +1,69 @@
+# gts-extract -- extract the sequences referenced by the features
+
+## SYNOPSIS
+
+gts-extract [--version] [-h | --help] [<args>] <input>
+
+## DESCRIPTION
+
+**gts-extract** takes a single sequence input and return the sequences
+associated with each feature. The range to be extracted can be modified with
+a _modifier_ using the `-m` or `--range` option.  A _modifier_ can take one of
+five forms: `^[(+|-)n]`, `$[[(+|-)m]]`, `^[(+|-)n]..$[(+|-)m]`,
+`^[(+|-)n]..^[(+|-)m]`, or `$[(+|-)n]..$[(+|-)m]`. See gts-modifier(7) for more
+details.
+
+This command is best utilized in combination with the gts-select(1) command.
+Use gts-select(1) to narrow down the sequence regions to be extracted, and then
+apply **gts-extract** to retrieve the sequences. See the EXAMPLES section for
+more insight.
+
+## OPTIONS
+
+  * `<input>`:
+    Input sequence file (may be omitted if standard input is provided). See
+    gts-seqin(7) for a list of currently supported list of sequence formats.
+
+  * `-F <format>`, `--format=<format>`:
+    Output file format (defaults to same as input). See gts-seqout(7) for a
+    list of currently supported list of sequence formats. The format specified
+    with this option will override the file type detection from the output
+    filename.
+
+  * `-m <--range>`, `--range=<--range>`:
+    Location range modifier. A _modifier_ can take one of five forms:
+    `^[(+|-)n]`, `$[[(+|-)m]]`, `^[(+|-)n]..$[(+|-)m]`, `^[(+|-)n]..^[(+|-)m]`,
+    or `$[(+|-)n]..$[(+|-)m]`. See gts-modifier(7) for more details.
+
+  * `-o <output>`, `--output=<output>`:
+    Output sequence file (specifying `-` will force standard output). The
+    output file format will be automatically detected from the filename if none
+    is specified with the `-F` or `--format` option.
+
+## EXAMPLES
+
+Retrieve the sequences of all CDS features:
+
+    $ gts select CDS <input> | gts extract
+
+Retrieve the sequence 100 bases upstream of all CDS features:
+
+    $ gts select CDS <input> | gts extract -m ^-100..^
+    $ gts select CDS <input> | gts extract --range ^-100..^
+
+Retrieve the sequence 100 bases downstream of all CDS features:
+
+    $ gts select CDS <input> | gts extract -m $..$+100
+    $ gts select CDS <input> | gts extract --range $..$+100
+
+## BUGS
+
+**gts-extract** currently has no known bugs.
+
+## AUTHORS
+
+**gts-extract** is written and maintained by Kotone Itaya.
+
+## SEE ALSO
+
+gts(1), gts-select(1), gts-modifier(7), gts-seqin(7), gts-seqout(7)
