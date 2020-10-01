@@ -38,11 +38,11 @@ func TestFormatConversion(t *testing.T) {
 
 	testutils.Equals(t, bytes.ToUpper(seq1.Bytes()), bytes.ToUpper(seq2.Bytes()))
 	formatter := NewFormatter(seq1, FastaFile)
-	builder := &strings.Builder{}
-	n, err := formatter.WriteTo(builder)
+	b := &strings.Builder{}
+	n, err := formatter.WriteTo(b)
 	if int(n) != len(s2) || err != nil {
 		t.Errorf("formatter.WriteTo(builder) = (%d, %v), want (%d, nil)", n, err, len(s2))
 	}
-	out := builder.String()
+	out := b.String()
 	testutils.Diff(t, strings.ToUpper(s2), strings.ToUpper(out))
 }

@@ -19,17 +19,17 @@ func formatHelp(name, desc string) string {
 
 // Usage creates a usage string for the given argument definitions.
 func Usage(pos *Positional, opt *Optional) string {
-	builder := strings.Builder{}
-	builder.WriteString("[--version] [-h | --help]")
+	b := strings.Builder{}
+	b.WriteString("[--version] [-h | --help]")
 	if opt != nil && len(opt.Args) > 0 {
-		builder.WriteString(" [<args>]")
+		b.WriteString(" [<args>]")
 	}
 	if pos != nil {
 		for _, name := range pos.Order {
-			builder.WriteString(fmt.Sprintf(" <%s>", name))
+			b.WriteString(fmt.Sprintf(" <%s>", name))
 		}
 	}
-	return builder.String()
+	return b.String()
 }
 
 // Help creaes a help string for the given argument definitions.

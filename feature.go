@@ -275,27 +275,27 @@ type FeatureTableFormatter struct {
 
 // String satisfies the fmt.Stringer interface.
 func (ftf FeatureTableFormatter) String() string {
-	builder := strings.Builder{}
+	b := strings.Builder{}
 	for i, f := range ftf.Table {
 		if i != 0 {
-			builder.WriteByte('\n')
+			b.WriteByte('\n')
 		}
-		builder.WriteString(ftf.Prefix)
-		builder.WriteString(f.Key)
+		b.WriteString(ftf.Prefix)
+		b.WriteString(f.Key)
 		length := len(ftf.Prefix) + len(f.Key)
 
 		padding := strings.Repeat(" ", ftf.Depth-length)
 		prefix := ftf.Prefix + strings.Repeat(" ", ftf.Depth-len(ftf.Prefix))
 
-		builder.WriteString(padding)
-		builder.WriteString(f.Location.String())
+		b.WriteString(padding)
+		b.WriteString(f.Location.String())
 
 		for _, q := range listQualifiers(f) {
-			builder.WriteByte('\n')
-			builder.WriteString(q.Format(prefix).String())
+			b.WriteByte('\n')
+			b.WriteString(q.Format(prefix).String())
 		}
 	}
-	return builder.String()
+	return b.String()
 }
 
 // WriteTo satisfies the io.WriteTo interface.

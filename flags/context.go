@@ -38,24 +38,24 @@ func (ctx Context) Value(key interface{}) interface{} {
 func (ctx *Context) Parse(pos *Positional, opt *Optional) error {
 	args, err := Parse(pos, opt, ctx.Args)
 	if err != nil {
-		builder := strings.Builder{}
+		b := strings.Builder{}
 		name := ctx.Name
 		usage := wrap.Space(Usage(pos, opt), 72-len(name))
 
 		switch err {
 		case errHelp:
-			builder.WriteString(fmt.Sprintf("%s: %s\n\n", name, ctx.Desc))
-			builder.WriteString(fmt.Sprintf("usage: %s %s\n", name, usage))
-			builder.WriteString(Help(pos, opt))
+			b.WriteString(fmt.Sprintf("%s: %s\n\n", name, ctx.Desc))
+			b.WriteString(fmt.Sprintf("usage: %s %s\n", name, usage))
+			b.WriteString(Help(pos, opt))
 
 		case errRonn:
 			return Ronn(ctx, pos, opt)
 
 		default:
-			builder.WriteString(fmt.Sprintf("%v\n\nusage: %s %s", err, name, usage))
+			b.WriteString(fmt.Sprintf("%v\n\nusage: %s %s", err, name, usage))
 		}
 
-		return errors.New(builder.String())
+		return errors.New(b.String())
 	}
 	ctx.Args = args
 	return nil

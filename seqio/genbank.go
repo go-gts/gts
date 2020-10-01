@@ -210,7 +210,7 @@ func (gb GenBank) WithTopology(t gts.Topology) gts.Sequence {
 
 // String satisifes the fmt.Stringer interface.
 func (gb GenBank) String() string {
-	builder := strings.Builder{}
+	b := strings.Builder{}
 	indent := "            "
 
 	date := strings.ToUpper(gb.Fields.Date.ToTime().Format("02-Jan-2006"))
@@ -219,88 +219,88 @@ func (gb GenBank) String() string {
 		gb.Len(), gb.Fields.Molecule, gb.Fields.Topology, gb.Fields.Division, date,
 	)
 
-	builder.WriteString(locus)
+	b.WriteString(locus)
 
 	definition := AddPrefix(gb.Fields.Definition, indent)
-	builder.WriteString("\nDEFINITION  " + definition + ".")
-	builder.WriteString("\nACCESSION   " + gb.Fields.Accession)
-	builder.WriteString("\nVERSION     " + gb.Fields.Version)
+	b.WriteString("\nDEFINITION  " + definition + ".")
+	b.WriteString("\nACCESSION   " + gb.Fields.Accession)
+	b.WriteString("\nVERSION     " + gb.Fields.Version)
 
 	for i, pair := range gb.Fields.DBLink {
 		switch i {
 		case 0:
-			builder.WriteString("\nDBLINK      ")
+			b.WriteString("\nDBLINK      ")
 		default:
-			builder.WriteString("\n" + indent)
+			b.WriteString("\n" + indent)
 		}
-		builder.WriteString(fmt.Sprintf("%s: %s", pair.Key, pair.Value))
+		b.WriteString(fmt.Sprintf("%s: %s", pair.Key, pair.Value))
 	}
 
 	keywords := wrap.Space(strings.Join(gb.Fields.Keywords, "; ")+".", 67)
 	keywords =
 		AddPrefix(keywords, indent)
-	builder.WriteString("\nKEYWORDS    " + keywords)
+	b.WriteString("\nKEYWORDS    " + keywords)
 
 	source := wrap.Space(gb.Fields.Source.Species, 67)
 	source =
 		AddPrefix(source, indent)
-	builder.WriteString("\nSOURCE      " + source)
+	b.WriteString("\nSOURCE      " + source)
 
 	organism := wrap.Space(gb.Fields.Source.Name, 67)
 	organism =
 		AddPrefix(organism, indent)
-	builder.WriteString("\n  ORGANISM  " + organism)
+	b.WriteString("\n  ORGANISM  " + organism)
 
 	taxon := wrap.Space(strings.Join(gb.Fields.Source.Taxon, "; ")+".", 67)
 	taxon = AddPrefix(taxon, indent)
-	builder.WriteString("\n" + indent + taxon)
+	b.WriteString("\n" + indent + taxon)
 
 	for _, ref := range gb.Fields.References {
-		builder.WriteString(fmt.Sprintf("\nREFERENCE   %d", ref.Number))
+		b.WriteString(fmt.Sprintf("\nREFERENCE   %d", ref.Number))
 		if ref.Info != "" {
-			builder.WriteString(ref.Info)
+			b.WriteString(ref.Info)
 		}
 		if ref.Authors != "" {
-			builder.WriteString("\n  AUTHORS   " +
+			b.WriteString("\n  AUTHORS   " +
 				AddPrefix(ref.Authors, indent))
 		}
 		if ref.Group != "" {
-			builder.WriteString("\n  CONSRTM   " +
+			b.WriteString("\n  CONSRTM   " +
 				AddPrefix(ref.Group, indent))
 		}
 		if ref.Title != "" {
-			builder.WriteString("\n  TITLE     " +
+			b.WriteString("\n  TITLE     " +
 				AddPrefix(ref.Title, indent))
 		}
 		if ref.Journal != "" {
-			builder.WriteString("\n  JOURNAL   " +
+			b.WriteString("\n  JOURNAL   " +
 				AddPrefix(ref.Journal, indent))
 		}
 		if ref.Xref != nil {
 			if v, ok := ref.Xref["PUBMED"]; ok {
-				builder.WriteString("\n   PUBMED   " + v)
+				b.WriteString("\n   PUBMED   " + v)
 			}
 		}
 		if ref.Comment != "" {
-			builder.WriteString("\n  REMARK    " +
+			b.WriteString("\n  REMARK    " +
 				AddPrefix(ref.Comment, indent))
 		}
 	}
 
 	if gb.Fields.Comment != "" {
-		builder.WriteString("\nCOMMENT     " +
+		b.WriteString("\nCOMMENT     " +
 			AddPrefix(gb.Fields.Comment, indent))
 	}
 
-	builder.WriteString("\nFEATURES             Location/Qualifiers\n")
+	b.WriteString("\nFEATURES             Location/Qualifiers\n")
 
-	gb.Table.Format("     ", 21).WriteTo(&builder)
+	gb.Table.Format("     ", 21).WriteTo(&b)
 
-	builder.WriteString("\nORIGIN      \n")
-	builder.WriteString(gb.Origin.String())
-	builder.WriteString("\n//\n")
+	b.WriteString("\nORIGIN      \n")
+	b.WriteString(gb.Origin.String())
+	b.WriteString("\n//\n")
 
-	return builder.String()
+	return b.String()
 }
 
 // WriteTo satisfies the io.WriterTo interface.

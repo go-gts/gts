@@ -98,8 +98,8 @@ func (set CommandSet) Ronn(ctx *Context) error {
 
 // Help lists the names and descriptions of the commands registered.
 func (set CommandSet) Help(ctx *Context) string {
-	builder := strings.Builder{}
-	builder.WriteString(fmt.Sprintf("usage: %s [--version] [-h | --help] <command> [<args>]\n\n", ctx.Name))
+	b := strings.Builder{}
+	b.WriteString(fmt.Sprintf("usage: %s [--version] [-h | --help] <command> [<args>]\n\n", ctx.Name))
 
 	names := make([]string, len(set))
 
@@ -111,12 +111,12 @@ func (set CommandSet) Help(ctx *Context) string {
 
 	sort.Strings(names)
 
-	builder.WriteString("available commands:")
+	b.WriteString("available commands:")
 	for _, name := range names {
 		cmd := set[name]
-		builder.WriteString("\n" + formatHelp(name, cmd.Desc))
+		b.WriteString("\n" + formatHelp(name, cmd.Desc))
 	}
-	return builder.String()
+	return b.String()
 }
 
 // Compile the CommandSet into a single Function.
