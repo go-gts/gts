@@ -31,7 +31,7 @@ func sequenceLength(ctx *flags.Context) error {
 		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
 	}
 
-	outPath := opt.String('o', "output", "-", "output table file (specifying `-` will force standard output)")
+	outPath := opt.String('o', "output", "-", "output file (specifying `-` will force standard output)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
