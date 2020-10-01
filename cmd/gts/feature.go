@@ -91,7 +91,7 @@ func featureClear(ctx *flags.Context) error {
 func featureSelect(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	selector := pos.String("selector", "feature selector (syntax: [feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]])")
+	selector := pos.String("selector", "feature selector (syntax: [feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]...)")
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
