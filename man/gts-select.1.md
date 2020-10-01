@@ -2,7 +2,7 @@
 
 ## SYNOPSIS
 
-gts-select [--version] [-h | --help] [<args>] <selector> <input>
+gts-select [--version] [-h | --help] [<args>] <selector> <seqin>
 
 ## DESCRIPTION
 
@@ -22,7 +22,7 @@ the EXAMPLES section for more insight.
     (syntax: [feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]...).
     See gts-selector(7) for more details.
 
-  * `<input>`:
+  * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 
@@ -44,19 +44,19 @@ the EXAMPLES section for more insight.
 
 Select all of the CDS features:
 
-    $ gts select CDS <input>
+    $ gts select CDS <seqin>
 
 Select all features with `locus_tag` of `b0001`:
 
-    $ gts select /locus_tag=b0001 <input>
+    $ gts select /locus_tag=b0001 <seqin>
 
 Select all features with the qualifier `translation`:
 
-    $ gts select /translation <input>
+    $ gts select /translation <seqin>
 
 Select all features with a qualifier value matching `recombinase`
 
-    $ gts select /=recombinase <input>
+    $ gts select /=recombinase <seqin>
 
 ## BUGS
 

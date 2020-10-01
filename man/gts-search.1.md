@@ -2,7 +2,7 @@
 
 ## SYNOPSIS
 
-gts-search [--version] [-h | --help] [<args>] <query> <input>
+gts-search [--version] [-h | --help] [<args>] <query> <seqin>
 
 ## DESCRIPTION
 
@@ -23,7 +23,7 @@ insight.
     Query sequence (will attempt to open as file). See gts-seqin(7) for a list
     of currently supported list of sequence formats.
 
-  * `<input>`:
+  * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 
@@ -56,7 +56,7 @@ insight.
 
 Search for <query> and retrieve the regions 100 bases around the matches.
 
-    $ gts search -q note=search <query> <input> | \
+    $ gts search -q note=search <query> <seqin> | \
       gts select misc_feature/note=search | \
       gts extract -m '^-100..$+100'
 

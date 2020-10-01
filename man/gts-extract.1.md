@@ -2,7 +2,7 @@
 
 ## SYNOPSIS
 
-gts-extract [--version] [-h | --help] [<args>] <input>
+gts-extract [--version] [-h | --help] [<args>] <seqin>
 
 ## DESCRIPTION
 
@@ -20,7 +20,7 @@ more insight.
 
 ## OPTIONS
 
-  * `<input>`:
+  * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 
@@ -44,17 +44,17 @@ more insight.
 
 Retrieve the sequences of all CDS features:
 
-    $ gts select CDS <input> | gts extract
+    $ gts select CDS <seqin> | gts extract
 
 Retrieve the sequence 100 bases upstream of all CDS features:
 
-    $ gts select CDS <input> | gts extract -m ^-100..^
-    $ gts select CDS <input> | gts extract --range ^-100..^
+    $ gts select CDS <seqin> | gts extract -m ^-100..^
+    $ gts select CDS <seqin> | gts extract --range ^-100..^
 
 Retrieve the sequence 100 bases downstream of all CDS features:
 
-    $ gts select CDS <input> | gts extract -m $..$+100
-    $ gts select CDS <input> | gts extract --range $..$+100
+    $ gts select CDS <seqin> | gts extract -m $..$+100
+    $ gts select CDS <seqin> | gts extract --range $..$+100
 
 ## BUGS
 

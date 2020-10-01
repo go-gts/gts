@@ -2,7 +2,7 @@
 
 ## SYNOPSIS
 
-gts-query [--version] [-h | --help] [<args>] <input>
+gts-query [--version] [-h | --help] [<args>] <seqin>
 
 ## DESCRIPTION
 
@@ -19,7 +19,7 @@ insight. For a brief summary of a sequence, consider using gts-summary(1).
 
 ## OPTIONS
 
-  * `<input>`:
+  * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 
@@ -61,11 +61,11 @@ insight. For a brief summary of a sequence, consider using gts-summary(1).
 
 Report information of all CDS features:
 
-    $ gts select CDS <input> | gts query
+    $ gts select CDS <seqin> | gts query
 
 Report information of a CDS feature with `locus_tag` of `b0001`:
 
-    $ gts select CDS/locus_tag=b0001 <input> | gts query
+    $ gts select CDS/locus_tag=b0001 <seqin> | gts query
 
 Report all of the `db_xref` qualifiers for every gene in the sequence:
 

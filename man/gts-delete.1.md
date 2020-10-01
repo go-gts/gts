@@ -2,7 +2,7 @@
 
 ## SYNOPSIS
 
-gts-delete [--version] [-h | --help] [<args>] <locator> <input>
+gts-delete [--version] [-h | --help] [<args>] <locator> <seqin>
 
 ## DESCRIPTION
 
@@ -23,7 +23,7 @@ erased from the sequence if the `-e` or `--erase` option is provided.
     A locator string ([selector|point|range][@modifier]). See gts-locator(7)
     for more details.
 
-  * `<input>`:
+  * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 
@@ -45,15 +45,15 @@ erased from the sequence if the `-e` or `--erase` option is provided.
 
 Delete bases 100 to 200:
 
-    $ gts delete 100..200 <input>
+    $ gts delete 100..200 <seqin>
 
 Delete all regions of `misc_feature` and its features:
 
-    $ gts delete --erase misc_feature <input>
+    $ gts delete --erase misc_feature <seqin>
 
 Delete 20 bases upstream of every `CDS`:
 
-    $ gts delete CDS^-20..^ <input>
+    $ gts delete CDS^-20..^ <seqin>
 
 ## BUGS
 

@@ -2,7 +2,7 @@
 
 ## SYNOPSIS
 
-gts-complement [--version] [-h | --help] [<args>] <input>
+gts-complement [--version] [-h | --help] [<args>] <seqin>
 
 ## DESCRIPTION
 
@@ -13,7 +13,7 @@ the reversed sequence, use **gts-reverse(1)**.
 
 ## OPTIONS
 
-  * `<input>`:
+  * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 

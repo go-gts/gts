@@ -2,7 +2,7 @@
 
 ## SYNOPSIS
 
-gts-summary [--version] [-h | --help] [<args>] <input>
+gts-summary [--version] [-h | --help] [<args>] <seqin>
 
 ## DESCRIPTION
 
@@ -13,7 +13,7 @@ more elaborate information of features.
 
 ## OPTIONS
 
-  * `<input>`:
+  * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 

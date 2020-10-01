@@ -2,7 +2,7 @@
 
 ## SYNOPSIS
 
-gts-annotate [--version] [-h | --help] [<args>] <feature_table> <input>
+gts-annotate [--version] [-h | --help] [<args>] <feature_table> <seqin>
 
 ## DESCRIPTION
 
@@ -19,7 +19,7 @@ logical sense in the given sequence will be made.
     the INSDC feature table documentation located at the following URL.
     http://www.insdc.org/documents/feature-table
 
-  * `<input>`:
+  * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 

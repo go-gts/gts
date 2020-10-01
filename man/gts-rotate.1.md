@@ -2,7 +2,7 @@
 
 ## SYNOPSIS
 
-gts-rotate [--version] [-h | --help] [<args>] <amount> <input>
+gts-rotate [--version] [-h | --help] [<args>] <amount> <seqin>
 
 ## DESCRIPTION
 
@@ -20,7 +20,7 @@ negative number as a literal value. See the EXAMPLES section for more insight.
   * `<amount>`:
     The amount to rotate the sequence by.
 
-  * `<input>`:
+  * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided).
 
   * `-F <format>`, `--format=<format>`:
@@ -36,13 +36,13 @@ negative number as a literal value. See the EXAMPLES section for more insight.
 
 Rotate a sequence 100 bases:
 
-    $ gts rotate 100 <input>
+    $ gts rotate 100 <seqin>
 
 Rotate a sequence -100 bases:
 
-    $ gts rotate -v 100 <input>
-    $ gts rotate --backward 100 <input>
-    $ gts rotate -- 100 <input>
+    $ gts rotate -v 100 <seqin>
+    $ gts rotate --backward 100 <seqin>
+    $ gts rotate -- 100 <seqin>
 
 ## BUGS
 
