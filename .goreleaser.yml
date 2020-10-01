@@ -67,9 +67,6 @@ brews:
     folder: Formula
     homepage: https://github.com/go-gts/gts
     description: "GTS: Genome Transformation Subprograms"
-    dependencies:
-      - name: make
-        type: build
     install: |
         bin.install "gts"
         bin.install "togo"
