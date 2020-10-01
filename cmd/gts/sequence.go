@@ -127,8 +127,8 @@ func sequenceSummary(ctx *flags.Context) error {
 		qfsmap := make(map[string]int)
 		for _, f := range ff {
 			keymap[f.Key]++
-			for name := range f.Qualifiers {
-				qfsmap[name]++
+			for name, values := range f.Qualifiers {
+				qfsmap[name] += len(values)
 			}
 		}
 
