@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"encoding/csv"
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/go-gts/gts"
@@ -73,10 +75,10 @@ func featureClear(ctx *flags.Context) error {
 		if _, err := formatter.WriteTo(seqoutFile); err != nil {
 			return ctx.Raise(err)
 		}
-	}
 
-	if err := w.Flush(); err != nil {
-		return ctx.Raise(err)
+		if err := w.Flush(); err != nil {
+			return ctx.Raise(err)
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -149,10 +151,10 @@ func featureSelect(ctx *flags.Context) error {
 		if _, err := formatter.WriteTo(seqoutFile); err != nil {
 			return ctx.Raise(err)
 		}
-	}
 
-	if err := w.Flush(); err != nil {
-		return ctx.Raise(err)
+		if err := w.Flush(); err != nil {
+			return ctx.Raise(err)
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -227,10 +229,10 @@ func featureAnnotate(ctx *flags.Context) error {
 		if _, err := formatter.WriteTo(seqoutFile); err != nil {
 			return ctx.Raise(err)
 		}
-	}
 
-	if err := w.Flush(); err != nil {
-		return ctx.Raise(err)
+		if err := w.Flush(); err != nil {
+			return ctx.Raise(err)
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -238,6 +240,22 @@ func featureAnnotate(ctx *flags.Context) error {
 	}
 
 	return nil
+}
+
+func formatCSV(record []string, comma rune) (string, error) {
+	b := strings.Builder{}
+	w := csv.NewWriter(&b)
+	w.Comma = comma
+	if err := w.Write(record); err != nil {
+		return "", err
+	}
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return "", err
+	}
+	s := strings.TrimSpace(b.String())
+	s = strings.ReplaceAll(s, "\n", " ")
+	return s, nil
 }
 
 func featureQuery(ctx *flags.Context) error {
@@ -251,9 +269,9 @@ func featureQuery(ctx *flags.Context) error {
 	outPath := opt.String('o', "output", "-", "output table file (specifying `-` will force standard output)")
 	names := opt.StringSlice('n', "name", nil, "qualifier name(s) to select")
 	delim := opt.String('d', "delimiter", "\t", "string to insert between columns")
-	sep := opt.String('t', "separator", ",", "string to insert between qualifier values")
+	sepstr := opt.String('t', "separator", ",", "string to insert between qualifier values")
 	noheader := opt.Switch(0, "no-header", "do not print the header line")
-	nosource := opt.Switch(0, "no-source", "ignore the source feature(s)")
+	source := opt.Switch(0, "source", "include the source feature(s)")
 	nokey := opt.Switch(0, "no-key", "do not report the feature key")
 	noloc := opt.Switch(0, "no-location", "do not report the feature location")
 	empty := opt.Switch(0, "empty", "allow missing qualifiers to be reported")
@@ -261,6 +279,12 @@ func featureQuery(ctx *flags.Context) error {
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
 	}
+
+	sep := []rune(*sepstr)
+	if len(sep) > 1 {
+		return ctx.Raise(fmt.Errorf("separator must be a single character: got %q", *sepstr))
+	}
+	comma := sep[0]
 
 	seqinFile := os.Stdin
 	if seqinPath != nil && *seqinPath != "-" {
@@ -284,15 +308,54 @@ func featureQuery(ctx *flags.Context) error {
 
 	w := bufio.NewWriter(outFile)
 
+	var common []string = nil
+
+	ids := make([]string, 0)
+	fff := [][]gts.Feature{}
+
+	scanner := seqio.NewAutoScanner(seqinFile)
+	for scanner.Scan() {
+		seq := scanner.Value()
+		switch info := seq.Info().(type) {
+		case interface{ ID() string }:
+			ids = append(ids, info.ID())
+		default:
+			ids = append(ids, "")
+		}
+		ff := seq.Features()
+		for _, f := range ff {
+			if !*source && f.Key == "source" {
+				continue
+			}
+			if common == nil {
+				for key := range f.Qualifiers {
+					common = append(common, key)
+				}
+				sort.Strings(common)
+			}
+			for i := 0; i < len(common); i++ {
+				if _, ok := f.Qualifiers[common[i]]; !ok {
+					common = append(common[:i], common[i+1:]...)
+				}
+			}
+		}
+		fff = append(fff, ff)
+	}
+
+	if len(*names) > 0 {
+		common = *names
+	}
+
 	if !*noheader {
 		fields := []string{}
+		fields = append(fields, "seq")
 		if !*nokey {
 			fields = append(fields, "feature")
 		}
 		if !*noloc {
 			fields = append(fields, "location")
 		}
-		fields = append(fields, *names...)
+		fields = append(fields, common...)
 		header := fmt.Sprintf("%s\n", strings.Join(fields, *delim))
 		_, err := io.WriteString(w, header)
 		if err != nil {
@@ -300,12 +363,17 @@ func featureQuery(ctx *flags.Context) error {
 		}
 	}
 
-	scanner := seqio.NewAutoScanner(seqinFile)
-	for scanner.Scan() {
-		seq := scanner.Value()
+	n := len(fmt.Sprintf("%d", len(fff)))
+	format := fmt.Sprintf("%%0%dd", n)
 
-		for _, f := range seq.Features() {
-			cc := make([]string, 0)
+	for i, ff := range fff {
+		id := ids[i]
+		if id == "" {
+			id = fmt.Sprintf(format, i)
+		}
+
+		for _, f := range ff {
+			cc := []string{id}
 
 			if !*nokey {
 				cc = append(cc, f.Key)
@@ -314,17 +382,18 @@ func featureQuery(ctx *flags.Context) error {
 				cc = append(cc, f.Location.String())
 			}
 
-			ok := !(*nosource && f.Key == "source")
+			ok := (*source || f.Key != "source")
 
-			for _, name := range *names {
+			for _, name := range common {
 				vv := f.Qualifiers.Get(name)
 				if len(vv) == 0 && !*empty {
 					ok = false
 				}
-				for i, v := range vv {
-					vv[i] = fmt.Sprintf("%q", strings.ReplaceAll(v, "\n", ""))
+				s, err := formatCSV(vv, comma)
+				if err != nil {
+					return ctx.Raise(err)
 				}
-				cc = append(cc, strings.Join(vv, *sep))
+				cc = append(cc, s)
 			}
 
 			if ok {
@@ -335,10 +404,10 @@ func featureQuery(ctx *flags.Context) error {
 				}
 			}
 		}
-	}
 
-	if err := w.Flush(); err != nil {
-		return ctx.Raise(err)
+		if err := w.Flush(); err != nil {
+			return ctx.Raise(err)
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -409,10 +478,10 @@ func featureExtract(ctx *flags.Context) error {
 				return ctx.Raise(err)
 			}
 		}
-	}
 
-	if err := w.Flush(); err != nil {
-		return ctx.Raise(err)
+		if err := w.Flush(); err != nil {
+			return ctx.Raise(err)
+		}
 	}
 
 	if err := scanner.Err(); err != nil {
