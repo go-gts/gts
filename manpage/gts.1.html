@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv='content-type' value='text/html;charset=utf8'>
+  <meta name='generator' value='Ronn/v0.7.3 (http://github.com/rtomayko/ronn/tree/0.7.3)'>
+  <title>gts(1) - the genome transformation subprograms command line tool</title>
+  <style type='text/css' media='all'>
+  /* style: man */
+  body#manpage {margin:0}
+  .mp {max-width:100ex;padding:0 9ex 1ex 4ex}
+  .mp p,.mp pre,.mp ul,.mp ol,.mp dl {margin:0 0 20px 0}
+  .mp h2 {margin:10px 0 0 0}
+  .mp > p,.mp > pre,.mp > ul,.mp > ol,.mp > dl {margin-left:8ex}
+  .mp h3 {margin:0 0 0 4ex}
+  .mp dt {margin:0;clear:left}
+  .mp dt.flush {float:left;width:8ex}
+  .mp dd {margin:0 0 0 9ex}
+  .mp h1,.mp h2,.mp h3,.mp h4 {clear:left}
+  .mp pre {margin-bottom:20px}
+  .mp pre+h2,.mp pre+h3 {margin-top:22px}
+  .mp h2+pre,.mp h3+pre {margin-top:5px}
+  .mp img {display:block;margin:auto}
+  .mp h1.man-title {display:none}
+  .mp,.mp code,.mp pre,.mp tt,.mp kbd,.mp samp,.mp h3,.mp h4 {font-family:monospace;font-size:14px;line-height:1.42857142857143}
+  .mp h2 {font-size:16px;line-height:1.25}
+  .mp h1 {font-size:20px;line-height:2}
+  .mp {text-align:justify;background:#fff}
+  .mp,.mp code,.mp pre,.mp pre code,.mp tt,.mp kbd,.mp samp {color:#131211}
+  .mp h1,.mp h2,.mp h3,.mp h4 {color:#030201}
+  .mp u {text-decoration:underline}
+  .mp code,.mp strong,.mp b {font-weight:bold;color:#131211}
+  .mp em,.mp var {font-style:italic;color:#232221;text-decoration:none}
+  .mp a,.mp a:link,.mp a:hover,.mp a code,.mp a pre,.mp a tt,.mp a kbd,.mp a samp {color:#0000ff}
+  .mp b.man-ref {font-weight:normal;color:#434241}
+  .mp pre {padding:0 4ex}
+  .mp pre code {font-weight:normal;color:#434241}
+  .mp h2+pre,h3+pre {padding-left:0}
+  ol.man-decor,ol.man-decor li {margin:3px 0 10px 0;padding:0;float:left;width:33%;list-style-type:none;text-transform:uppercase;color:#999;letter-spacing:1px}
+  ol.man-decor {width:100%}
+  ol.man-decor li.tl {text-align:left}
+  ol.man-decor li.tc {text-align:center;letter-spacing:4px}
+  ol.man-decor li.tr {text-align:right;float:right}
+  </style>
+  <style type='text/css' media='all'>
+  /* style: toc */
+  .man-navigation {display:block !important;position:fixed;top:0;left:113ex;height:100%;width:100%;padding:48px 0 0 0;border-left:1px solid #dbdbdb;background:#eee}
+  .man-navigation a,.man-navigation a:hover,.man-navigation a:link,.man-navigation a:visited {display:block;margin:0;padding:5px 2px 5px 30px;color:#999;text-decoration:none}
+  .man-navigation a:hover {color:#111;text-decoration:underline}
+  </style>
+</head>
+<!--
+  The following styles are deprecated and will be removed at some point:
+  div#man, div#man ol.man, div#man ol.head, div#man ol.man.
+
+  The .man-page, .man-decor, .man-head, .man-foot, .man-title, and
+  .man-navigation should be used instead.
+-->
+<body id='manpage'>
+  <div class='mp' id='man'>
+
+  <div class='man-navigation' style='display:none'>
+    <a href="#NAME">NAME</a>
+    <a href="#SYNOPSIS">SYNOPSIS</a>
+    <a href="#DESCRIPTION">DESCRIPTION</a>
+    <a href="#COMMANDS">COMMANDS</a>
+    <a href="#BUGS">BUGS</a>
+    <a href="#AUTHORS">AUTHORS</a>
+    <a href="#SEE-ALSO">SEE ALSO</a>
+  </div>
+
+  <ol class='man-decor man-head man head'>
+    <li class='tl'>gts(1)</li>
+    <li class='tc'></li>
+    <li class='tr'>gts(1)</li>
+  </ol>
+
+  <h2 id="NAME">NAME</h2>
+<p class="man-name">
+  <code>gts</code> - <span class="man-whatis">the genome transformation subprograms command line tool</span>
+</p>
+
+<h2 id="SYNOPSIS">SYNOPSIS</h2>
+
+<p>usage: gts [--version] [-h | --help] <var>command</var> [<var>args</var>]</p>
+
+<h2 id="DESCRIPTION">DESCRIPTION</h2>
+
+<p><strong>GTS</strong> provides basic manipulation utilities for genome flatfiles. The command
+consists of a number of subcommands listed in the <strong>COMMANDS</strong> section.</p>
+
+<h2 id="COMMANDS">COMMANDS</h2>
+
+<dl>
+<dt><code>gts-annotate(1)</code></dt><dd><p>Merge features from a feature list file into a sequence.</p></dd>
+<dt><code>gts-clear(1)</code></dt><dd><p>Remove all features from the sequence (excluding source features).</p></dd>
+<dt><code>gts-complement(1)</code></dt><dd><p>Compute the complement of the given sequence(s).</p></dd>
+<dt><code>gts-delete(1)</code></dt><dd><p>Delete a region of the given sequence(s).</p></dd>
+<dt><code>gts-extract(1)</code></dt><dd><p>Extract the sequences referenced by the features.</p></dd>
+<dt><code>gts-insert(1)</code></dt><dd><p>Insert a sequence into another sequence(s).</p></dd>
+<dt><code>gts-length(1)</code></dt><dd><p>Report the length of the sequence(s).</p></dd>
+<dt><code>gts-query(1)</code></dt><dd><p>Query information from the given sequence.</p></dd>
+<dt><code>gts-reverse(1)</code></dt><dd><p>Reverse order of the given sequence(s).</p></dd>
+<dt><code>gts-rotate(1)</code></dt><dd><p>Shift the coordinates of a circular sequence.</p></dd>
+<dt><code>gts-search(1)</code></dt><dd><p>Search for a subsequence and annotate its results.</p></dd>
+<dt><code>gts-select(1)</code></dt><dd><p>Select features using the given feature selector(s).</p></dd>
+<dt><code>gts-summary(1)</code></dt><dd><p>Report a brief summary of the sequence(s).</p></dd>
+</dl>
+
+
+<h2 id="BUGS">BUGS</h2>
+
+<p><strong>gts</strong> currently has no known bugs.</p>
+
+<h2 id="AUTHORS">AUTHORS</h2>
+
+<p><strong>gts</strong> is written and maintained by @AUTHOR@.</p>
+
+<h2 id="SEE-ALSO">SEE ALSO</h2>
+
+<p><a class="man-ref" href="gts-annotate.1.html">gts-annotate<span class="s">(1)</span></a>, <a class="man-ref" href="gts-clear.1.html">gts-clear<span class="s">(1)</span></a>, <a class="man-ref" href="gts-complement.1.html">gts-complement<span class="s">(1)</span></a>, <a class="man-ref" href="gts-delete.1.html">gts-delete<span class="s">(1)</span></a>,
+<a class="man-ref" href="gts-extract.1.html">gts-extract<span class="s">(1)</span></a>, <a class="man-ref" href="gts-insert.1.html">gts-insert<span class="s">(1)</span></a>, <a class="man-ref" href="gts-length.1.html">gts-length<span class="s">(1)</span></a>, <a class="man-ref" href="gts-query.1.html">gts-query<span class="s">(1)</span></a>, <a class="man-ref" href="gts-reverse.1.html">gts-reverse<span class="s">(1)</span></a>,
+<a class="man-ref" href="gts-rotate.1.html">gts-rotate<span class="s">(1)</span></a>, <a class="man-ref" href="gts-search.1.html">gts-search<span class="s">(1)</span></a>, <a class="man-ref" href="gts-select.1.html">gts-select<span class="s">(1)</span></a>, <a class="man-ref" href="gts-summary.1.html">gts-summary<span class="s">(1)</span></a>, <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a>,
+<a class="man-ref" href="gts-modifier.7.html">gts-modifier<span class="s">(7)</span></a>, <a class="man-ref" href="gts-selector.7.html">gts-selector<span class="s">(7)</span></a>, <a class="man-ref" href="gts-seqin.7.html">gts-seqin<span class="s">(7)</span></a>, <a class="man-ref" href="gts-seqout.7.html">gts-seqout<span class="s">(7)</span></a></p>
+
+
+  <ol class='man-decor man-foot man foot'>
+    <li class='tl'></li>
+    <li class='tc'>October 2020</li>
+    <li class='tr'>gts(1)</li>
+  </ol>
+
+  </div>
+</body>
+</html>
