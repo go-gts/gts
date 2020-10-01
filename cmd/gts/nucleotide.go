@@ -22,7 +22,7 @@ func sequenceComplement(ctx *flags.Context) error {
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
-		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
+		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
@@ -87,7 +87,7 @@ func sequenceSearch(ctx *flags.Context) error {
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
-		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
+		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")

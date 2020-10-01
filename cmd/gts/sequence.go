@@ -58,7 +58,7 @@ func sequenceSummary(ctx *flags.Context) error {
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
-		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
+		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
 	nofeature := opt.Switch('F', "no-feature", "suppress feature summary")
@@ -208,7 +208,7 @@ func sequenceLength(ctx *flags.Context) error {
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
-		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
+		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
 	outPath := opt.String('o', "output", "-", "output file (specifying `-` will force standard output)")
@@ -371,7 +371,7 @@ func sequenceDelete(ctx *flags.Context) error {
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
-		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
+		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
@@ -452,7 +452,7 @@ func sequenceReverse(ctx *flags.Context) error {
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
-		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
+		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
@@ -517,7 +517,7 @@ func sequenceRotate(ctx *flags.Context) error {
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
-		seqinPath = pos.String("input", "input sequence file (may be omitted if standard input is provided)")
+		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
