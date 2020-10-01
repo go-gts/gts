@@ -15,37 +15,37 @@ $ brew install go-gts/gts/gts-bio
 1. Download the deb package with the command of your choice.
 ```sh
 # 32 bit with wget
-$ wget https://github.com/go-gts/gts/releases/download/v0.21.0/gts_0.21.0_linux_386.deb
+$ wget https://github.com/go-gts/gts/releases/download/v0.22.0/gts_0.22.0_linux_386.deb
 # 32 bit with curl
-$ curl -LO https://github.com/go-gts/gts/releases/download/v0.21.0/gts_0.21.0_linux_386.deb
+$ curl -LO https://github.com/go-gts/gts/releases/download/v0.22.0/gts_0.22.0_linux_386.deb
 # 64 bit with wget
-$ wget https://github.com/go-gts/gts/releases/download/v0.21.0/gts_0.21.0_linux_amd64.deb
+$ wget https://github.com/go-gts/gts/releases/download/v0.22.0/gts_0.22.0_linux_amd64.deb
 # 64 bit with curl
-$ curl -LO https://github.com/go-gts/gts/releases/download/v0.21.0/gts_0.21.0_linux_amd64.deb
+$ curl -LO https://github.com/go-gts/gts/releases/download/v0.22.0/gts_0.22.0_linux_amd64.deb
 ```
 
 2. Install the deb package with dpkg.
 ```sh
 # 32 bit
-$ dpkg --install gts_0.21.0_linux_386.deb
+$ dpkg --install gts_0.22.0_linux_386.deb
 # 64 bit
-$ dpkg --install gts_0.21.0_linux_amd64.deb
+$ dpkg --install gts_0.22.0_linux_amd64.deb
 ```
 
 3. Remove the deb package file.
 ```sh
 # 32 bit
-$ rm gts_0.21.0_linux_386.deb
+$ rm gts_0.22.0_linux_386.deb
 # 64 bit
-$ rm gts_0.21.0_linux_amd64.deb
+$ rm gts_0.22.0_linux_amd64.deb
 ```
 
 #### With yum
 ```sh
 # 32 bit
-$ yum install -y https://github.com/go-gts/gts/releases/download/v0.21.0/gts_0.21.0_linux_386.rpm
+$ yum install -y https://github.com/go-gts/gts/releases/download/v0.22.0/gts_0.22.0_linux_386.rpm
 # 64 bit
-$ yum install -y https://github.com/go-gts/gts/releases/download/v0.21.0/gts_0.21.0_linux_amd64.rpm
+$ yum install -y https://github.com/go-gts/gts/releases/download/v0.22.0/gts_0.22.0_linux_amd64.rpm
 ```
 
 ## Using the GTS library
