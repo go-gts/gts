@@ -28,6 +28,10 @@ archives:
       windows: Windows
       386: i386
       amd64: x86_64
+    files:
+        - README.md
+        - LICENSE
+        - manpage/*
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -45,12 +49,14 @@ nfpms:
       - gts-togo
     homepage: https://github.com/go-gts/gts
     maintainer: Kotone Itaya <kotone [at] sfc.keio.ac.jp>
-    description: "GTS: the Genomics Tools Suite"
+    description: "GTS: Genome Transformation Subprograms"
     license: MIT
     formats:
       - deb
       - rpm
-    bindir: /usr/bin
+    files:
+        "./manpage/gts*.1": "/usr/share/man/man1"
+        "./manpage/gts*.7": "/usr/share/man/man7"
     epoch: 1
 brews:
   - name: gts-bio
@@ -59,8 +65,13 @@ brews:
       name: homebrew-gts
     folder: Formula
     homepage: https://github.com/go-gts/gts
-    description: "GTS: the Genomics Tools Suite"
+    description: "GTS: Genome Transformation Subprograms"
     dependencies:
-      - name: go
+      - name: make
         type: build
+    install: |
+        bin.install "gts"
+        bin.install "togo"
+        man1.install Dir["manpage/gts*.1"]
+        man7.install Dir["manpage/gts*.7"]
     test: system "#{bin}/gts --version"
