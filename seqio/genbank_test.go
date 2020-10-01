@@ -54,6 +54,32 @@ func TestOrigin(t *testing.T) {
 	}
 }
 
+func TestGenBankFields(t *testing.T) {
+	var (
+		locusName = "LocusName"
+		accession = "Accession"
+		version   = "Version"
+	)
+
+	info := GenBankFields{}
+
+	if info.ID() != "" {
+		t.Errorf("info.ID() = %q, want %q", info.ID(), "")
+	}
+	info.LocusName = locusName
+	if info.ID() != locusName {
+		t.Errorf("info.ID() = %q, want %q", info.ID(), locusName)
+	}
+	info.Accession = accession
+	if info.ID() != accession {
+		t.Errorf("info.ID() = %q, want %q", info.ID(), accession)
+	}
+	info.Version = version
+	if info.ID() != version {
+		t.Errorf("info.ID() = %q, want %q", info.ID(), version)
+	}
+}
+
 func TestGenBank(t *testing.T) {
 	info := GenBankFields{
 		"LOCUS_NAME",

@@ -34,6 +34,17 @@ type GenBankFields struct {
 	Comment    string
 }
 
+// ID returns the ID of the sequence.
+func (gbf GenBankFields) ID() string {
+	if gbf.Version != "" {
+		return gbf.Version
+	}
+	if gbf.Accession != "" {
+		return gbf.Accession
+	}
+	return gbf.LocusName
+}
+
 // String satisifes the fmt.Stringer interface.
 func (gbf GenBankFields) String() string {
 	return fmt.Sprintf("%s %s", gbf.Version, gbf.Definition)
