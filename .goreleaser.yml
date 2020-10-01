@@ -31,7 +31,8 @@ archives:
     files:
         - README.md
         - LICENSE
-        - manpage/*
+        - manpage/*.1
+        - manpage/*.7
 checksum:
   name_template: 'checksums.txt'
 snapshot:
