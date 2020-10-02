@@ -4,11 +4,16 @@ An application and library package for genome manipulation.
 ## Installing the GTS CLI tools
 ### Package Managers (Recommended)
 We recommend users who just want the GTS CLI tools (no library) to install via their favorite package managers.
-GTS currently supports [Homebrew](https://brew.sh), apt, and yum.
+GTS currently supports [Homebrew](https://brew.sh), [Anaconda/Miniconda](https://www.anaconda.com), apt, and yum.
 
 #### With Homebrew
 ```sh
 $ brew install go-gts/gts/gts-bio
+```
+
+#### With Anaconda/Miniconda
+```sh
+$ conda install -c ktnyt gts-bio
 ```
 
 #### With apt
