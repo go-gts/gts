@@ -31,8 +31,8 @@ archives:
     files:
         - README.md
         - LICENSE
-        - manpage/*.1
-        - manpage/*.7
+        - man/*.1
+        - man/*.7
 checksum:
   name_template: 'checksums.txt'
 snapshot:
@@ -56,8 +56,8 @@ nfpms:
       - deb
       - rpm
     files:
-        "./manpage/gts*.1": "/usr/share/man/man1"
-        "./manpage/gts*.7": "/usr/share/man/man7"
+        "./man/gts*.1": "/usr/share/man/man1"
+        "./man/gts*.7": "/usr/share/man/man7"
     epoch: 1
 brews:
   - name: gts-bio
@@ -70,6 +70,6 @@ brews:
     install: |
         bin.install "gts"
         bin.install "togo"
-        man1.install Dir["manpage/gts*.1"]
-        man7.install Dir["manpage/gts*.7"]
+        man1.install Dir["man/gts*.1"]
+        man7.install Dir["man/gts*.7"]
     test: system "#{bin}/gts --version"

@@ -12,10 +12,10 @@ cp "$SRC_DIR/togo" "$PREFIX/bin"
 chmod +x "$PREFIX/bin/gts"
 chmod +x "$PREFIX/bin/togo"
 
-for FILE in "$SRC_DIR"/manpage/*.1; do
+for FILE in "$SRC_DIR"/man/*.1; do
     cp "$FILE" "$PREFIX/share/man/man1"
 done
 
-for FILE in "$SRC_DIR"/manpage/*.7; do
+for FILE in "$SRC_DIR"/man/*.7; do
     cp "$FILE" "$PREFIX/share/man/man7"
 done
