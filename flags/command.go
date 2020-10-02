@@ -2,7 +2,6 @@ package flags
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -133,9 +132,17 @@ func (set CommandSet) Compile() Function {
 
 		if head == "--ronn" {
 			if err := set.Ronn(ctx); err != nil {
-				return err
+				return fmt.Errorf("while generating ronn file for %s: %v", ctx.Name, err)
 			}
-			return ctx.Raise(errors.New("created ronn template"))
+			names := []string{}
+			for name, cmd := range set {
+				names = append(names, name)
+				name = fmt.Sprintf("%s %s", ctx.Name, name)
+				if err := cmd.Func(&Context{name, cmd.Desc, ctx.Args, ctx.Ctx}); err != errRonn {
+					return fmt.Errorf("while generating ronn file for %s: %v", name, err)
+				}
+			}
+			return nil
 		}
 
 		cmd, ok := set[head]

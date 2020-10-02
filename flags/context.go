@@ -49,7 +49,10 @@ func (ctx *Context) Parse(pos *Positional, opt *Optional) error {
 			b.WriteString(Help(pos, opt))
 
 		case errRonn:
-			return Ronn(ctx, pos, opt)
+			if err := Ronn(ctx, pos, opt); err != nil {
+				return ctx.Raise(err)
+			}
+			return errRonn
 
 		default:
 			b.WriteString(fmt.Sprintf("%v\n\nusage: %s %s", err, name, usage))

@@ -2,7 +2,6 @@ package flags
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -17,7 +16,7 @@ func Ronn(ctx *Context, pos *Positional, opt *Optional) error {
 	name, desc := ctx.Name, ctx.Desc
 	usage := wrap.Space(Usage(pos, opt), 72-len(name))
 	name = strings.ReplaceAll(name, " ", "-")
-	filename := fmt.Sprintf("%s.1.md", name)
+	filename := fmt.Sprintf("%s.1.ronn", name)
 
 	f, err := os.Create(filename)
 	if err != nil {
@@ -107,5 +106,5 @@ func Ronn(ctx *Context, pos *Positional, opt *Optional) error {
 		return ctx.Raise(err)
 	}
 
-	return ctx.Raise(errors.New("created ronn template"))
+	return nil
 }
