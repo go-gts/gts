@@ -1,0 +1,34 @@
+{% set version = "0.22.1" %}
+
+package:
+    name: gts-bio
+    version: {{ version }}
+
+source:
+    url: https://github.com/go-gts/gts/releases/download/v{{ version }}/gts_{{ version }}_Darwin_x86_64.tar.gz # [osx]
+    sha256: 0d2940000d12961ef48f4bfa78069bc9d26614af888861a131989f02fbd2146f # [osx]
+
+    url: https://github.com/go-gts/gts/releases/download/v{{ version }}/gts_{{ version }}_Linux_x86_64.tar.gz # [linux64]
+    sha256: 331f01bb37094f08f7456713c264c0b77c37bdf559c2051c02483df8d9782879 # [linux64]
+
+    url: https://github.com/go-gts/gts/releases/download/v{{ version }}/gts_{{ version }}_Linux_i386.tar.gz # [linux32]
+    sha256: d0bfa4469131633628a40c8602f7aaf99500590202793b53a10c6bd34309a8db # [linux32]
+
+build:
+    number: 0
+    skip: False
+
+test:
+    commands:
+        - gts --version
+        - togo --version
+
+about:
+    home: https://github.com/go-gts/gts
+    summary: Genome Transformation Subprograms
+    license: MIT
+
+extra:
+    skip-lints:
+        - should_be_noarch_generic
+        - should_not_be_noarch_source
