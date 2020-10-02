@@ -130,7 +130,7 @@ func (set CommandSet) Compile() Function {
 			return fmt.Errorf("%s: %s\n\n%s", ctx.Name, ctx.Desc, set.Help(ctx))
 		}
 
-		if head == "--ronn" {
+		if head == "generate-ronn-templates" {
 			if err := set.Ronn(ctx); err != nil {
 				return fmt.Errorf("while generating ronn file for %s: %v", ctx.Name, err)
 			}

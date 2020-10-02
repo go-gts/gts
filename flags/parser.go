@@ -51,16 +51,16 @@ func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 	for len(args) > 0 && !terminated {
 		head, args = shift(args)
 
+		if head == "generate-ronn-templates" {
+			return nil, errRonn
+		}
+
 		switch TypeOf(head) {
 		case LongType:
 			long := head[2:]
 
 			if long == "help" {
 				return nil, errHelp
-			}
-
-			if long == "ronn" {
-				return nil, errRonn
 			}
 
 			switch i := strings.IndexByte(long, '='); i {
