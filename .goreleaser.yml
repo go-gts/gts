@@ -3,8 +3,11 @@ before:
     - go mod download
     - go generate ./...
 release:
+  github:
+    owner: go-gts
+    name: gts
   extra_files:
-    - glob: ./completions/*
+    - glob: ./completion/*
 builds:
   - main: ./cmd/gts
     id: gts-bio
@@ -36,7 +39,7 @@ archives:
       - LICENSE
       - man/*.1
       - man/*.7
-      - completions/*
+      - completion/*
 checksum:
   name_template: checksums.txt
 snapshot:
