@@ -28,11 +28,22 @@ func (set CommandSet) Register(name, desc string, f Function) {
 	set[name] = Command{desc, f}
 }
 
+// Commands returns the list of command names in alphabetical order.
+func (set CommandSet) Commands() []string {
+	names := make([]string, len(set))
+	i := 0
+	for name := range set {
+		names[i] = name
+		i++
+	}
+	sort.Strings(names)
+	return names
+}
+
 // Ronn creates a manpage markdown template for ronn.
 func (set CommandSet) Ronn(ctx *Context) error {
-	name, desc := ctx.Name, ctx.Desc
-	usage := fmt.Sprintf("usage: %s [--version] [-h | --help] <command> [<args>]", ctx.Name)
-	name = strings.ReplaceAll(name, " ", "-")
+	usage := fmt.Sprintf("usage: %s [--version] [-h | --help] <command> [<args>]", ctx.JoinedName())
+	name := strings.Join(ctx.Name, "-")
 	filename := fmt.Sprintf("%s.1.md", name)
 
 	f, err := os.Create(filename)
@@ -44,26 +55,18 @@ func (set CommandSet) Ronn(ctx *Context) error {
 	w := bufio.NewWriter(f)
 
 	parts := []string{
-		fmt.Sprintf("# %s -- %s", name, desc),
+		fmt.Sprintf("# %s -- %s", name, ctx.Desc),
 		"## SYNOPSIS",
 		usage,
 		"## DESCRIPTION",
-		sentencify(desc),
+		sentencify(ctx.Desc),
 		"## COMMANDS",
 	}
 
 	commands := []string{}
 	seealso := []string{}
 
-	cmdNames := make([]string, len(set))
-
-	i := 0
-	for name := range set {
-		cmdNames[i] = name
-		i++
-	}
-
-	sort.Strings(cmdNames)
+	cmdNames := set.Commands()
 
 	for _, cmdName := range cmdNames {
 		cmd := set[cmdName]
@@ -92,13 +95,72 @@ func (set CommandSet) Ronn(ctx *Context) error {
 		return ctx.Raise(err)
 	}
 
-	return w.Flush()
+	if err := w.Flush(); err != nil {
+		return ctx.Raise(err)
+	}
+
+	return nil
+}
+
+func (set CommandSet) compBash(ctx *Context) error {
+	funcName := strings.Join(ctx.Name, "_")
+
+	cmdNames := set.Commands()
+	cmdFuncs := make([]string, len(cmdNames))
+
+	for i, cmdName := range cmdNames {
+		cmdFuncs[i] = fmt.Sprintf("%[1]s) &_%[2]s_%[1]s ;;", cmdName, funcName)
+	}
+
+	comps := strings.Join(cmdNames, " ")
+	funcs := alignLines(strings.Join(cmdFuncs, "\n"), '&')
+	funcs = strings.ReplaceAll(funcs, "\n", "\n        ")
+
+	comp := fmt.Sprintf(compSetBashFormat, funcName, comps, funcs)
+
+	filename := fmt.Sprintf("%s-completion.bash", ctx.Name[0])
+	return fileAppend(filename, comp)
+}
+
+func (set CommandSet) compZsh(ctx *Context) error {
+	funcName := strings.Join(ctx.Name, "_")
+
+	cmdNames := set.Commands()
+	cmdList := make([]string, len(cmdNames))
+	cmdFuncs := make([]string, len(cmdNames))
+
+	for i, cmdName := range cmdNames {
+		cmdList[i] = fmt.Sprintf("'%s:%s'", cmdName, set[cmdName].Desc)
+		cmdFuncs[i] = fmt.Sprintf("%[1]s) &_%[2]s_%[1]s ;;", cmdName, funcName)
+	}
+
+	list := strings.Join(cmdList, "\n            ")
+	funcs := alignLines(strings.Join(cmdFuncs, "\n"), '&')
+	funcs = strings.ReplaceAll(funcs, "\n", "\n        ")
+
+	comp := fmt.Sprintf(compSetZshFormat, funcName, list, funcs)
+
+	filename := fmt.Sprintf("%s-completion.zsh", ctx.Name[0])
+	return fileAppend(filename, comp)
+}
+
+// Comp creates a completion script.
+func (set CommandSet) Comp(ctx *Context) error {
+	if err := set.compBash(ctx); err != nil {
+		return ctx.Raise(err)
+	}
+
+	if err := set.compZsh(ctx); err != nil {
+		return ctx.Raise(err)
+	}
+
+	return nil
 }
 
 // Help lists the names and descriptions of the commands registered.
 func (set CommandSet) Help(ctx *Context) string {
 	b := strings.Builder{}
-	b.WriteString(fmt.Sprintf("usage: %s [--version] [-h | --help] <command> [<args>]\n\n", ctx.Name))
+	b.WriteString(fmt.Sprintf("usage: %s [--version] [-h | --help] <command> [<args>]\n\n", ctx.JoinedName()))
 
 	names := make([]string, len(set))
 
@@ -122,26 +184,66 @@ func (set CommandSet) Help(ctx *Context) string {
 func (set CommandSet) Compile() Function {
 	return func(ctx *Context) error {
 		if len(ctx.Args) == 0 {
-			return fmt.Errorf("%s expected a command.\n\n%s", ctx.Name, set.Help(ctx))
+			return fmt.Errorf("%s expected a command.\n\n%s", ctx.JoinedName(), set.Help(ctx))
 		}
 
 		head, tail := shift(ctx.Args)
 		if (strings.HasPrefix(head, "-") && strings.Contains(head, "h")) || head == "--help" {
-			return fmt.Errorf("%s: %s\n\n%s", ctx.Name, ctx.Desc, set.Help(ctx))
+			return fmt.Errorf("%s: %s\n\n%s", ctx.JoinedName(), ctx.Desc, set.Help(ctx))
 		}
 
-		if head == "generate-ronn-templates" {
+		switch head {
+		case "generate-ronn-templates":
 			if err := set.Ronn(ctx); err != nil {
-				return fmt.Errorf("while generating ronn file for %s: %v", ctx.Name, err)
+				return fmt.Errorf("while generating ronn file for %s: %v", ctx.JoinedName(), err)
 			}
-			names := []string{}
 			for name, cmd := range set {
-				names = append(names, name)
-				name = fmt.Sprintf("%s %s", ctx.Name, name)
-				if err := cmd.Func(&Context{name, cmd.Desc, ctx.Args, ctx.Ctx}); err != errRonn {
+				child := &Context{append(ctx.Name, name), cmd.Desc, ctx.Args, ctx.Ctx}
+				if err := cmd.Func(child); err != errRonn {
 					return fmt.Errorf("while generating ronn file for %s: %v", name, err)
 				}
 			}
+			return nil
+
+		case "generate-completions":
+			if len(ctx.Name) == 1 {
+				bash := fmt.Sprintf("%s-completion.bash", ctx.Name[0])
+				if err := touch(bash); err != nil {
+					return fmt.Errorf("while generating completion for %s: %v", ctx.Name[0], err)
+				}
+				zsh := fmt.Sprintf("%s-completion.zsh", ctx.Name[0])
+				if err := touch(zsh); err != nil {
+					return fmt.Errorf("while generating completion for %s: %v", ctx.Name[0], err)
+				}
+			}
+
+			names := set.Commands()
+			for _, name := range names {
+				cmd := set[name]
+				child := &Context{append(ctx.Name, name), cmd.Desc, ctx.Args, ctx.Ctx}
+				if err := cmd.Func(child); err != errComp {
+					return fmt.Errorf("while generating completion for %s: %v", name, err)
+				}
+			}
+
+			if err := set.Comp(ctx); err != nil {
+				return fmt.Errorf("while generating completion for %s: %v", ctx.JoinedName(), err)
+			}
+
+			if len(ctx.Name) == 1 {
+				bash := fmt.Sprintf("%s-completion.bash", ctx.Name[0])
+				bcomp := fmt.Sprintf("complete -F _%[1]s %[1]s", ctx.Name[0])
+				if err := fileAppend(bash, bcomp); err != nil {
+					return fmt.Errorf("while generating completion for %s: %v", ctx.JoinedName(), err)
+				}
+
+				zsh := fmt.Sprintf("%s-completion.zsh", ctx.Name[0])
+				zcomp := fmt.Sprintf("compdef _%[1]s %[1]s", ctx.Name[0])
+				if err := fileAppend(zsh, zcomp); err != nil {
+					return fmt.Errorf("while generating completion for %s: %v", ctx.JoinedName(), err)
+				}
+			}
+
 			return nil
 		}
 
@@ -150,7 +252,6 @@ func (set CommandSet) Compile() Function {
 			return fmt.Errorf("unknown command name `%s`", head)
 		}
 
-		name := fmt.Sprintf("%s %s", ctx.Name, head)
-		return cmd.Func(&Context{name, cmd.Desc, tail, ctx.Ctx})
+		return cmd.Func(&Context{append(ctx.Name, head), cmd.Desc, tail, ctx.Ctx})
 	}
 }

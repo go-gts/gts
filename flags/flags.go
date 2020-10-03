@@ -32,7 +32,7 @@ func Run(name, desc string, version Version, f Function) int {
 			return 0
 		}
 	}
-	ctx := &Context{name, desc, args, context.Background()}
+	ctx := &Context{[]string{name}, desc, args, context.Background()}
 	if err := f(ctx); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1

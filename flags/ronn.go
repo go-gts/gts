@@ -13,9 +13,8 @@ import (
 
 // Ronn creates a manpage markdown template for ronn.
 func Ronn(ctx *Context, pos *Positional, opt *Optional) error {
-	name, desc := ctx.Name, ctx.Desc
-	usage := wrap.Space(Usage(pos, opt), 72-len(name))
-	name = strings.ReplaceAll(name, " ", "-")
+	usage := wrap.Space(Usage(pos, opt), 72-len(ctx.JoinedName()))
+	name := strings.Join(ctx.Name, "-")
 	filename := fmt.Sprintf("%s.1.ronn", name)
 
 	f, err := os.Create(filename)
@@ -27,11 +26,11 @@ func Ronn(ctx *Context, pos *Positional, opt *Optional) error {
 	w := bufio.NewWriter(f)
 
 	parts := []string{
-		fmt.Sprintf("# %s(1) -- %s", name, desc),
+		fmt.Sprintf("# %s(1) -- %s", name, ctx.Desc),
 		"## SYNOPSIS",
 		name + " " + usage,
 		"## DESCRIPTION",
-		sentencify(desc),
+		sentencify(ctx.Desc),
 		"## OPTIONS",
 	}
 
@@ -44,21 +43,21 @@ func Ronn(ctx *Context, pos *Positional, opt *Optional) error {
 		options = append(options, fmt.Sprintf("  * `<%s>`:\n    %s", name, usage))
 	}
 
-	names := []optionalName{}
+	optNames := []optionalName{}
 	for long := range opt.Args {
-		name := optionalName{0, long}
+		optName := optionalName{0, long}
 		for short := range opt.Alias {
 			if opt.Alias[short] == long {
-				name.Short = short
+				optName.Short = short
 			}
 		}
-		names = append(names, name)
+		optNames = append(optNames, optName)
 	}
 
-	sort.Sort(byShort(names))
+	sort.Sort(byShort(optNames))
 
-	for _, name := range names {
-		short, long := name.Short, name.Long
+	for _, optName := range optNames {
+		short, long := optName.Short, optName.Long
 		arg := opt.Args[long]
 		usage := wrap.Space(sentencify(arg.Usage), 76)
 		usage = strings.ReplaceAll(usage, "\n", "    \n")

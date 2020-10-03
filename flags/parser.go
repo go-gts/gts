@@ -39,6 +39,7 @@ func TypeOf(s string) ArgumentType {
 
 var errHelp = errors.New("help")
 var errRonn = errors.New("ronn")
+var errComp = errors.New("comp")
 
 // Parse will parse the argument list according to the positional and optional
 // argument lists provided and return extraneous argument elements and an error
@@ -51,8 +52,11 @@ func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 	for len(args) > 0 && !terminated {
 		head, args = shift(args)
 
-		if head == "generate-ronn-templates" {
+		switch head {
+		case "generate-ronn-templates":
 			return nil, errRonn
+		case "generate-completions":
+			return nil, errComp
 		}
 
 		switch TypeOf(head) {

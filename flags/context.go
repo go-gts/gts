@@ -12,10 +12,15 @@ import (
 // Context is an implementation of context.Context which contains extra data
 // needed to parse command line arguments and print command details.
 type Context struct {
-	Name string
+	Name []string
 	Desc string
 	Args []string
 	Ctx  context.Context
+}
+
+// JoinedName returns the name joined by a whitespace.
+func (ctx Context) JoinedName() string {
+	return strings.Join(ctx.Name, " ")
 }
 
 // Done implements the context.Context.Done method.
@@ -39,7 +44,7 @@ func (ctx *Context) Parse(pos *Positional, opt *Optional) error {
 	args, err := Parse(pos, opt, ctx.Args)
 	if err != nil {
 		b := strings.Builder{}
-		name := ctx.Name
+		name := ctx.JoinedName()
 		usage := wrap.Space(Usage(pos, opt), 72-len(name))
 
 		switch err {
@@ -54,6 +59,32 @@ func (ctx *Context) Parse(pos *Positional, opt *Optional) error {
 			}
 			return errRonn
 
+		case errComp:
+			if len(ctx.Name) == 1 {
+				bash := fmt.Sprintf("%s-completion.bash", ctx.Name[0])
+				if err := touch(bash); err != nil {
+					return fmt.Errorf("while generating completion for %s: %v", ctx.Name[0], err)
+				}
+				zsh := fmt.Sprintf("%s-completion.zsh", ctx.Name[0])
+				if err := touch(zsh); err != nil {
+					return fmt.Errorf("while generating completion for %s: %v", ctx.Name[0], err)
+				}
+			}
+
+			if err := Comp(ctx, pos, opt); err != nil {
+				return ctx.Raise(err)
+			}
+
+			if len(ctx.Name) == 1 {
+				bash := fmt.Sprintf("%s-completion.bash", ctx.Name[0])
+				bcomp := fmt.Sprintf("complete -F _%[1]s %[1]s", ctx.Name[0])
+				if err := fileAppend(bash, bcomp); err != nil {
+					return fmt.Errorf("while generating completion for %s: %v", ctx.JoinedName(), err)
+				}
+			}
+
+			return errComp
+
 		default:
 			b.WriteString(fmt.Sprintf("%v\n\nusage: %s %s", err, name, usage))
 		}
@@ -67,7 +98,7 @@ func (ctx *Context) Parse(pos *Positional, opt *Optional) error {
 // Raise creates an error with the current context.
 func (ctx Context) Raise(err error) error {
 	if err != nil {
-		return fmt.Errorf("%s: %v", ctx.Name, err)
+		return fmt.Errorf("%s: %v", ctx.JoinedName(), err)
 	}
 	return nil
 }
