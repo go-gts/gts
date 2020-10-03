@@ -2,65 +2,68 @@ before:
   hooks:
     - go mod download
     - go generate ./...
+release:
+  extra_files:
+    - glob: ./completions/*
 builds:
   - main: ./cmd/gts
-    id: "gts-bio"
+    id: gts-bio
     env:
       - CGO_ENABLED=0
     binary: gts
-    flags: -v
+    flags: '-v'
     goos:
       - linux
       - darwin
   - main: ./cmd/togo
-    id: "gts-togo"
+    id: gts-togo
     env:
       - CGO_ENABLED=0
     binary: togo
-    flags: -v
+    flags: '-v'
     goos:
       - linux
       - darwin
 archives:
   - replacements:
+      '386': i386
       darwin: Darwin
       linux: Linux
       windows: Windows
-      386: i386
       amd64: x86_64
     files:
-        - README.md
-        - LICENSE
-        - man/*.1
-        - man/*.7
-        - completions/*
+      - README.md
+      - LICENSE
+      - man/*.1
+      - man/*.7
+      - completions/*
 checksum:
-  name_template: 'checksums.txt'
+  name_template: checksums.txt
 snapshot:
-  name_template: "{{ .Tag }}-next"
+  name_template: '{{ .Tag }}-next'
 changelog:
   sort: asc
   filters:
     exclude:
-    - '^docs:'
-    - '^test:'
+      - '^docs:'
+      - '^test:'
 nfpms:
   - id: gts-bio-nfpms
     builds:
       - gts-bio
       - gts-togo
-    homepage: https://github.com/go-gts/gts
-    maintainer: Kotone Itaya <kotone [at] sfc.keio.ac.jp>
-    description: "GTS: Genome Transformation Subprograms"
+    homepage: 'https://github.com/go-gts/gts'
+    maintainer: 'Kotone Itaya <kotone [at] sfc.keio.ac.jp>'
+    description: 'GTS: Genome Transformation Subprograms'
     license: MIT
     formats:
       - deb
       - rpm
     files:
-        "./man/gts*.1": "/usr/share/man/man1"
-        "./man/gts*.7": "/usr/share/man/man7"
-        "./completion/gts-completion.bash": "/etc/bash_completion.d/gts-completion.bash"
-        "./completion/gts-completion.zsh": "/usr/local/share/zsh/site-functions/_gts"
+      ./man/gts*.1: /usr/share/man/man1
+      ./man/gts*.7: /usr/share/man/man7
+      ./completion/gts-completion.bash: /etc/bash_completion.d/gts-completion.bash
+      ./completion/gts-completion.zsh: /usr/local/share/zsh/site-functions/_gts
     epoch: 1
 brews:
   - name: gts-bio
@@ -68,14 +71,13 @@ brews:
       owner: go-gts
       name: homebrew-gts
     folder: Formula
-    homepage: https://github.com/go-gts/gts
-    description: "GTS: Genome Transformation Subprograms"
+    homepage: 'https://github.com/go-gts/gts'
+    description: 'GTS: Genome Transformation Subprograms'
     install: |
-        bin.install "gts"
-        bin.install "togo"
-        man1.install Dir["man/gts*.1"]
-        man7.install Dir["man/gts*.7"]
-        bash_completion.install "completion/gts-completion.bash"
-        zsh_completion.install "completion/gts-completion.zsh" => "_gts"
-
-    test: system "#{bin}/gts --version"
+      bin.install "gts"
+      bin.install "togo"
+      man1.install Dir["man/gts*.1"]
+      man7.install Dir["man/gts*.7"]
+      bash_completion.install "completion/gts-completion.bash"
+      zsh_completion.install "completion/gts-completion.zsh" => "_gts"
+    test: 'system "#{bin}/gts --version"'
