@@ -1,4 +1,4 @@
-#compdef _gts gts
+#compdef gts
 function _gts_annotate {
     _arguments \
         "-h[show help]" \
@@ -95,11 +95,11 @@ function _gts_query {
         "-d[string to insert between columns]" \
         "--delimiter[string to insert between columns]" \
         "--empty[allow missing qualifiers to be reported]" \
+        "--no-header[do not print the header line]" \
         "--no-key[do not report the feature key]" \
         "--no-location[do not report the feature location]" \
         "-n[qualifier name(s) to select]" \
         "--name[qualifier name(s) to select]" \
-        "--no-header[do not print the header line]" \
         "-o[output table file (specifying `-` will force standard output)]" \
         "--output[output table file (specifying `-` will force standard output)]" \
         "--source[include the source feature(s)]" \

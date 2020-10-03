@@ -211,9 +211,15 @@ func (set CommandSet) Compile() Function {
 				if err := touch(bash); err != nil {
 					return fmt.Errorf("while generating completion for %s: %v", ctx.Name[0], err)
 				}
+
 				zsh := fmt.Sprintf("%s-completion.zsh", ctx.Name[0])
 				if err := touch(zsh); err != nil {
 					return fmt.Errorf("while generating completion for %s: %v", ctx.Name[0], err)
+				}
+
+				zcomp := fmt.Sprintf("#compdef %s\n\n", ctx.Name[0])
+				if err := fileAppend(zsh, zcomp); err != nil {
+					return fmt.Errorf("while generating completion for %s: %v", ctx.JoinedName(), err)
 				}
 			}
 
@@ -234,12 +240,6 @@ func (set CommandSet) Compile() Function {
 				bash := fmt.Sprintf("%s-completion.bash", ctx.Name[0])
 				bcomp := fmt.Sprintf("complete -F _%[1]s %[1]s", ctx.Name[0])
 				if err := fileAppend(bash, bcomp); err != nil {
-					return fmt.Errorf("while generating completion for %s: %v", ctx.JoinedName(), err)
-				}
-
-				zsh := fmt.Sprintf("%s-completion.zsh", ctx.Name[0])
-				zcomp := fmt.Sprintf("compdef _%[1]s %[1]s", ctx.Name[0])
-				if err := fileAppend(zsh, zcomp); err != nil {
 					return fmt.Errorf("while generating completion for %s: %v", ctx.JoinedName(), err)
 				}
 			}

@@ -154,7 +154,7 @@ _gts_length()
 
 _gts_query()
 {
-    opts="-h --help --version -d --delimiter --empty --no-header --no-key --no-location -n --name -o --output --source -t --separator"
+    opts="-h --help --version -d --delimiter --empty --no-header --no-key -n --name --no-location -o --output --source -t --separator"
     local cur="${COMP_WORDS[$COMP_CWORD]}"
     case "$cur" in
         -*)
