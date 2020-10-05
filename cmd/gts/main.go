@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/go-gts/gts"
-	"github.com/go-gts/gts/flags"
+	"github.com/go-gts/gts/internal/flags"
 )
 
 func main() {

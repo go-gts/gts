@@ -1,6 +1,6 @@
 package gts
 
-import "github.com/go-gts/gts/flags"
+import "github.com/go-gts/gts/internal/flags"
 
 // Version represents the GTS software version.
 var Version = flags.Version{

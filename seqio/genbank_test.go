@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-ascii/ascii"
 	"github.com/go-gts/gts"
-	"github.com/go-gts/gts/testutils"
+	"github.com/go-gts/gts/internal/testutils"
 	"github.com/go-pars/pars"
 )
 
@@ -19,6 +19,7 @@ func formatGenBankHelper(t *testing.T, seq gts.Sequence, in string) {
 	n, err := f.WriteTo(&b)
 	if int(n) != len([]byte(in)) || err != nil {
 		t.Errorf("f.WriteTo(&b) = (%d, %v), want %d, nil", n, err, len(in))
+		testutils.Diff(t, in, b.String())
 		return
 	}
 	testutils.Diff(t, in, b.String())
@@ -81,6 +82,8 @@ func TestGenBankFields(t *testing.T) {
 }
 
 func TestGenBank(t *testing.T) {
+	length := 100
+
 	info := GenBankFields{
 		"LOCUS_NAME",
 		"DNA",
@@ -100,9 +103,10 @@ func TestGenBank(t *testing.T) {
 		},
 		nil,
 		"",
+		nil,
 	}
 
-	p := []byte(strings.Repeat("atgc", 100))
+	p := []byte(strings.Repeat("atgc", length))
 	qfs := gts.Values{}
 	qfs.Add("organism", "Genus species")
 	qfs.Add("mol_type", "Genomic DNA")
@@ -123,6 +127,8 @@ func TestGenBank(t *testing.T) {
 }
 
 func TestGenBankWithInterface(t *testing.T) {
+	length := 100
+
 	info := GenBankFields{
 		"LOCUS_NAME",
 		"DNA",
@@ -142,8 +148,10 @@ func TestGenBankWithInterface(t *testing.T) {
 		},
 		nil,
 		"",
+		nil,
 	}
-	p := []byte(strings.Repeat("atgc", 100))
+
+	p := []byte(strings.Repeat("atgc", length))
 	qfs := gts.Values{}
 	qfs.Add("organism", "Genus species")
 	qfs.Add("mol_type", "Genomic DNA")
@@ -173,6 +181,28 @@ func TestGenBankWithInterface(t *testing.T) {
 	top := out.(GenBank).Fields.Topology
 	if top != gts.Circular {
 		t.Errorf("topology is %q, expected %q", top, gts.Circular)
+	}
+}
+
+func TestGenBankSlice(t *testing.T) {
+	in := testutils.ReadTestfile(t, "NC_001422.gb")
+	state := pars.FromString(in)
+	parser := pars.AsParser(GenBankParser)
+
+	exp := testutils.ReadTestfile(t, "NC_001422_part.gb")
+
+	result, err := parser.Parse(state)
+	if err != nil {
+		t.Errorf("parser returned %v\nBuffer:\n%q", err, string(result.Token))
+	}
+
+	switch seq := result.Value.(type) {
+	case GenBank:
+		seq = gts.Slice(seq, 2379, 2512).(GenBank)
+		formatGenBankHelper(t, seq, exp)
+
+	default:
+		t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
 	}
 }
 

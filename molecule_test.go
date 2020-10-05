@@ -2,6 +2,25 @@ package gts
 
 import "testing"
 
+var moleculeCounterTests = []struct {
+	in  Molecule
+	out string
+}{
+	{DNA, "bases"},
+	{RNA, "bases"},
+	{AA, "residues"},
+	{SingleStrandDNA, "bases"},
+}
+
+func TestMoleculeCounter(t *testing.T) {
+	for _, tt := range moleculeCounterTests {
+		out := tt.in.Counter()
+		if out != tt.out {
+			t.Errorf("%q.Counter = %q, want %q", tt.in, out, tt.out)
+		}
+	}
+}
+
 var asMoleculeTests = []Molecule{
 	DNA,
 	RNA,

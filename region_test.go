@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"sort"
 	"testing"
-
-	"github.com/go-test/deep"
 )
 
 var regionAccessorTests = []struct {
@@ -177,6 +175,46 @@ func TestRegionWithin(t *testing.T) {
 	}
 }
 
+var regionOverlapTests = []struct {
+	in   Region
+	l, u int
+	out  bool
+}{
+	{Segment{3, 6}, 2, 7, true},
+	{Segment{3, 6}, 3, 6, true},
+	{Segment{3, 6}, 4, 5, true},
+	{Segment{3, 6}, 4, 7, true},
+	{Segment{3, 6}, 5, 8, true},
+	{Segment{3, 6}, 6, 9, false},
+	{Segment{3, 6}, 2, 5, true},
+	{Segment{3, 6}, 1, 4, true},
+	{Segment{3, 6}, 0, 3, false},
+
+	{Segment{6, 3}, 2, 7, true},
+	{Segment{6, 3}, 3, 6, true},
+	{Segment{6, 3}, 4, 5, true},
+	{Segment{6, 3}, 4, 7, true},
+	{Segment{6, 3}, 5, 8, true},
+	{Segment{6, 3}, 6, 9, false},
+	{Segment{6, 3}, 2, 5, true},
+	{Segment{6, 3}, 1, 4, true},
+	{Segment{6, 3}, 0, 3, false},
+
+	{Regions{Segment{3, 6}, Segment{13, 16}}, 3, 16, true},
+	{Regions{Segment{3, 6}, Segment{13, 16}}, 3, 6, true},
+	{Regions{Segment{3, 6}, Segment{13, 16}}, 13, 16, true},
+	{Regions{Segment{3, 6}, Segment{13, 16}}, 6, 13, false},
+}
+
+func TestRegionOverlap(t *testing.T) {
+	for _, tt := range regionOverlapTests {
+		out := tt.in.Overlap(tt.l, tt.u)
+		if out != tt.out {
+			t.Errorf("%v.Overlap(%d, %d) = %t, want %t", tt.in, tt.l, tt.u, out, tt.out)
+		}
+	}
+}
+
 var regionLocateTests = []struct {
 	in  Region
 	out Sequence
@@ -191,13 +229,13 @@ func TestRegionLocate(t *testing.T) {
 	for _, tt := range regionLocateTests {
 		out, exp := tt.in.Locate(seq), tt.out
 		if !reflect.DeepEqual(out.Info(), exp.Info()) {
-			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
+			t.Errorf("%#v.Locate(seq).Info() = %v, want %v", tt.in, out.Info(), exp.Info())
 		}
-		if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
-			t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 2, 6, out.Features(), exp.Features())
+		if !featuresEqual(out.Features(), exp.Features()) {
+			t.Errorf("%#v.Locate(seq).Features() = %v, want %v", tt.in, out.Features(), exp.Features())
 		}
-		if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
-			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 2, 6, out.Bytes(), exp.Bytes())
+		if !bytesEqual(out.Bytes(), exp.Bytes()) {
+			t.Errorf("%#v.Locate(seq).Bytes() = %v, want %v", tt.in, out.Bytes(), exp.Bytes())
 		}
 
 		cmp := tt.in.Complement()
@@ -212,12 +250,14 @@ func TestRegionLocate(t *testing.T) {
 		}
 		out = cmp.Locate(seq)
 		exp = Reverse(Complement(tt.out))
-		if !Equal(out, exp) {
-			t.Errorf(
-				"%s.Locate(%q) = %q, want %q",
-				cmp, string(seq.Bytes()),
-				string(out.Bytes()), string(exp.Bytes()),
-			)
+		if !reflect.DeepEqual(out.Info(), exp.Info()) {
+			t.Errorf("%#v.Locate(seq).Info() = %v, want %v", cmp, out.Info(), exp.Info())
+		}
+		if !featuresEqual(out.Features(), exp.Features()) {
+			t.Errorf("%#v.Locate(seq).Features() = %v, want %v", cmp, out.Features(), exp.Features())
+		}
+		if !bytesEqual(out.Bytes(), exp.Bytes()) {
+			t.Errorf("%#v.Locate(seq).Bytes() = %v, want %v", cmp, out.Bytes(), exp.Bytes())
 		}
 	}
 }

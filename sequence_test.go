@@ -5,9 +5,62 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-gts/gts/testutils"
-	"github.com/go-test/deep"
+	"github.com/go-gts/gts/internal/testutils"
 )
+
+func featuresEqual(a, b []Feature) bool {
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+	return reflect.DeepEqual(a, b)
+}
+
+func bytesEqual(a, b []byte) bool {
+	if len(a) == 0 && len(b) == 0 {
+		return true
+	}
+	return reflect.DeepEqual(a, b)
+}
+
+type infoShiftExpand [2]int
+
+func (se infoShiftExpand) Shift(i, n int) interface{} {
+	return infoShiftExpand{i, n}
+}
+
+func (se infoShiftExpand) Expand(i, n int) interface{} {
+	return infoShiftExpand{i, n}
+}
+
+func TestShiftableExpandable(t *testing.T) {
+	var in, out interface{}
+	i, n := 3, 6
+	exp := infoShiftExpand{i, n}
+
+	in = infoShiftExpand{0, 0}
+	out = tryShift(in, i, n)
+	if !reflect.DeepEqual(out, exp) {
+		t.Errorf("tryShift(%v, %d, %d) = %v, want %v", in, i, n, out, exp)
+	}
+
+	in = infoShiftExpand{0, 0}
+	out = tryExpand(in, i, n)
+	if !reflect.DeepEqual(out, exp) {
+		t.Errorf("tryShift(%v, %d, %d) = %v, want %v", in, i, n, out, exp)
+	}
+
+	in = "info"
+	out = tryShift(in, i, n)
+	if !reflect.DeepEqual(out, in) {
+		t.Errorf("tryShift(%v, %d, %d) = %v, want %v", in, i, n, out, exp)
+	}
+
+	in = "info"
+	out = tryExpand(in, i, n)
+	if !reflect.DeepEqual(out, in) {
+		t.Errorf("tryShift(%v, %d, %d) = %v, want %v", in, i, n, out, exp)
+	}
+}
 
 type LenObj []byte
 
@@ -65,10 +118,10 @@ func TestInsert(t *testing.T) {
 	if !reflect.DeepEqual(out.Info(), exp.Info()) {
 		t.Errorf("Insert(seq, 2, seq).Info() = %v, want %v", out.Info(), exp.Info())
 	}
-	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+	if !featuresEqual(out.Features(), exp.Features()) {
 		t.Errorf("Insert(seq, 2, seq).Features() = %v, want %v", out.Features(), exp.Features())
 	}
-	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+	if !bytesEqual(out.Bytes(), exp.Bytes()) {
 		t.Errorf("Insert(seq, 2, seq).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
 	}
 }
@@ -93,10 +146,10 @@ func TestEmbed(t *testing.T) {
 	if !reflect.DeepEqual(out.Info(), exp.Info()) {
 		t.Errorf("Embed(seq, 2, seq).Info() = %v, want %v", out.Info(), exp.Info())
 	}
-	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+	if !featuresEqual(out.Features(), exp.Features()) {
 		t.Errorf("Embed(seq, 2, seq).Features() = %v, want %v", out.Features(), exp.Features())
 	}
-	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+	if !bytesEqual(out.Bytes(), exp.Bytes()) {
 		t.Errorf("Embed(seq, 2, seq).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
 	}
 }
@@ -124,10 +177,10 @@ func TestDelete(t *testing.T) {
 	if !reflect.DeepEqual(out.Info(), exp.Info()) {
 		t.Errorf("Delete(seq, 3, 4).Info() = %v, want %v", out.Info(), exp.Info())
 	}
-	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+	if !featuresEqual(out.Features(), exp.Features()) {
 		t.Errorf("Delete(seq, 3, 4).Features() = %v, want %v", out.Features(), exp.Features())
 	}
-	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+	if !bytesEqual(out.Bytes(), exp.Bytes()) {
 		t.Errorf("Delete(seq, 3, 4).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
 	}
 }
@@ -154,10 +207,10 @@ func TestErase(t *testing.T) {
 	if !reflect.DeepEqual(out.Info(), exp.Info()) {
 		t.Errorf("Erase(seq, 3, 4).Info() = %v, want %v", out.Info(), exp.Info())
 	}
-	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+	if !featuresEqual(out.Features(), exp.Features()) {
 		t.Errorf("Erase(seq, 3, 4).Features() = %v, want %v", out.Features(), exp.Features())
 	}
-	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+	if !bytesEqual(out.Bytes(), exp.Bytes()) {
 		t.Errorf("Erase(seq, 3, 4).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
 	}
 }
@@ -177,10 +230,10 @@ func TestSlice(t *testing.T) {
 		if !reflect.DeepEqual(out.Info(), exp.Info()) {
 			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
 		}
-		if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+		if !featuresEqual(out.Features(), exp.Features()) {
 			t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 2, 6, out.Features(), exp.Features())
 		}
-		if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+		if !bytesEqual(out.Bytes(), exp.Bytes()) {
 			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 2, 6, out.Bytes(), exp.Bytes())
 		}
 	})
@@ -191,10 +244,10 @@ func TestSlice(t *testing.T) {
 		if !reflect.DeepEqual(out.Info(), exp.Info()) {
 			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 6, 2, out.Info(), exp.Info())
 		}
-		if !reflect.DeepEqual(out.Features(), exp.Features()) {
+		if !featuresEqual(out.Features(), exp.Features()) {
 			t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 6, 2, out.Features(), exp.Features())
 		}
-		if !reflect.DeepEqual(out.Bytes(), exp.Bytes()) {
+		if !bytesEqual(out.Bytes(), exp.Bytes()) {
 			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 6, 2, out.Bytes(), exp.Bytes())
 		}
 	})
@@ -246,10 +299,10 @@ func TestReverse(t *testing.T) {
 	if !reflect.DeepEqual(out.Info(), exp.Info()) {
 		t.Errorf("Reverse(in).Info() = %v, want %v", out.Info(), exp.Info())
 	}
-	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+	if !featuresEqual(out.Features(), exp.Features()) {
 		t.Errorf("Reverse(in).Features() = %v, want %v", out.Features(), exp.Features())
 	}
-	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+	if !bytesEqual(out.Bytes(), exp.Bytes()) {
 		t.Errorf("Reverse(in).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
 	}
 }
@@ -269,10 +322,10 @@ func TestRotate(t *testing.T) {
 	if !reflect.DeepEqual(out.Info(), exp.Info()) {
 		t.Errorf("Rotate(in, 2).Info() = %v, want %v", out.Info(), exp.Info())
 	}
-	if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
+	if !featuresEqual(out.Features(), exp.Features()) {
 		t.Errorf("Rotate(in, 2).Features() = %v, want %v", out.Features(), exp.Features())
 	}
-	if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
+	if !bytesEqual(out.Bytes(), exp.Bytes()) {
 		t.Errorf("Rotate(in, 2).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-gts/gts/testutils"
+	"github.com/go-gts/gts/internal/testutils"
 )
 
 func TestDate(t *testing.T) {

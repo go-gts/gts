@@ -11,7 +11,7 @@ import (
 
 	"github.com/go-gts/gts"
 	"github.com/go-gts/gts/cmd"
-	"github.com/go-gts/gts/flags"
+	"github.com/go-gts/gts/internal/flags"
 	"github.com/go-gts/gts/seqio"
 	"github.com/go-pars/pars"
 )

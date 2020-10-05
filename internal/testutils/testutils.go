@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/go-gts/gts/internal/diff"
 	"github.com/go-test/deep"
 )
 
@@ -41,14 +42,13 @@ func Equals(t *testing.T, a, b interface{}) {
 func Diff(t *testing.T, a, b string) {
 	t.Helper()
 	if a != b {
-		// TODO: use a proper diff algorithm.
-		c := strings.Split(a, "\n")
-		d := strings.Split(b, "\n")
-		for i := 0; i < len(c) && i < len(d); i++ {
-			if c[i] != d[i] {
-				t.Errorf("line [%d]:\n%s\n%s", i, c[i], d[i])
-			}
+		ops := diff.LineDiff(a, b)
+		lines := make([]string, len(ops))
+		for i, op := range ops {
+			lines[i] = op.String()
 		}
+		s := strings.Join(lines, "\n")
+		t.Error(s)
 	}
 }
 

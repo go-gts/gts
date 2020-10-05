@@ -24,20 +24,6 @@ type Location interface {
 	Expand(i, n int) Location
 }
 
-func shift(pos, i, n int, closed bool) int {
-	flag := i < pos
-	if closed && n >= 0 {
-		flag = i <= pos
-	}
-	if flag {
-		pos += n
-		if pos < i {
-			return i
-		}
-	}
-	return pos
-}
-
 // Between represents a position between two bases. This will only make logical
 // sense if the start and end positions are directly adjacent.
 type Between int
@@ -112,7 +98,11 @@ func (between Between) Shift(i, n int) Location {
 
 // Expand the location beyond the given position i by n.
 func (between Between) Expand(i, n int) Location {
-	return Between(shift(int(between), i, n, false))
+	p := int(between)
+	if i < p {
+		p = Max(i, p+n)
+	}
+	return Between(p)
 }
 
 // Point represents a single base position in a sequence.
@@ -193,11 +183,15 @@ func (point Point) Shift(i, n int) Location {
 
 // Expand the location beyond the given position i by n.
 func (point Point) Expand(i, n int) Location {
-	pos := int(point)
-	if n < 0 && i <= pos && pos+1 <= i-n {
-		return Between(pos)
+	p := int(point)
+	if n < 0 && i == p {
+		return Between(i)
 	}
-	return Point(shift(pos, i, n, true))
+	if (0 <= n && i <= p) || (n < 0 && i < p) {
+		p = Max(i, p+n)
+
+	}
+	return Point(p)
 }
 
 // Partial represents the partiality of a location range.
@@ -217,6 +211,26 @@ type Ranged struct {
 	Start   int
 	End     int
 	Partial Partial
+}
+
+func asComplete(loc Location) Location {
+	switch v := loc.(type) {
+	case Ranged:
+		v.Partial = Complete
+		return v
+	case Joined:
+		for i, u := range v {
+			v[i] = asComplete(u)
+		}
+		return v
+	case Ordered:
+		for i, u := range v {
+			v[i] = asComplete(u)
+		}
+		return v
+	default:
+		return v
+	}
 }
 
 // PartialRange returns the range between the start and end positions where the
@@ -369,31 +383,57 @@ func (ranged Ranged) Normalize(length int) Location {
 
 // Shift the location beyond the given position i by n.
 func (ranged Ranged) Shift(i, n int) Location {
-	start, end := shift(ranged.Start, i, n, true), shift(ranged.End, i, n, false)
-	if end <= start {
-		return Between(start)
+	if n == 0 {
+		return ranged
 	}
-	if i <= start || end <= i {
-		return PartialRange(start, end, ranged.Partial)
+	if n < 0 {
+		return ranged.Expand(i, n)
 	}
-	left, right := Range(start, i), Range(i+n, end)
-	partial5, partial3 := ranged.Partial[0], ranged.Partial[1]
-	if partial5 {
-		left.Partial = Partial5
+	start, end, partial := ranged.Start, ranged.End, ranged.Partial
+	if start < i && i < end {
+		left, right := Range(start, i), Range(i+n, end+n)
+		if partial[0] {
+			left.Partial = Partial5
+		}
+		if partial[1] {
+			right.Partial = Partial3
+		}
+		return Join(left, right)
 	}
-	if partial3 {
-		right.Partial = Partial3
+	if i <= start {
+		start += n
 	}
-	return Join(left, right)
+	if i < end {
+		end += n
+	}
+	return Ranged{start, end, partial}
 }
 
 // Expand the location beyond the given position i by n.
 func (ranged Ranged) Expand(i, n int) Location {
-	start, end := shift(ranged.Start, i, n, true), shift(ranged.End, i, n, false)
-	if end <= start {
+	if n == 0 {
+		return ranged
+	}
+	start, end, partial := ranged.Start, ranged.End, ranged.Partial
+	if n < 0 {
+		j := i - n
+		if i <= start && start < j {
+			partial[0] = true
+		}
+		if i < end && end <= j {
+			partial[1] = true
+		}
+	}
+	if (0 <= n && i <= start) || (n < 0 && i < start) {
+		start = Max(i, start+n)
+	}
+	if (0 <= n && i < end) || (n < 0 && i <= end) {
+		end = Max(i, end+n)
+	}
+	if start == end {
 		return Between(start)
 	}
-	return PartialRange(start, end, ranged.Partial)
+	return Ranged{start, end, partial}
 }
 
 // Ambiguous represents a single base within a given range.
@@ -488,20 +528,39 @@ func (ambiguous Ambiguous) Normalize(length int) Location {
 
 // Shift the location beyond the given position i by n.
 func (ambiguous Ambiguous) Shift(i, n int) Location {
-	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
-	if end <= start {
-		return Between(start)
+	if n == 0 {
+		return ambiguous
 	}
-	if i <= start || end <= i {
-		return Ambiguous{start, end}
+	if n < 0 {
+		return ambiguous.Expand(i, n)
 	}
-	return Order(Ambiguous{start, i}, Ambiguous{i + n, end})
+	start, end := Unpack(ambiguous)
+	if start < i && i < end {
+		left, right := Ambiguous{start, i}, Ambiguous{i + n, end + n}
+		return Order(left, right)
+	}
+	if i <= start {
+		start += n
+	}
+	if i < end {
+		end += n
+	}
+	return Ambiguous{start, end}
 }
 
 // Expand the location beyond the given position i by n.
 func (ambiguous Ambiguous) Expand(i, n int) Location {
-	start, end := shift(ambiguous[0], i, n, true), shift(ambiguous[1], i, n, false)
-	if end <= start {
+	if n == 0 {
+		return ambiguous
+	}
+	start, end := Unpack(ambiguous)
+	if (0 <= n && i <= start) || (n < 0 && i < start) {
+		start = Max(i, start+n)
+	}
+	if (0 <= n && i < end) || (n < 0 && i <= end) {
+		end = Max(i, end+n)
+	}
+	if start == end {
 		return Between(start)
 	}
 	return Ambiguous{start, end}
@@ -556,8 +615,29 @@ func (ll *LocationList) Push(loc Location) {
 	}
 
 	switch v := ll.Data.(type) {
+	case Between:
+		switch u := loc.(type) {
+		case Between:
+			if v == u {
+				return
+			}
+		case Point:
+			if int(v) == int(u) {
+				ll.Data = u
+				return
+			}
+		case Ranged:
+			if int(v) == u.Start {
+				ll.Data = u
+				return
+			}
+		}
 	case Point:
 		switch u := loc.(type) {
+		case Between:
+			if int(v+1) == int(u) {
+				return
+			}
 		case Point:
 			if v == u {
 				return
@@ -571,6 +651,10 @@ func (ll *LocationList) Push(loc Location) {
 
 	case Ranged:
 		switch u := loc.(type) {
+		case Between:
+			if v.End == int(u) {
+				return
+			}
 		case Point:
 			if v.End == int(u) {
 				return

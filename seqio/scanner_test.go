@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-gts/gts/testutils"
+	"github.com/go-gts/gts/internal/testutils"
 )
 
 func TestScannerGenBank(t *testing.T) {

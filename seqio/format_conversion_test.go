@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-gts/gts"
-	"github.com/go-gts/gts/testutils"
+	"github.com/go-gts/gts/internal/testutils"
 	"github.com/go-pars/pars"
 )
 

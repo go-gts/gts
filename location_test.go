@@ -6,9 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/go-gts/gts/testutils"
+	"github.com/go-gts/gts/internal/testutils"
 	"github.com/go-pars/pars"
-	"github.com/go-test/deep"
 )
 
 type NullLocation int
@@ -101,15 +100,17 @@ var locationAccessorTests = []struct {
 	{PartialRange(0, 2, Partial3), "1..>2", 2, Segment{0, 2}},
 	{PartialRange(0, 2, PartialBoth), "<1..>2", 2, Segment{0, 2}},
 
+	{Ambiguous{0, 2}, "1.2", 1, Segment{0, 2}},
+
 	{Join(Range(0, 2), Range(3, 5)), "join(1..2,4..5)", 4, Regions{Segment{0, 2}, Segment{3, 5}}},
 	{Join(Range(0, 2), Join(Range(3, 5), Range(6, 8))), "join(1..2,4..5,7..8)", 6, Regions{Segment{0, 2}, Segment{3, 5}, Segment{6, 8}}},
 	{Join(Point(0), Point(2)), "join(1,3)", 2, Regions{Segment{0, 1}, Segment{2, 3}}},
 
-	{Ambiguous{0, 2}, "1.2", 1, Segment{0, 2}},
-
 	{Order(Range(0, 2), Range(2, 4)), "order(1..2,3..4)", 4, Regions{Segment{0, 2}, Segment{2, 4}}},
 	{Order(Range(0, 2), Order(Range(2, 4), Range(4, 6))), "order(1..2,3..4,5..6)", 6, Regions{Segment{0, 2}, Segment{2, 4}, Segment{4, 6}}},
 	{Order(Point(0), Point(2)), "order(1,3)", 2, Regions{Segment{0, 1}, Segment{2, 3}}},
+
+	{Range(0, 2).Complement(), "complement(1..2)", 2, Segment{2, 0}},
 }
 
 func TestLocationAccessors(t *testing.T) {
@@ -335,57 +336,171 @@ var locationShiftTests = []struct {
 	in, out Location
 	i, n    int
 }{
-	{Between(0), Between(0), 0, 1},
-	{Between(0), Between(0), 0, -1},
-	{Between(1), Between(2), 0, 1},
-	{Between(1), Between(0), 0, -1},
-	{Between(1), Between(1), 1, -1},
-	{Between(1), Between(1), 1, -1},
-	{Between(1), Between(0), 0, -2},
+	{Between(3), Between(3), 2, 0},
+	{Between(3), Between(3), 3, 0},
+	{Between(3), Between(3), 4, 0},
+	{Between(3), Between(4), 2, 1},
+	{Between(3), Between(3), 3, 1},
+	{Between(3), Between(3), 4, 1},
+	{Between(3), Between(2), 2, -1},
+	{Between(3), Between(3), 3, -1},
+	{Between(3), Between(3), 4, -1},
 
-	{Point(0), Point(1), 0, 1},
-	{Point(0), Between(0), 0, -1},
-	{Point(0), Point(0), 1, 1},
-	{Point(0), Point(0), 1, -1},
-	{Point(1), Point(2), 0, 1},
-	{Point(1), Point(0), 0, -1},
+	{Point(3), Point(3), 2, 0},
+	{Point(3), Point(3), 3, 0},
+	{Point(3), Point(3), 4, 0},
+	{Point(3), Point(4), 2, 1},
+	{Point(3), Point(4), 3, 1},
+	{Point(3), Point(3), 4, 1},
+	{Point(3), Point(2), 2, -1},
+	{Point(3), Between(3), 3, -1},
+	{Point(3), Point(3), 4, -1},
 
-	{Range(0, 2), Range(1, 3), 0, 1},
-	// DISCUSS: should a complete, one base range be reduced to a Point?
-	// {Range(0, 2), Point(0), 0, -1},
-	{Range(0, 2), Range(0, 1), 0, -1},
-	{Range(0, 2), Between(0), 0, -2},
-	{Range(1, 3), Range(0, 2), 0, -1},
-	{Range(0, 2), Range(0, 2), 2, 1},
-	{Range(0, 2), Range(0, 2), 2, -1},
-	{Range(39, 42), Between(30), 30, -20},
-	{PartialRange(0, 4, PartialBoth), Join(PartialRange(0, 2, Partial5), PartialRange(3, 5, Partial3)), 2, 1},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 2, 0},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 3, 0},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 4, 0},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 5, 0},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 6, 0},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 7, 0},
 
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(1, 3), Range(4, 6)), 0, 1},
-	// DISCUSS: should a complete, one base range be reduced to a Point?
-	// {Join(Range(0, 2), Range(3, 5)), Join(Point(0), Range(2, 4)), 0, -1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 1), Range(2, 4)), 0, -1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(4, 6)), 2, 1},
-	{Join(Range(0, 2), Range(3, 5)), Range(0, 4), 2, -1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), 5, 1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), 5, -1},
+	{Ranged{3, 6, Complete}, Ranged{4, 7, Complete}, 2, 1},
+	{Ranged{3, 6, Complete}, Ranged{4, 7, Complete}, 3, 1},
+	{Ranged{3, 6, Complete}, Join(Ranged{3, 4, Complete}, Ranged{5, 7, Complete}), 4, 1},
+	{Ranged{3, 6, Partial5}, Join(Ranged{3, 4, Partial5}, Ranged{5, 7, Complete}), 4, 1},
+	{Ranged{3, 6, Partial3}, Join(Ranged{3, 4, Complete}, Ranged{5, 7, Partial3}), 4, 1},
+	{Ranged{3, 6, PartialBoth}, Join(Ranged{3, 4, Partial5}, Ranged{5, 7, Partial3}), 4, 1},
+	{Ranged{3, 6, Complete}, Join(Ranged{3, 5, Complete}, Ranged{6, 7, Complete}), 5, 1},
+	{Ranged{3, 6, Partial5}, Join(Ranged{3, 5, Partial5}, Ranged{6, 7, Complete}), 5, 1},
+	{Ranged{3, 6, Partial3}, Join(Ranged{3, 5, Complete}, Ranged{6, 7, Partial3}), 5, 1},
+	{Ranged{3, 6, PartialBoth}, Join(Ranged{3, 5, Partial5}, Ranged{6, 7, Partial3}), 5, 1},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 6, 1},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 7, 1},
 
-	{Ambiguous{0, 2}, Ambiguous{1, 3}, 0, 1},
-	{Ambiguous{0, 2}, Ambiguous{0, 1}, 0, -1},
-	{Ambiguous{0, 2}, Between(0), 0, -2},
-	{Ambiguous{1, 3}, Ambiguous{0, 2}, 0, -1},
-	{Ambiguous{0, 2}, Ambiguous{0, 2}, 2, 1},
-	{Ambiguous{0, 2}, Ambiguous{0, 2}, 2, -1},
-	{Ambiguous{0, 4}, Order(Ambiguous{0, 2}, Ambiguous{3, 5}), 2, 1},
+	{Ranged{3, 6, Complete}, Ranged{2, 5, Complete}, 2, -1},
+	{Ranged{3, 6, Complete}, Ranged{3, 5, Partial5}, 3, -1},
+	{Ranged{3, 6, Partial3}, Ranged{3, 5, PartialBoth}, 3, -1},
+	{Ranged{3, 6, Complete}, Ranged{3, 5, Complete}, 4, -1},
+	{Ranged{3, 6, Complete}, Ranged{3, 5, Partial3}, 5, -1},
+	{Ranged{3, 6, Partial5}, Ranged{3, 5, PartialBoth}, 5, -1},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 6, -1},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 7, -1},
+	{Ranged{3, 6, Complete}, Between(2), 2, -4},
 
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(1, 3), Range(4, 6)), 0, 1},
-	// DISCUSS: should a complete, one base range be reduced to a Point?
-	// {Order(Range(0, 2), Range(3, 5)), Order(Point(0), Range(2, 4)), 0, -1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 1), Range(2, 4)), 0, -1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(4, 6)), 2, 1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(2, 4)), 2, -1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), 5, 1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), 5, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 2, 0},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 3, 0},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 4, 0},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 5, 0},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 6, 0},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 7, 0},
+
+	{Ambiguous{3, 6}, Ambiguous{4, 7}, 2, 1},
+	{Ambiguous{3, 6}, Ambiguous{4, 7}, 3, 1},
+	{Ambiguous{3, 6}, Order(Ambiguous{3, 4}, Ambiguous{5, 7}), 4, 1},
+	{Ambiguous{3, 6}, Order(Ambiguous{3, 4}, Ambiguous{5, 7}), 4, 1},
+	{Ambiguous{3, 6}, Order(Ambiguous{3, 4}, Ambiguous{5, 7}), 4, 1},
+	{Ambiguous{3, 6}, Order(Ambiguous{3, 4}, Ambiguous{5, 7}), 4, 1},
+	{Ambiguous{3, 6}, Order(Ambiguous{3, 5}, Ambiguous{6, 7}), 5, 1},
+	{Ambiguous{3, 6}, Order(Ambiguous{3, 5}, Ambiguous{6, 7}), 5, 1},
+	{Ambiguous{3, 6}, Order(Ambiguous{3, 5}, Ambiguous{6, 7}), 5, 1},
+	{Ambiguous{3, 6}, Order(Ambiguous{3, 5}, Ambiguous{6, 7}), 5, 1},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 6, 1},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 7, 1},
+
+	{Ambiguous{3, 6}, Ambiguous{2, 5}, 2, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 5}, 3, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 5}, 3, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 5}, 4, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 5}, 5, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 5}, 5, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 6, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 7, -1},
+	{Ambiguous{3, 6}, Between(2), 2, -4},
+
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 2, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 3, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 4, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 5, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 6, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 7, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 12, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 13, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 14, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 15, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, 0},
+
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{4, 7, Complete}, Ranged{14, 17, Complete}}, 2, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{4, 7, Complete}, Ranged{14, 17, Complete}}, 3, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 4, Complete}, Ranged{5, 7, Complete}, Ranged{14, 17, Complete}}, 4, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 5, Complete}, Ranged{6, 7, Complete}, Ranged{14, 17, Complete}}, 5, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 6, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 7, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 12, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 13, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 14, Complete}, Ranged{15, 17, Complete}}, 14, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 15, Complete}, Ranged{16, 17, Complete}}, 15, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, 1},
+
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{2, 5, Complete}, Ranged{12, 15, Complete}}, 2, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 5, Partial5}, Ranged{12, 15, Complete}}, 3, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 5, Complete}, Ranged{12, 15, Complete}}, 4, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 5, Partial3}, Ranged{12, 15, Complete}}, 5, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 6, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 7, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 12, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 15, Partial5}}, 13, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 15, Complete}}, 14, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 15, Partial3}}, 15, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, -1},
+
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Between(2), Ranged{9, 12, Complete}}, 2, -4},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Between(12)}, 12, -4},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Between(2), 2, -14},
+
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 2, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 3, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 4, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 5, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 6, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 7, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 12, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 13, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 14, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 15, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, 0},
+
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{4, 7, Complete}, Ranged{14, 17, Complete}}, 2, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{4, 7, Complete}, Ranged{14, 17, Complete}}, 3, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Joined{Ranged{3, 4, Complete}, Ranged{5, 7, Complete}}, Ranged{14, 17, Complete}}, 4, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Joined{Ranged{3, 5, Complete}, Ranged{6, 7, Complete}}, Ranged{14, 17, Complete}}, 5, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 6, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 7, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 12, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 13, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Joined{Ranged{13, 14, Complete}, Ranged{15, 17, Complete}}}, 14, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Joined{Ranged{13, 15, Complete}, Ranged{16, 17, Complete}}}, 15, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, 1},
+
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{2, 5, Complete}, Ranged{12, 15, Complete}}, 2, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 5, Partial5}, Ranged{12, 15, Complete}}, 3, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 5, Complete}, Ranged{12, 15, Complete}}, 4, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 5, Partial3}, Ranged{12, 15, Complete}}, 5, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 6, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 7, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 12, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 15, Partial5}}, 13, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 15, Complete}}, 14, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 15, Partial3}}, 15, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, -1},
+
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Between(2), Ranged{9, 12, Complete}}, 2, -4},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Between(12)}, 12, -4},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Between(2), Between(2)}, 2, -14},
 }
 
 func TestLocationShift(t *testing.T) {
@@ -418,53 +533,159 @@ var locationExpandTests = []struct {
 	in, out Location
 	i, n    int
 }{
-	{Between(0), Between(0), 0, 1},
-	{Between(0), Between(0), 0, -1},
-	{Between(1), Between(2), 0, 1},
-	{Between(1), Between(0), 0, -1},
+	{Between(3), Between(3), 2, 0},
+	{Between(3), Between(3), 3, 0},
+	{Between(3), Between(3), 4, 0},
+	{Between(3), Between(4), 2, 1},
+	{Between(3), Between(3), 3, 1},
+	{Between(3), Between(3), 4, 1},
+	{Between(3), Between(2), 2, -1},
+	{Between(3), Between(3), 3, -1},
+	{Between(3), Between(3), 4, -1},
 
-	{Point(0), Point(1), 0, 1},
-	{Point(0), Between(0), 0, -1},
-	{Point(0), Point(0), 1, 1},
-	{Point(0), Point(0), 1, -1},
-	{Point(1), Point(2), 0, 1},
-	{Point(1), Point(0), 0, -1},
+	{Point(3), Point(3), 2, 0},
+	{Point(3), Point(3), 3, 0},
+	{Point(3), Point(3), 4, 0},
+	{Point(3), Point(4), 2, 1},
+	{Point(3), Point(4), 3, 1},
+	{Point(3), Point(3), 4, 1},
+	{Point(3), Point(2), 2, -1},
+	{Point(3), Between(3), 3, -1},
+	{Point(3), Point(3), 4, -1},
 
-	{Range(0, 2), Range(1, 3), 0, 1},
-	// DISCUSS: should a complete, one base range be reduced to a Point?
-	// {Range(0, 2), Point(0), 0, -1},
-	{Range(0, 2), Range(0, 1), 0, -1},
-	{Range(0, 2), Between(0), 0, -2},
-	{Range(1, 3), Range(0, 2), 0, -1},
-	{Range(0, 2), Range(0, 2), 2, 1},
-	{Range(0, 2), Range(0, 2), 2, -1},
-	{PartialRange(0, 4, PartialBoth), PartialRange(0, 5, PartialBoth), 2, 1},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 2, 0},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 3, 0},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 4, 0},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 5, 0},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 6, 0},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 7, 0},
 
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(1, 3), Range(4, 6)), 0, 1},
-	// DISCUSS: should a complete, one base range be reduced to a Point?
-	// {Join(Range(0, 2), Range(3, 5)), Join(Point(0), Range(2, 4)), 0, -1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 1), Range(2, 4)), 0, -1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(4, 6)), 2, 1},
-	{Join(Range(0, 2), Range(3, 5)), Range(0, 4), 2, -1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), 5, 1},
-	{Join(Range(0, 2), Range(3, 5)), Join(Range(0, 2), Range(3, 5)), 5, -1},
+	{Ranged{3, 6, Complete}, Ranged{4, 7, Complete}, 2, 1},
+	{Ranged{3, 6, Complete}, Ranged{4, 7, Complete}, 3, 1},
+	{Ranged{3, 6, Complete}, Ranged{3, 7, Complete}, 4, 1},
+	{Ranged{3, 6, Complete}, Ranged{3, 7, Complete}, 5, 1},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 6, 1},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 7, 1},
 
-	{Ambiguous{0, 2}, Ambiguous{1, 3}, 0, 1},
-	{Ambiguous{0, 2}, Ambiguous{0, 1}, 0, -1},
-	{Ambiguous{0, 2}, Between(0), 0, -2},
-	{Ambiguous{1, 3}, Ambiguous{0, 2}, 0, -1},
-	{Ambiguous{0, 2}, Ambiguous{0, 2}, 2, 1},
-	{Ambiguous{0, 2}, Ambiguous{0, 2}, 2, -1},
-	{Ambiguous{0, 4}, Ambiguous{0, 5}, 2, 1},
+	{Ranged{3, 6, Complete}, Ranged{2, 5, Complete}, 2, -1},
+	{Ranged{3, 6, Complete}, Ranged{3, 5, Partial5}, 3, -1},
+	{Ranged{3, 6, Partial3}, Ranged{3, 5, PartialBoth}, 3, -1},
+	{Ranged{3, 6, Complete}, Ranged{3, 5, Complete}, 4, -1},
+	{Ranged{3, 6, Complete}, Ranged{3, 5, Partial3}, 5, -1},
+	{Ranged{3, 6, Partial5}, Ranged{3, 5, PartialBoth}, 5, -1},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 6, -1},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, 7, -1},
+	{Ranged{3, 6, Complete}, Between(3), 3, -3},
+	{Ranged{3, 6, Complete}, Between(2), 2, -4},
 
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(1, 3), Range(4, 6)), 0, 1},
-	// DISCUSS: should a complete, one base range be reduced to a Point?
-	// {Order(Range(0, 2), Range(3, 5)), Order(Point(0), Range(2, 4)), 0, -1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 1), Range(2, 4)), 0, -1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(4, 6)), 2, 1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(2, 4)), 2, -1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), 5, 1},
-	{Order(Range(0, 2), Range(3, 5)), Order(Range(0, 2), Range(3, 5)), 5, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 2, 0},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 3, 0},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 4, 0},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 5, 0},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 6, 0},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 7, 0},
+
+	{Ambiguous{3, 6}, Ambiguous{4, 7}, 2, 1},
+	{Ambiguous{3, 6}, Ambiguous{4, 7}, 3, 1},
+	{Ambiguous{3, 6}, Ambiguous{3, 7}, 4, 1},
+	{Ambiguous{3, 6}, Ambiguous{3, 7}, 5, 1},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 6, 1},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 7, 1},
+
+	{Ambiguous{3, 6}, Ambiguous{2, 5}, 2, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 5}, 3, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 5}, 4, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 5}, 5, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 6, -1},
+	{Ambiguous{3, 6}, Ambiguous{3, 6}, 7, -1},
+	{Ambiguous{3, 6}, Between(3), 3, -4},
+	{Ambiguous{3, 6}, Between(2), 2, -4},
+
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 2, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 3, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 4, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 5, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 6, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 7, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 12, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 13, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 14, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 15, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, 0},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, 0},
+
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{4, 7, Complete}, Ranged{14, 17, Complete}}, 2, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{4, 7, Complete}, Ranged{14, 17, Complete}}, 3, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 7, Complete}, Ranged{14, 17, Complete}}, 4, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 7, Complete}, Ranged{14, 17, Complete}}, 5, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 6, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 7, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 12, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 13, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 17, Complete}}, 14, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 17, Complete}}, 15, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, 1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, 1},
+
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{2, 5, Complete}, Ranged{12, 15, Complete}}, 2, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 5, Partial5}, Ranged{12, 15, Complete}}, 3, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 5, Complete}, Ranged{12, 15, Complete}}, 4, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 5, Partial3}, Ranged{12, 15, Complete}}, 5, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 6, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 7, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 12, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 15, Partial5}}, 13, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 15, Complete}}, 14, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 15, Partial3}}, 15, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, -1},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, -1},
+
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Between(2), Ranged{9, 12, Complete}}, 2, -4},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Joined{Ranged{3, 6, Complete}, Between(12)}, 12, -4},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Between(2), 2, -14},
+
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 2, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 3, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 4, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 5, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 6, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 7, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 12, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 13, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 14, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 15, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, 0},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, 0},
+
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{4, 7, Complete}, Ranged{14, 17, Complete}}, 2, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{4, 7, Complete}, Ranged{14, 17, Complete}}, 3, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 7, Complete}, Ranged{14, 17, Complete}}, 4, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 7, Complete}, Ranged{14, 17, Complete}}, 5, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 6, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 7, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 12, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{14, 17, Complete}}, 13, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 17, Complete}}, 14, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 17, Complete}}, 15, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, 1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, 1},
+
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{2, 5, Complete}, Ranged{12, 15, Complete}}, 2, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 5, Partial5}, Ranged{12, 15, Complete}}, 3, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 5, Complete}, Ranged{12, 15, Complete}}, 4, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 5, Partial3}, Ranged{12, 15, Complete}}, 5, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 6, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 7, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{12, 15, Complete}}, 12, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 15, Partial5}}, 13, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 15, Complete}}, 14, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 15, Partial3}}, 15, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 16, -1},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 17, -1},
+
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Between(2), Ranged{9, 12, Complete}}, 2, -4},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Ranged{3, 6, Complete}, Between(12)}, 12, -4},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ordered{Between(2), Between(2)}, 2, -14},
 }
 
 func TestLocationExpand(t *testing.T) {
@@ -493,45 +714,33 @@ func TestLocationExpand(t *testing.T) {
 	}
 }
 
-var locationRegionLocateTests = []struct {
+var asCompleteTests = []struct {
 	in  Location
-	out Sequence
+	out Location
 }{
-	{Join(Range(0, 2), Range(3, 5)), New(nil, nil, []byte("atca"))},
+	{Between(3), Between(3)},
+
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}},
+	{Ranged{3, 6, Partial5}, Ranged{3, 6, Complete}},
+	{Ranged{3, 6, Partial3}, Ranged{3, 6, Complete}},
+	{Ranged{3, 6, PartialBoth}, Ranged{3, 6, Complete}},
+
+	{Joined{Ranged{3, 6, Complete}}, Joined{Ranged{3, 6, Complete}}},
+	{Joined{Ranged{3, 6, Partial5}}, Joined{Ranged{3, 6, Complete}}},
+	{Joined{Ranged{3, 6, Partial3}}, Joined{Ranged{3, 6, Complete}}},
+	{Joined{Ranged{3, 6, PartialBoth}}, Joined{Ranged{3, 6, Complete}}},
+
+	{Ordered{Ranged{3, 6, Complete}}, Ordered{Ranged{3, 6, Complete}}},
+	{Ordered{Ranged{3, 6, Partial5}}, Ordered{Ranged{3, 6, Complete}}},
+	{Ordered{Ranged{3, 6, Partial3}}, Ordered{Ranged{3, 6, Complete}}},
+	{Ordered{Ranged{3, 6, PartialBoth}}, Ordered{Ranged{3, 6, Complete}}},
 }
 
-func TestLocationRegionLocate(t *testing.T) {
-	seq := New(nil, nil, []byte("atgcatgc"))
-	for _, tt := range locationRegionLocateTests {
-		out, exp := tt.in.Region().Locate(seq), tt.out
-		if !reflect.DeepEqual(out.Info(), exp.Info()) {
-			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
-		}
-		if diff := deep.Equal(out.Features(), exp.Features()); diff != nil {
-			t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", 2, 6, out.Features(), exp.Features())
-		}
-		if diff := deep.Equal(out.Bytes(), exp.Bytes()); diff != nil {
-			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 2, 6, out.Bytes(), exp.Bytes())
-		}
-
-		cmp := tt.in.Complement()
-		if cmp.Len() != tt.in.Len() {
-			t.Errorf("%s.Len() = %d, want %d", cmp, cmp.Len(), tt.in.Len())
-		}
-		if !reflect.DeepEqual(cmp.Complement(), tt.in) {
-			t.Errorf(
-				"%s.Complement() = %s, want %s",
-				cmp, cmp.Complement(), tt.in,
-			)
-		}
-		out = cmp.Region().Locate(seq)
-		exp = Reverse(Complement(tt.out))
-		if !Equal(out, exp) {
-			t.Errorf(
-				"%s.Locate(%q) = %q, want %q",
-				cmp, string(seq.Bytes()),
-				string(out.Bytes()), string(exp.Bytes()),
-			)
+func TestAsComplete(t *testing.T) {
+	for _, tt := range asCompleteTests {
+		out := asComplete(tt.in)
+		if !reflect.DeepEqual(out, tt.out) {
+			t.Errorf("asComplete(%s) = %s, want %s", locRep(tt.in), locRep(out), locRep(tt.out))
 		}
 	}
 }
@@ -542,12 +751,20 @@ var locationReductionTests = []struct {
 }{
 	// DISCUSS: should a complete, one base range be reduced to a Point?
 	// {Range(0, 1), Point(0)},
-	{Join(Point(0), Point(0)), Point(0)},
-	{Join(Point(0), Range(0, 2)), Range(0, 2)},
-	{Join(Range(0, 2), Point(2)), Range(0, 2)},
-	{Join(Range(0, 2), Range(2, 4)), Range(0, 4)},
-	{Join(Range(2, 4).Complement(), Range(0, 2).Complement()), Range(0, 4).Complement()},
-	{Order(Range(0, 2)), Range(0, 2)},
+	{Join(Between(3), Between(3)), Between(3)},
+	{Join(Between(3), Point(3)), Point(3)},
+	{Join(Between(3), Range(3, 6)), Range(3, 6)},
+
+	{Join(Point(3), Between(4)), Point(3)},
+	{Join(Point(3), Point(3)), Point(3)},
+	{Join(Point(3), Range(3, 6)), Range(3, 6)},
+
+	{Join(Range(3, 6), Between(6)), Range(3, 6)},
+	{Join(Range(3, 6), Point(6)), Range(3, 6)},
+	{Join(Range(3, 6), Range(6, 9)), Range(3, 9)},
+	{Join(Range(6, 9).Complement(), Range(3, 6).Complement()), Range(3, 9).Complement()},
+
+	{Order(Range(3, 6)), Range(3, 6)},
 }
 
 func TestLocationReduction(t *testing.T) {

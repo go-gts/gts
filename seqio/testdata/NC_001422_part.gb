@@ -1,0 +1,125 @@
+LOCUS       NC_001422                133 bp ss-DNA     linear   PHG 06-JUL-2018
+DEFINITION  Coliphage phi-X174, complete genome.
+ACCESSION   NC_001422 REGION: 2380..2512
+VERSION     NC_001422.1
+DBLINK      BioProject: PRJNA14015
+            KEGG BRITE:  NC_001422
+KEYWORDS    RefSeq.
+SOURCE      Escherichia virus phiX174
+  ORGANISM  Escherichia virus phiX174
+            Viruses; Monodnaviria; Sangervirae; Phixviricota;
+            Malgrandaviricetes; Petitvirales; Microviridae; Bullavirinae;
+            Sinsheimervirus.
+REFERENCE   1  (bases 1 to 133)
+  AUTHORS   Air,G.M., Els,M.C., Brown,L.E., Laver,W.G. and Webster,R.G.
+  TITLE     Location of antigenic sites on the three-dimensional structure of
+            the influenza N2 virus neuraminidase
+  JOURNAL   Virology 145 (2), 237-248 (1985)
+   PUBMED   2411049
+  REMARK    Reference comment.
+REFERENCE   2  (bases 1 to 133)
+  AUTHORS   Sanger,F., Coulson,A.R., Friedmann,T., Air,G.M., Barrell,B.G.,
+            Brown,N.L., Fiddes,J.C., Hutchison,C.A. III, Slocombe,P.M. and
+            Smith,M.
+  TITLE     The nucleotide sequence of bacteriophage phiX174
+  JOURNAL   J. Mol. Biol. 125 (2), 225-246 (1978)
+   PUBMED   731693
+REFERENCE   3  (sites)
+  AUTHORS   Fiddes,J.C.
+  TITLE     The nucleotide sequence of a viral DNA
+  JOURNAL   Sci. Am. 237 (6), 54-67 (1977)
+   PUBMED   929160
+REFERENCE   4  (bases 1 to 133)
+  AUTHORS   Sanger,F., Air,G.M., Barrell,B.G., Brown,N.L., Coulson,A.R.,
+            Fiddes,C.A., Hutchison,C.A., Slocombe,P.M. and Smith,M.
+  TITLE     Nucleotide sequence of bacteriophage phi X174 DNA
+  JOURNAL   Nature 265 (5596), 687-695 (1977)
+   PUBMED   870828
+REFERENCE   5  (bases 16 to 133)
+  AUTHORS   Air,G.M., Sanger,F. and Coulson,A.R.
+  TITLE     Nucleotide and amino acid sequences of gene G of omegaX174
+  JOURNAL   J. Mol. Biol. 108 (3), 519-533 (1976)
+   PUBMED   1088827
+REFERENCE   6  (bases 1 to 42)
+  AUTHORS   Fiddes,J.C.
+  TITLE     Nucleotide sequence of the intercistronic region between genes G
+            and F in bacteriophage phiX174 DNA
+  JOURNAL   J. Mol. Biol. 107 (1), 1-24 (1976)
+   PUBMED   826639
+REFERENCE   7  (bases 1 to 133)
+  AUTHORS   Air,G.M., Blackburn,E.H., Sanger,F. and Coulson,A.R.
+  TITLE     The nucleotide and amino acid sequences of the N (5') terminal
+            region of gene G of bacteriophage phiphiX 174
+  JOURNAL   J. Mol. Biol. 96 (4), 703-719 (1975)
+   PUBMED   1081600
+REFERENCE   8  (bases 1 to 41)
+  AUTHORS   Barrell,B.G., Weith,H.L., Donelson,J.E. and Robertson,H.D.
+  TITLE     Sequence analysis of the ribosome-protected bacteriophase phiX174
+            DNA fragment containing the gene G initiation site
+  JOURNAL   J. Mol. Biol. 92 (3), 377-393 (1975)
+   PUBMED   1095758
+REFERENCE   9  (bases 1 to 42)
+  AUTHORS   Robertson,H.D., Barrell,B.G., Weith,H.L. and Donelson,J.E.
+  TITLE     Isolation and sequence analysis of a ribosome-protected fragment
+            from bacteriophage phiX 174 DNA
+  JOURNAL   Nature New Biol. 241 (106), 38-40 (1973)
+   PUBMED   4572838
+REFERENCE   10 (bases 1 to 133)
+  CONSRTM   NCBI Genome Project
+  TITLE     Direct Submission
+  JOURNAL   Submitted (06-JUL-2018) National Center for Biotechnology
+            Information, NIH, Bethesda, MD 20894, USA
+COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
+            NCBI review. The reference sequence is identical to J02482.
+            [8]  intermittent sequences.
+            [15]  review; discussion of complete genome.
+            Double checked with sumex tape.
+            Single-stranded circular DNA which codes for eleven proteins.
+            Replicative form is duplex, icosahedron, related to s13 & g4. [21]
+            indicates that mitomycin C reduced with sodium borohydride induced
+            heat-labile sites in DNA most preferentially at dinucleotide
+            sequence 'gt' (especially 'Pu-g-t').
+            Bacteriophage phi-X174 single stranded DNA molecules were
+            irradiated with near UV light in the presence of promazine
+            derivatives, after priming with restriction fragments or synthetic
+            primers [22].  The resulting DNA fragments were used as templates
+            for in vitro complementary chain synthesis by E.coli DNA polymerase
+            I [22].  More than 90% of the observed chain terminations were
+            mapped one nucleotide before a guanine residue [22].  Photoreaction
+            occurred more predominantly with guanine residues localized in
+            single-stranded parts of the genome [22].  These same guanine
+            residues could also be damaged when the reaction was performed in
+            the dark, in the presence of promazine cation radicals [22].
+            COMPLETENESS: full length.
+FEATURES             Location/Qualifiers
+     source          1..133
+                     /organism="Escherichia virus phiX174"
+                     /mol_type="genomic DNA"
+                     /db_xref="taxon:10847"
+     gene            <1..>133
+                     /locus_tag="phiX174p06"
+                     /db_xref="GeneID:2546408"
+     mRNA            <1..>133
+                     /locus_tag="phiX174p06"
+                     /product="major transcript"
+                     /db_xref="GeneID:2546408"
+     gene            16..>133
+                     /locus_tag="phiX174p10"
+                     /db_xref="GeneID:2546401"
+     CDS             16..>133
+                     /locus_tag="phiX174p10"
+                     /note="major spike protein"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="G"
+                     /protein_id="NP_040712.1"
+                     /db_xref="GeneID:2546401"
+                     /translation="MFQTFISRHNSNFFSDKLVLTSVTPASSAPVLQTPKATSSTLYF
+                     DSLTVNAGNGGFLHCIQMDTSVNAANQVVSVGADIAFDADPKFFACLVRFESSSVPTT
+                     LPTAYDVYPLNGRHDGGYYTVKDCVTIDVLPRTPGNNVYVGFMVWSNFTATKCRGLVS
+                     LNQVIKEIICLQPLK"
+ORIGIN      
+        1 cttaggagtt taatcatgtt tcagactttt atttctcgcc ataattcaaa ctttttttct
+       61 gataagctgg ttctcacttc tgttactcca gcttcttcgg cacctgtttt acagacacct
+      121 aaagctacat cgt
+//

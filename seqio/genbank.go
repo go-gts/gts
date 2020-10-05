@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,6 +33,60 @@ type GenBankFields struct {
 	Source     Organism
 	References []Reference
 	Comment    string
+
+	Region gts.Region
+}
+
+// Slice returns a metadata sliced with the given region.
+func (gbf GenBankFields) Slice(start, end int) interface{} {
+	gbf.Region = gts.Segment{start, end}
+
+	prefix := gbf.Molecule.Counter()
+	parser := parseReferenceInfo(prefix)
+	tryParse := func(info string) ([]gts.Segment, bool) {
+		result, err := parser.Parse(pars.FromString(info))
+		if err != nil {
+			return nil, false
+		}
+		return result.Value.([]gts.Segment), true
+	}
+
+	refs := []Reference{}
+	for _, ref := range gbf.References {
+		info := ref.Info
+
+		segs, ok := tryParse(info)
+		switch {
+		case ok:
+			olap := []gts.Segment{}
+			for _, seg := range segs {
+				if seg.Overlap(start, end) {
+					olap = append(olap, seg)
+				}
+			}
+			if len(olap) > 0 {
+				ss := make([]string, len(olap))
+				for i, seg := range olap {
+					head, tail := gts.Unpack(seg)
+					head = gts.Max(0, head-start)
+					tail = gts.Min(end-start, tail-start)
+					ss[i] = fmt.Sprintf("%d to %d", head+1, tail)
+				}
+				ref.Info = fmt.Sprintf("(%s %s)", prefix, strings.Join(ss, "; "))
+				refs = append(refs, ref)
+			}
+		default:
+			refs = append(refs, ref)
+		}
+	}
+
+	for i := range refs {
+		refs[i].Number = i + 1
+	}
+
+	gbf.References = refs
+
+	return gbf
 }
 
 // ID returns the ID of the sequence.
@@ -235,6 +290,10 @@ func (gb GenBank) String() string {
 	definition := AddPrefix(gb.Fields.Definition, indent)
 	b.WriteString("\nDEFINITION  " + definition + ".")
 	b.WriteString("\nACCESSION   " + gb.Fields.Accession)
+	if seg, ok := gb.Fields.Region.(gts.Segment); ok {
+		head, tail := gts.Unpack(seg)
+		b.WriteString(fmt.Sprintf(" REGION: %s", gts.Range(head, tail)))
+	}
 	b.WriteString("\nVERSION     " + gb.Fields.Version)
 
 	for i, pair := range gb.Fields.DBLink {
@@ -269,7 +328,8 @@ func (gb GenBank) String() string {
 	for _, ref := range gb.Fields.References {
 		b.WriteString(fmt.Sprintf("\nREFERENCE   %d", ref.Number))
 		if ref.Info != "" {
-			b.WriteString(ref.Info)
+			pad := strings.Repeat(" ", 3-len(strconv.Itoa(ref.Number)))
+			b.WriteString(pad + ref.Info)
 		}
 		if ref.Authors != "" {
 			b.WriteString("\n  AUTHORS   " +
@@ -397,6 +457,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 		Topology:  topology,
 		Division:  division,
 		Date:      date,
+		Region:    nil,
 	}
 
 	gb := GenBank{Fields: fields}
@@ -495,12 +556,16 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 
 			number := result.Value.(int)
 
-			pars.Line(state, result)
-			line := string(result.Token)
-
 			reference := Reference{
 				Number: number,
-				Info:   line,
+			}
+
+			pad := strings.Repeat(" ", 3-len(strconv.Itoa(number)))
+			infoParser := pars.Seq(pad, pars.Line).Child(1)
+			if infoParser(state, result) == nil {
+				reference.Info = string(result.Token)
+			} else {
+				pars.Line(state, result)
 			}
 
 			subfieldParser := pars.Seq(

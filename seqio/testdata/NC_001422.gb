@@ -7,7 +7,9 @@ DBLINK      BioProject: PRJNA14015
 KEYWORDS    RefSeq.
 SOURCE      Escherichia virus phiX174
   ORGANISM  Escherichia virus phiX174
-            Viruses; Microviridae; Bullavirinae; Sinsheimervirus.
+            Viruses; Monodnaviria; Sangervirae; Phixviricota;
+            Malgrandaviricetes; Petitvirales; Microviridae; Bullavirinae;
+            Sinsheimervirus.
 REFERENCE   1  (bases 2380 to 2512; 2593 to 2786; 2788 to 2947)
   AUTHORS   Air,G.M., Els,M.C., Brown,L.E., Laver,W.G. and Webster,R.G.
   TITLE     Location of antigenic sites on the three-dimensional structure of

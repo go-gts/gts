@@ -115,10 +115,19 @@ func TrueFilter(f Feature) bool { return true }
 // FalseFilter always return false.
 func FalseFilter(f Feature) bool { return false }
 
-// Within returns true if the location of the key is within the given bounds.
+// Within returns true if the location of the feature is within the given
+// bounds.
 func Within(lower, upper int) Filter {
 	return func(f Feature) bool {
 		return f.Location.Region().Within(lower, upper)
+	}
+}
+
+// Overlap returns true if the location of the feature overlaps with the given
+// bounds.
+func Overlap(lower, upper int) Filter {
+	return func(f Feature) bool {
+		return f.Location.Region().Overlap(lower, upper)
 	}
 }
 

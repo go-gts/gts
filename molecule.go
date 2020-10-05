@@ -5,6 +5,16 @@ import "fmt"
 // Molecule represents the sequence molecule type.
 type Molecule string
 
+// Counter returns the count word for the Molecule.
+func (mol Molecule) Counter() string {
+	switch mol {
+	case AA:
+		return "residues"
+	default:
+		return "bases"
+	}
+}
+
 // Molecule constants for DNA, RNA, and amino acid (AA).
 const (
 	DNA Molecule = "DNA"

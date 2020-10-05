@@ -3,7 +3,7 @@ package gts
 import (
 	"testing"
 
-	"github.com/go-gts/gts/testutils"
+	"github.com/go-gts/gts/internal/testutils"
 )
 
 var topologyTests = []Topology{

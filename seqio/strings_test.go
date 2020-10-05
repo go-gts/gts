@@ -3,7 +3,7 @@ package seqio
 import (
 	"testing"
 
-	"github.com/go-gts/gts/testutils"
+	"github.com/go-gts/gts/internal/testutils"
 )
 
 var flatfileSplitTests = []struct {

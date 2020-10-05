@@ -9,6 +9,42 @@ import (
 	"github.com/go-flip/flip"
 )
 
+// Shiftable represents a shiftable metadata.
+type Shiftable interface {
+	Shift(i, n int) interface{}
+}
+
+// Expandable represents a expandable metadata.
+type Expandable interface {
+	Expand(i, n int) interface{}
+}
+
+// Sliceable represents a sliceable metadata.
+type Sliceable interface {
+	Slice(start, end int) interface{}
+}
+
+func tryShift(info interface{}, i, n int) interface{} {
+	if v, ok := info.(Shiftable); ok {
+		return v.Shift(i, n)
+	}
+	return info
+}
+
+func tryExpand(info interface{}, i, n int) interface{} {
+	if v, ok := info.(Expandable); ok {
+		return v.Expand(i, n)
+	}
+	return info
+}
+
+func trySlice(info interface{}, start, end int) interface{} {
+	if v, ok := info.(Sliceable); ok {
+		return v.Slice(start, end)
+	}
+	return info
+}
+
 // Sequence represents a biological sequence. All sequences are expected to be
 // able to return its metadata, associated features, and byte representation.
 type Sequence interface {
@@ -69,15 +105,15 @@ func Copy(seq Sequence) BasicSequence {
 	return New(seq.Info(), seq.Features(), seq.Bytes())
 }
 
-type withInfo interface {
+type hasWithInfo interface {
 	WithInfo(info interface{}) Sequence
 }
 
-type withFeatures interface {
+type hasWithFeatures interface {
 	WithFeatures(ff FeatureTable) Sequence
 }
 
-type withBytes interface {
+type hasWithBytes interface {
 	WithBytes(p []byte) Sequence
 }
 
@@ -86,7 +122,7 @@ type withBytes interface {
 // `WithInfo(info interface{}) Sequence` method, it will be called instead.
 func WithInfo(seq Sequence, info interface{}) Sequence {
 	switch v := seq.(type) {
-	case withInfo:
+	case hasWithInfo:
 		return v.WithInfo(info)
 	default:
 		return New(info, seq.Features(), seq.Bytes())
@@ -98,7 +134,7 @@ func WithInfo(seq Sequence, info interface{}) Sequence {
 // `WithFeatures(ff FeatureTable) Sequence` method, it will be called instead.
 func WithFeatures(seq Sequence, ff []Feature) Sequence {
 	switch v := seq.(type) {
-	case withFeatures:
+	case hasWithFeatures:
 		return v.WithFeatures(ff)
 	default:
 		return New(seq.Info(), ff, seq.Bytes())
@@ -110,7 +146,7 @@ func WithFeatures(seq Sequence, ff []Feature) Sequence {
 // `WithBytes(p []info) Sequence` method, it will be called instead.
 func WithBytes(seq Sequence, p []byte) Sequence {
 	switch v := seq.(type) {
-	case withBytes:
+	case hasWithBytes:
 		return v.WithBytes(p)
 	default:
 		return New(seq.Info(), seq.Features(), p)
@@ -125,6 +161,10 @@ func insert(p []byte, pos int, q []byte) []byte {
 // a region containing the point of insertion, the location will be split at
 // the positions before and after the guest sequence.
 func Insert(host Sequence, index int, guest Sequence) Sequence {
+	info := host.Info()
+	info = tryShift(info, index, Len(guest))
+	host = WithInfo(host, info)
+
 	var ff FeatureTable
 	for _, f := range host.Features() {
 		f.Location = f.Location.Shift(index, Len(guest))
@@ -134,14 +174,22 @@ func Insert(host Sequence, index int, guest Sequence) Sequence {
 		f.Location = f.Location.Expand(0, index)
 		ff = ff.Insert(f)
 	}
+	host = WithFeatures(host, ff)
+
 	p := insert(host.Bytes(), index, guest.Bytes())
-	return WithBytes(WithFeatures(host, ff), p)
+	host = WithBytes(host, p)
+
+	return host
 }
 
 // Embed a sequence at the given index. For any feature whose location covers
 // a region containing the point of insertion, the location will be extended
 // by the length of the guest Sequence.
 func Embed(host Sequence, index int, guest Sequence) Sequence {
+	info := host.Info()
+	info = tryExpand(info, index, Len(guest))
+	host = WithInfo(host, info)
+
 	var ff FeatureTable
 	for _, f := range host.Features() {
 		f.Location = f.Location.Expand(index, Len(guest))
@@ -151,8 +199,12 @@ func Embed(host Sequence, index int, guest Sequence) Sequence {
 		f.Location = f.Location.Expand(0, index)
 		ff = ff.Insert(f)
 	}
+	host = WithFeatures(host, ff)
+
 	p := insert(host.Bytes(), index, guest.Bytes())
-	return WithBytes(WithFeatures(host, ff), p)
+	host = WithBytes(host, p)
+
+	return host
 }
 
 // Delete a region of the sequence at the given offset and length. Any
@@ -161,17 +213,25 @@ func Embed(host Sequence, index int, guest Sequence) Sequence {
 // shortened as a result, the location will be described as a offset in
 // between the bases where the deletion occurred.
 func Delete(seq Sequence, offset, length int) Sequence {
+	info := seq.Info()
+	info = tryExpand(info, offset, -length)
+	seq = WithInfo(seq, info)
+
 	ff := make([]Feature, len(seq.Features()))
 	for i, f := range seq.Features() {
 		ff[i].Key = f.Key
 		ff[i].Location = f.Location.Expand(offset, -length)
 		ff[i].Qualifiers = f.Qualifiers
 	}
+	seq = WithFeatures(seq, ff)
+
 	q := seq.Bytes()
 	p := make([]byte, len(q)-length)
 	copy(p[:offset], q[:offset])
 	copy(p[offset:], q[offset+length:])
-	return WithBytes(WithFeatures(seq, ff), p)
+	seq = WithBytes(seq, p)
+
+	return seq
 }
 
 // Erase a region of the sequence at the given offset and length. Any
@@ -193,17 +253,31 @@ func Slice(seq Sequence, start, end int) Sequence {
 		seq = Erase(seq, end, start-end)
 		return Rotate(seq, -end)
 	}
+
+	info := seq.Info()
+	info = trySlice(info, start, end)
+
+	seq = WithInfo(seq, info)
+
+	ff := seq.Features().Filter(Overlap(start, end))
+
+	for i, f := range ff {
+		loc := f.Location.Expand(end, end-Len(seq)).Expand(0, -start)
+		if f.Key == "source" {
+			loc = asComplete(loc)
+		}
+		ff[i].Location = loc
+	}
+
+	seq = WithFeatures(seq, ff)
+
 	p := make([]byte, end-start)
 	copy(p, seq.Bytes()[start:end])
-	var ff []Feature
-	for _, f := range seq.Features() {
-		loc := f.Location.Expand(0, -start).Expand(end-start, end-Len(seq))
-		if loc.Len() != 0 || f.Location.Len() == 0 {
-			f.Location = loc
-			ff = append(ff, f)
-		}
-	}
-	return WithBytes(WithFeatures(WithTopology(seq, Linear), ff), p)
+
+	seq = WithBytes(seq, p)
+	seq = WithTopology(seq, Linear)
+
+	return seq
 }
 
 // Concat takes the given Sequences and concatenates them into a single
@@ -217,6 +291,7 @@ func Concat(ss ...Sequence) Sequence {
 	default:
 		head, tail := ss[0], ss[1:]
 		ff, p := head.Features(), head.Bytes()
+
 		for _, seq := range tail {
 			for _, f := range seq.Features() {
 				f.Location = f.Location.Expand(0, len(p))
@@ -224,7 +299,11 @@ func Concat(ss ...Sequence) Sequence {
 			}
 			p = append(p, seq.Bytes()...)
 		}
-		return WithBytes(WithFeatures(head, ff), p)
+
+		head = WithFeatures(head, ff)
+		head = WithBytes(head, p)
+
+		return head
 	}
 }
 
@@ -240,10 +319,14 @@ func Reverse(seq Sequence) Sequence {
 			f.Order,
 		})
 	}
+	seq = WithFeatures(seq, ff)
+
 	p := make([]byte, Len(seq))
 	copy(p, seq.Bytes())
 	flip.Bytes(p)
-	return WithBytes(WithFeatures(seq, ff), p)
+	seq = WithBytes(seq, p)
+
+	return seq
 }
 
 // Rotate returns a Sequence object whose coordinates are shifted by the given
@@ -253,14 +336,19 @@ func Rotate(seq Sequence, n int) Sequence {
 	for Len(seq) > 0 && n < 0 {
 		n += Len(seq)
 	}
+
 	var ff FeatureTable
 	for _, f := range seq.Features() {
 		loc := f.Location.Expand(0, n).Normalize(Len(seq))
 		ff = ff.Insert(Feature{f.Key, loc, f.Qualifiers, f.Order})
 	}
+	seq = WithFeatures(seq, ff)
+
 	p := seq.Bytes()
 	p = append(p[n:], p[:n]...)
-	return WithBytes(WithFeatures(seq, ff), p)
+	seq = WithBytes(seq, p)
+
+	return seq
 }
 
 func bytesIndexAll(s, sep []byte) []int {

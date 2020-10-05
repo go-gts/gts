@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/go-gts/gts"
-	"github.com/go-gts/gts/testutils"
+	"github.com/go-gts/gts/internal/testutils"
 )
 
 var basicSeq = gts.New(nil, nil, nil)
