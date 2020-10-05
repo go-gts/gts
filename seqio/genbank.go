@@ -33,6 +33,7 @@ type GenBankFields struct {
 	Source     Organism
 	References []Reference
 	Comment    string
+	Contig     Contig
 
 	Region gts.Region
 }
@@ -205,6 +206,9 @@ func (o Origin) String() string {
 
 // Len returns the actual sequence length.
 func (o Origin) Len() int {
+	if len(o.Buffer) == 0 {
+		return 0
+	}
 	if o.Parsed {
 		return len(o.Buffer)
 	}
@@ -279,10 +283,15 @@ func (gb GenBank) String() string {
 	b := strings.Builder{}
 	indent := "            "
 
+	length := gb.Origin.Len()
+	if length == 0 {
+		length = gb.Fields.Contig.Region.Len()
+	}
+
 	date := strings.ToUpper(gb.Fields.Date.ToTime().Format("02-Jan-2006"))
 	locus := fmt.Sprintf(
 		"%-12s%-17s %10d bp %6s     %-9s%s %s", "LOCUS", gb.Fields.LocusName,
-		gb.Len(), gb.Fields.Molecule, gb.Fields.Topology, gb.Fields.Division, date,
+		length, gb.Fields.Molecule, gb.Fields.Topology, gb.Fields.Division, date,
 	)
 
 	b.WriteString(locus)
@@ -367,8 +376,15 @@ func (gb GenBank) String() string {
 
 	gb.Table.Format("     ", 21).WriteTo(&b)
 
-	b.WriteString("\nORIGIN      \n")
-	b.WriteString(gb.Origin.String())
+	if gb.Fields.Contig.String() != "" {
+		b.WriteString(fmt.Sprintf("\nCONTIG      %s", gb.Fields.Contig))
+	}
+
+	if gb.Origin.Len() > 0 {
+		b.WriteString("\nORIGIN      \n")
+		b.WriteString(gb.Origin.String())
+	}
+
 	b.WriteString("\n//\n")
 
 	return b.String()
@@ -624,6 +640,25 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 				return err
 			}
 			gb.Table = gts.FeatureTable(result.Value.(gts.FeatureTable))
+
+		case "CONTIG":
+			contigParser := pars.Seq(
+				"join(",
+				pars.Until(':'), ':',
+				pars.Int, "..", pars.Int,
+				')', pars.Line,
+			).Map(func(result *pars.Result) error {
+				id := string(result.Children[1].Token)
+				head := result.Children[3].Value.(int)
+				tail := result.Children[5].Value.(int)
+				contig := Contig{id, gts.Segment{head - 1, tail}}
+				result.SetValue(contig)
+				return nil
+			})
+			if err := contigParser(state, result); err != nil {
+				return err
+			}
+			gb.Fields.Contig = result.Value.(Contig)
 
 		case "ORIGIN":
 			// Trim off excess whitespace.

@@ -103,6 +103,7 @@ func TestGenBank(t *testing.T) {
 		},
 		nil,
 		"",
+		Contig{"", gts.Segment{}},
 		nil,
 	}
 
@@ -148,6 +149,7 @@ func TestGenBankWithInterface(t *testing.T) {
 		},
 		nil,
 		"",
+		Contig{"", gts.Segment{}},
 		nil,
 	}
 
@@ -245,6 +247,25 @@ func TestGenBankIO(t *testing.T) {
 	}
 }
 
+func TestGenBankIO2(t *testing.T) {
+	in := testutils.ReadTestfile(t, "NC_000913.3.min.gb")
+	state := pars.FromString(in)
+	parser := pars.AsParser(GenBankParser)
+
+	result, err := parser.Parse(state)
+	if err != nil {
+		t.Errorf("parser returned %v\nBuffer:\n%q", err, string(result.Token))
+	}
+
+	switch seq := result.Value.(type) {
+	case GenBank:
+		formatGenBankHelper(t, &seq, in)
+
+	default:
+		t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
+	}
+}
+
 var genbankIOFailTests = []string{
 	"",
 	"NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018",
@@ -295,6 +316,9 @@ var genbankIOFailTests = []string{
 		"LOCUS       TEST_DATA                 20 bp    DNA     linear   UNA 14-MAY-2020\n" +
 		"ORIGIN      \n" +
 		"        1  gagttttatc gcttccatga",
+	"" +
+		"LOCUS       TEST_DATA                 20 bp    DNA     linear   UNA 14-MAY-2020\n" +
+		"CONTIG      ",
 	"" +
 		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
 		"FOO         ",
