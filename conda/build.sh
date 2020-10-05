@@ -22,5 +22,5 @@ for FILE in "$SRC_DIR"/man/*.7; do
     cp "$FILE" "$PREFIX/share/man/man7"
 done
 
-cp "$SRC_DIR/completions/gts-completion.bash" "$PREFIX/share/bash-completion/completions"
-cp "$SRC_DIR/completions/gts-completion.bash" "$PREFIX/share/zsh/site-functions"
+cp "$SRC_DIR/completion/gts-completion.bash" "$PREFIX/share/bash-completion/completions"
+cp "$SRC_DIR/completion/gts-completion.bash" "$PREFIX/share/zsh/site-functions"
