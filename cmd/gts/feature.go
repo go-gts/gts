@@ -72,7 +72,7 @@ func featureClear(ctx *flags.Context) error {
 		ff := seq.Features().Filter(gts.Key("source"))
 		seq = gts.WithFeatures(seq, ff)
 		formatter := seqio.NewFormatter(seq, filetype)
-		if _, err := formatter.WriteTo(seqoutFile); err != nil {
+		if _, err := formatter.WriteTo(w); err != nil {
 			return ctx.Raise(err)
 		}
 
@@ -148,7 +148,7 @@ func featureSelect(ctx *flags.Context) error {
 		ff := seq.Features().Filter(filter)
 		seq = gts.WithFeatures(seq, ff)
 		formatter := seqio.NewFormatter(seq, filetype)
-		if _, err := formatter.WriteTo(seqoutFile); err != nil {
+		if _, err := formatter.WriteTo(w); err != nil {
 			return ctx.Raise(err)
 		}
 
@@ -226,7 +226,7 @@ func featureAnnotate(ctx *flags.Context) error {
 		}
 		seq = gts.WithFeatures(seq, ff)
 		formatter := seqio.NewFormatter(seq, filetype)
-		if _, err := formatter.WriteTo(seqoutFile); err != nil {
+		if _, err := formatter.WriteTo(w); err != nil {
 			return ctx.Raise(err)
 		}
 
