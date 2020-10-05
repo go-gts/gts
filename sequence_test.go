@@ -22,31 +22,41 @@ func bytesEqual(a, b []byte) bool {
 	return reflect.DeepEqual(a, b)
 }
 
-type infoShiftExpand [2]int
+type infoInterface [2]int
 
-func (se infoShiftExpand) Shift(i, n int) interface{} {
-	return infoShiftExpand{i, n}
+func (info infoInterface) Shift(i, n int) interface{} {
+	return infoInterface{i, n}
 }
 
-func (se infoShiftExpand) Expand(i, n int) interface{} {
-	return infoShiftExpand{i, n}
+func (info infoInterface) Expand(i, n int) interface{} {
+	return infoInterface{i, n}
+}
+
+func (info infoInterface) Slice(start, end int) interface{} {
+	return infoInterface{start, end}
 }
 
 func TestShiftableExpandable(t *testing.T) {
 	var in, out interface{}
 	i, n := 3, 6
-	exp := infoShiftExpand{i, n}
+	exp := infoInterface{i, n}
 
-	in = infoShiftExpand{0, 0}
+	in = infoInterface{0, 0}
 	out = tryShift(in, i, n)
 	if !reflect.DeepEqual(out, exp) {
 		t.Errorf("tryShift(%v, %d, %d) = %v, want %v", in, i, n, out, exp)
 	}
 
-	in = infoShiftExpand{0, 0}
+	in = infoInterface{0, 0}
 	out = tryExpand(in, i, n)
 	if !reflect.DeepEqual(out, exp) {
-		t.Errorf("tryShift(%v, %d, %d) = %v, want %v", in, i, n, out, exp)
+		t.Errorf("tryExpand(%v, %d, %d) = %v, want %v", in, i, n, out, exp)
+	}
+
+	in = infoInterface{0, 0}
+	out = trySlice(in, i, n)
+	if !reflect.DeepEqual(out, exp) {
+		t.Errorf("trySlice(%v, %d, %d) = %v, want %v", in, i, n, out, exp)
 	}
 
 	in = "info"
@@ -58,7 +68,13 @@ func TestShiftableExpandable(t *testing.T) {
 	in = "info"
 	out = tryExpand(in, i, n)
 	if !reflect.DeepEqual(out, in) {
-		t.Errorf("tryShift(%v, %d, %d) = %v, want %v", in, i, n, out, exp)
+		t.Errorf("tryExpand(%v, %d, %d) = %v, want %v", in, i, n, out, exp)
+	}
+
+	in = "info"
+	out = trySlice(in, i, n)
+	if !reflect.DeepEqual(out, in) {
+		t.Errorf("trySlice(%v, %d, %d) = %v, want %v", in, i, n, out, exp)
 	}
 }
 
