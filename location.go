@@ -651,6 +651,7 @@ func (ll *LocationList) Push(loc Location) {
 				return
 			}
 		}
+
 	case Point:
 		switch u := loc.(type) {
 		case Between:
