@@ -295,7 +295,7 @@ func TestLocationSort(t *testing.T) {
 		copy(out, in)
 		sort.Sort(Locations(out))
 		if !reflect.DeepEqual(out, exp) {
-			t.Errorf("sort.Sort(BySegment(%v)) = %v, want %v", in, out, exp)
+			t.Errorf("sort.Sort(Locations(%v)) = %v, want %v", in, out, exp)
 		}
 	}
 }

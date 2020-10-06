@@ -71,6 +71,63 @@ func listQualifiers(f Feature) []QualifierIO {
 	return qfs
 }
 
+// Repair attempts to reconstruct features by joining features with identical
+// feature keys and qualifiers which have adjacent locations.
+func Repair(ff []Feature) []Feature {
+	gg := make([]Feature, len(ff))
+	copy(gg, ff)
+
+	// Identify the features with similar keys and qualifiers.
+	index := make(map[string][]int)
+	for i, f := range gg {
+		key := fmt.Sprintf("%s:%v", f.Key, f.Qualifiers)
+		index[key] = append(index[key], i)
+	}
+
+	remove := []int{}
+	for _, ii := range index {
+		if len(ii) > 1 {
+			locs := make([]Location, len(ii))
+			for j, i := range ii {
+				locs[j] = gg[i].Location
+			}
+			sort.Sort(Locations(locs))
+
+			force := ff[ii[0]].Key == "source"
+			list := LocationList{}
+			for _, loc := range locs {
+				list.Push(loc, force)
+			}
+
+			// DISCUSS: Should we join these locations?
+			locs = list.Slice()
+
+			// Some locations were merged.
+			if len(locs) < len(ii) {
+				for j := range ii {
+					i := ii[j]
+					if j < len(locs) {
+						gg[i].Location = locs[j]
+					} else {
+						// Remove the excess features.
+						remove = append(remove, i)
+					}
+				}
+			}
+		}
+	}
+
+	sort.Sort(sort.Reverse(sort.IntSlice(remove)))
+
+	for _, i := range remove {
+		copy(gg[i:], gg[i+1:])
+		gg[len(gg)-1] = Feature{}
+		gg = gg[:len(gg)-1]
+	}
+
+	return gg
+}
+
 // Filter represents a filtering function for a Feature. It should return a
 // boolean value upon receiveing a Feature object.
 type Filter func(f Feature) bool
@@ -242,6 +299,28 @@ func (ff FeatureTable) Filter(filter Filter) FeatureTable {
 		}
 	}
 	return gg
+}
+
+// Len is the number of elements in the collection.
+func (ff FeatureTable) Len() int {
+	return len(ff)
+}
+
+// Less reports whether the element with index i should sort before the element
+// with index j.
+func (ff FeatureTable) Less(i, j int) bool {
+	if ff[i].Key == "source" && ff[j].Key != "source" {
+		return true
+	}
+	if ff[i].Key != "source" && ff[j].Key == "source" {
+		return false
+	}
+	return ff[i].Location.Less(ff[j].Location)
+}
+
+// Swap the elements with indexes i and j.
+func (ff FeatureTable) Swap(i, j int) {
+	ff[i], ff[j] = ff[j], ff[i]
 }
 
 // Insert takes the given Feature and inserts it into the sorted position in

@@ -614,16 +614,17 @@ func (ll *LocationList) Slice() []Location {
 // Push a Location object to the end of the list. If the Location object is
 // equivalent to the last element, nothing happens. If the Location object can
 // be joined with the last element to form a contiguous Location location, the
-// last element will be replaced with the joined Location object.
-func (ll *LocationList) Push(loc Location) {
+// last element will be replaced with the joined Location object. If the force
+// option is false, then only partial ranges will be joined.
+func (ll *LocationList) Push(loc Location, force bool) {
 	if ll.Next != nil {
-		ll.Next.Push(loc)
+		ll.Next.Push(loc, force)
 		return
 	}
 
 	if joined, ok := loc.(Joined); ok {
 		for i := range joined {
-			ll.Push(joined[i])
+			ll.Push(joined[i], force)
 		}
 		return
 	}
@@ -680,7 +681,7 @@ func (ll *LocationList) Push(loc Location) {
 				return
 			}
 		case Ranged:
-			if v.End == u.Start {
+			if ((v.Partial[1] && u.Partial[0]) || force) && v.End == u.Start {
 				partial := Partial{v.Partial[0], u.Partial[1]}
 				ll.Data = Ranged{v.Start, u.End, partial}
 				return
@@ -690,10 +691,10 @@ func (ll *LocationList) Push(loc Location) {
 	case Complemented:
 		if u, ok := loc.(Complemented); ok {
 			tmp := LocationList{u.Location, nil}
-			tmp.Push(v.Location)
+			tmp.Push(v.Location, force)
 			ll.Data = Complemented{Join(tmp.Slice()...)}
+			return
 		}
-		return
 	}
 
 	ll.Next = &LocationList{loc, nil}
@@ -712,7 +713,7 @@ type Joined []Location
 func Join(locs ...Location) Location {
 	list := LocationList{}
 	for _, loc := range locs {
-		list.Push(loc)
+		list.Push(loc, true)
 	}
 
 	switch list.Len() {

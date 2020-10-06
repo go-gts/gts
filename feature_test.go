@@ -1,6 +1,8 @@
 package gts
 
 import (
+	"bytes"
+	"sort"
 	"strings"
 	"testing"
 
@@ -131,6 +133,35 @@ func TestFeature(t *testing.T) {
 	testutils.Equals(t, qq, out)
 }
 
+func TestFeatureRepair(t *testing.T) {
+	state := pars.FromString(featureIOTest)
+	parser := pars.Exact(FeatureTableParser(""))
+	result, err := parser.Parse(state)
+	if err != nil {
+		t.Errorf("while parsing`\n%s\n`: %v", featureIOTest, err)
+		return
+	}
+	m, n := 200, 465
+	exp := result.Value.(FeatureTable)
+	seq := Sequence(New(nil, exp, bytes.Repeat([]byte("a"), n)))
+	left, right := Slice(seq, 0, m), Slice(seq, m, n)
+	seq = Concat(left, right)
+
+	in := seq.Features()
+	out := FeatureTable(Repair(in))
+
+	sort.Sort(out)
+	sort.Sort(exp)
+
+	if !featuresEqual(out, exp) {
+		sin := in.Format("     ", 21).String()
+		sout := out.Format("     ", 21).String()
+		sexp := exp.Format("     ", 21).String()
+		t.Errorf("Repair: \n%s\nDiff:", sin)
+		testutils.Diff(t, sout, sexp)
+	}
+}
+
 var sampleSourceFeature = Feature{"source", Range(0, 5386), Values{"mol_type": []string{"Genomic DNA"}}, nil}
 var sampleGeneFeature = Feature{"gene", Range(51, 221), Values{"locus_tag": []string{"phiX174p04"}}, nil}
 var sampleCDSFeature = Feature{"CDS", Range(133, 393), Values{"locus_tag": []string{"phiX174p05"}}, nil}
@@ -192,6 +223,34 @@ func TestFeatureQualifierFilter(t *testing.T) {
 	testutils.Panics(t, func() {
 		selectorFilter("/mol_type=[")
 	})
+}
+
+func TestFeatureTableSort(t *testing.T) {
+	state := pars.FromString(featureIOTest)
+	parser := pars.Exact(FeatureTableParser(""))
+	result, err := parser.Parse(state)
+	if err != nil {
+		t.Errorf("while parsing`\n%s\n`: %v", featureIOTest, err)
+		return
+	}
+
+	in := result.Value.(FeatureTable)
+	out := make(FeatureTable, len(in))
+	exp := make(FeatureTable, len(in))
+
+	sort.Sort(in)
+	copy(exp, in)
+	sort.Sort(sort.Reverse(in))
+	copy(out, in)
+	sort.Sort(out)
+
+	if !featuresEqual(out, exp) {
+		sin := in.Format("     ", 21).String()
+		sout := out.Format("     ", 21).String()
+		sexp := exp.Format("     ", 21).String()
+		t.Errorf("Repair: \n%s\nDiff:", sin)
+		testutils.Diff(t, sout, sexp)
+	}
 }
 
 func TestFeatureInsert(t *testing.T) {
