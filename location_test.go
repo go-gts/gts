@@ -2,7 +2,9 @@ package gts
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -271,6 +273,30 @@ func locationLessFailTest(t *testing.T, lhs, rhs Location) {
 	}
 	if _, ok := rhs.(Complemented); !ok {
 		locationLessFailTest(t, lhs, rhs.Complement())
+	}
+}
+
+var locationSortTest = [][]Location{
+	{Range(3, 13), Range(4, 13), Range(6, 14), Range(6, 16)},
+}
+
+func TestLocationSort(t *testing.T) {
+	for _, tt := range locationSortTest {
+		in := make([]Location, len(tt))
+		exp := make([]Location, len(tt))
+		out := make([]Location, len(tt))
+		copy(in, tt)
+		copy(exp, tt)
+		for reflect.DeepEqual(in, exp) {
+			rand.Shuffle(len(in), func(i, j int) {
+				in[i], in[j] = in[j], in[i]
+			})
+		}
+		copy(out, in)
+		sort.Sort(Locations(out))
+		if !reflect.DeepEqual(out, exp) {
+			t.Errorf("sort.Sort(BySegment(%v)) = %v, want %v", in, out, exp)
+		}
 	}
 }
 

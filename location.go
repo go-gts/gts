@@ -24,6 +24,25 @@ type Location interface {
 	Expand(i, n int) Location
 }
 
+// Locations represents a sortable list of locations.
+type Locations []Location
+
+// Len is the number of elements in the collection.
+func (ll Locations) Len() int {
+	return len(ll)
+}
+
+// Less reports whether the element with index i should sort before the element
+// with index j.
+func (ll Locations) Less(i, j int) bool {
+	return ll[i].Less(ll[j])
+}
+
+// Swap the elements with indexes i and j.
+func (ll Locations) Swap(i, j int) {
+	ll[i], ll[j] = ll[j], ll[i]
+}
+
 // Between represents a position between two bases. This will only make logical
 // sense if the start and end positions are directly adjacent.
 type Between int
