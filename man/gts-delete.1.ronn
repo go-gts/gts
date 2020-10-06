@@ -65,5 +65,5 @@ Delete 20 bases upstream of every `CDS`:
 
 ## SEE ALSO
 
-gts(1), gts-insert(1), gts-locator(7), gts-selector(7), gts-seqin(7),
-gts-seqout(7)
+gts(1), gts-insert(1), gts-locator(7), gts-modifier(7), gts-selector(7),
+gts-seqin(7), gts-seqout(7)
