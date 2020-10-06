@@ -30,6 +30,16 @@ func ReadTestfile(t *testing.T, path string) string {
 	return string(p)
 }
 
+// ReadTestfilePkg will open a file in the testdata directory of the gievn pkg.
+func ReadTestfilePkg(t *testing.T, path, pkg string) string {
+	t.Helper()
+	p, err := ioutil.ReadFile(filepath.Join(pkg, "testdata", path))
+	if err != nil {
+		t.Fatalf("failed to read file: %s", err)
+	}
+	return string(p)
+}
+
 // Equals checks the equality of two objects using go-test/deep.
 func Equals(t *testing.T, a, b interface{}) {
 	t.Helper()
@@ -48,7 +58,7 @@ func Diff(t *testing.T, a, b string) {
 			lines[i] = op.String()
 		}
 		s := strings.Join(lines, "\n")
-		t.Error(s)
+		t.Errorf("\n%s", s)
 	}
 }
 
