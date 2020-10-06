@@ -3,6 +3,7 @@ package flags
 import (
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -23,6 +24,14 @@ const (
 	Terminator
 )
 
+func mustMatchString(pattern string, s string) bool {
+	matched, err := regexp.MatchString(pattern, s)
+	if err != nil {
+		panic(err)
+	}
+	return matched
+}
+
 // TypeOf returns the type of the given argument.
 func TypeOf(s string) ArgumentType {
 	if s == "--" {
@@ -31,7 +40,7 @@ func TypeOf(s string) ArgumentType {
 	if strings.HasPrefix(s, "--") {
 		return LongType
 	}
-	if strings.HasPrefix(s, "-") && s != "-" {
+	if mustMatchString("-[^0-9]+", s) {
 		return ShortType
 	}
 	return ValueType
