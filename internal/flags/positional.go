@@ -20,6 +20,17 @@ func (pos *Positional) register(name string, value Value, usage string) {
 	pos.Args[name] = Argument{value, usage}
 }
 
+// Len returns the number of positional arguments.
+func (pos *Positional) Len() int {
+	n := 0
+	for _, arg := range pos.Args {
+		if _, ok := arg.Value.(*StringSliceValue); !ok {
+			n++
+		}
+	}
+	return n
+}
+
 // Switch adds a boolean switch to the positional argument list.
 func (pos *Positional) Switch(name, usage string) *bool {
 	value := NewBoolValue(false)
@@ -46,4 +57,26 @@ func (pos *Positional) String(name, usage string) *string {
 	value := NewStringValue("")
 	pos.register(name, value, usage)
 	return (*string)(value)
+}
+
+// HasExtra returns true if extra arguments are available.
+func (pos *Positional) HasExtra() bool {
+	for _, arg := range pos.Args {
+		if _, ok := arg.Value.(*StringSliceValue); ok {
+			return true
+		}
+	}
+	return false
+}
+
+// Extra allows extra string values to be given.
+func (pos *Positional) Extra(name, usage string) *[]string {
+	for key, arg := range pos.Args {
+		if _, ok := arg.Value.(*StringSliceValue); ok {
+			panic(fmt.Errorf("extra arguments defined with name %q", key))
+		}
+	}
+	value := NewStringSliceValue(nil)
+	pos.register(name, value, usage)
+	return (*[]string)(value)
 }

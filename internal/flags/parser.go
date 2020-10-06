@@ -87,7 +87,7 @@ func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 				case *BoolValue:
 					*v = BoolValue(true)
 				case SliceValue:
-					for len(args)+len(extra) > len(pos.Order) && TypeOf(args[0]) == ValueType {
+					for len(args)+len(extra) > pos.Len() && TypeOf(args[0]) == ValueType {
 						head, args = shift(args)
 						if err := v.Set(head); err != nil {
 							return nil, fmt.Errorf("while setting value for flag %q: %v", long, err)
@@ -134,7 +134,7 @@ func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 				case *BoolValue:
 					*v = BoolValue(true)
 				case SliceValue:
-					for len(args)+len(extra) > len(pos.Order) && TypeOf(args[0]) == ValueType {
+					for len(args)+len(extra) > pos.Len() && TypeOf(args[0]) == ValueType {
 						head, args = shift(args)
 						if err := v.Set(head); err != nil {
 							return nil, fmt.Errorf("while setting value for flag %q: %v", name, err)
@@ -159,6 +159,7 @@ func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 		}
 	}
 
+	n := 0
 	for i, name := range pos.Order {
 		if len(extra) == 0 {
 			list := make([]string, len(pos.Order)-i)
@@ -168,9 +169,21 @@ func Parse(pos *Positional, opt *Optional, args []string) ([]string, error) {
 			missing := strings.Join(list, ", ")
 			return extra, fmt.Errorf("missing positional arguments(s): %s", missing)
 		}
-		head, extra = shift(extra)
-		if err := pos.Args[name].Value.Set(head); err != nil {
-			return extra, err
+
+		switch pos.Args[name].Value.(type) {
+		case *StringSliceValue:
+			for len(extra)+n > pos.Len() {
+				head, extra = shift(extra)
+				if err := pos.Args[name].Value.Set(head); err != nil {
+					return extra, err
+				}
+			}
+		default:
+			head, extra = shift(extra)
+			if err := pos.Args[name].Value.Set(head); err != nil {
+				return extra, err
+			}
+			n++
 		}
 	}
 

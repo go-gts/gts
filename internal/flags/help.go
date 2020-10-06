@@ -26,7 +26,12 @@ func Usage(pos *Positional, opt *Optional) string {
 	}
 	if pos != nil {
 		for _, name := range pos.Order {
-			b.WriteString(fmt.Sprintf(" <%s>", name))
+			switch pos.Args[name].Value.(type) {
+			case *StringSliceValue:
+				b.WriteString(fmt.Sprintf(" <%s>...", name))
+			default:
+				b.WriteString(fmt.Sprintf(" <%s>", name))
+			}
 		}
 	}
 	return b.String()
@@ -39,7 +44,12 @@ func Help(pos *Positional, opt *Optional) string {
 		parts = append(parts, "\npositional arguments:")
 		for _, name := range pos.Order {
 			usage := pos.Args[name].Usage
-			name = fmt.Sprintf("<%s>", name)
+			switch pos.Args[name].Value.(type) {
+			case *StringSliceValue:
+				name = fmt.Sprintf("<%s>...", name)
+			default:
+				name = fmt.Sprintf("<%s>", name)
+			}
 			parts = append(parts, formatHelp(name, usage))
 		}
 	}
