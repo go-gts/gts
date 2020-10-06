@@ -214,6 +214,7 @@ func quotedQualifierParser(prefix string) pars.Parser {
 			return err
 		}
 		state.Drop()
+		pars.EOL(state, pars.Void)
 		token := result.Token
 		i := bytes.Index(token, p)
 		for i >= 0 {
@@ -226,9 +227,37 @@ func quotedQualifierParser(prefix string) pars.Parser {
 	}
 }
 
+func literalQualifierValueParser(prefix string) pars.Parser {
+	prefixParser := pars.String(prefix)
+	return func(state *pars.State, result *pars.Result) error {
+		pars.Line(state, result)
+		p := result.Token
+
+		state.Push()
+		for prefixParser(state, result) == nil {
+			c, err := pars.Next(state)
+			if err != nil {
+				result.SetToken(p)
+				state.Pop()
+				return err
+			}
+			if c == '/' {
+				result.SetToken(p)
+				state.Pop()
+				return nil
+			}
+			pars.Line(state, result)
+			p = append(p, '\n')
+			p = append(p, result.Token...)
+		}
+		result.SetToken(p)
+		state.Drop()
+		return nil
+	}
+}
+
 func literalQualifierParser(prefix string) pars.Parser {
-	literal := pars.Until(pars.Any("\n"+prefix+"/", pars.End))
-	p := append([]byte{'\n'}, []byte(prefix)...)
+	valueParser := literalQualifierValueParser(prefix)
 	return func(state *pars.State, result *pars.Result) error {
 		state.Push()
 		c, err := pars.Next(state)
@@ -241,16 +270,10 @@ func literalQualifierParser(prefix string) pars.Parser {
 			return pars.NewError("expected `=`", state.Position())
 		}
 		state.Advance()
-		literal(state, result) // Will not fail by definition.
+
+		valueParser(state, result)
+
 		state.Drop()
-		token := result.Token
-		i := bytes.Index(token, p)
-		for i >= 0 {
-			n := copy(token[i+1:], token[i+len(p):])
-			token = token[:i+1+n]
-			i = bytes.Index(token, p)
-		}
-		result.SetToken(token)
 		return nil
 	}
 }
@@ -261,7 +284,7 @@ func QualifierParser(prefix string) pars.Parser {
 
 	quotedParser := quotedQualifierParser(prefix)
 	literalParser := literalQualifierParser(prefix)
-	toggleParser := pars.Dry(pars.EOL)
+	toggleParser := pars.EOL
 
 	valueParsers := []pars.Parser{quotedParser, literalParser, toggleParser}
 

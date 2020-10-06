@@ -249,6 +249,10 @@ func TestQualifierIO(t *testing.T) {
 		}
 	}
 
+	if _, err := QualifierParser("").Parse(pars.FromString("/rpt_type=other\n")); err != nil {
+		t.Errorf("while parsing `\n/rpt_type=other\n\n`: %v", err)
+	}
+
 	for _, in := range []string{
 		"/sex?",
 		"/sex=female",
@@ -270,8 +274,4 @@ func TestQualifierIO(t *testing.T) {
 	if in.String() != out {
 		t.Errorf("qualifier.String() = %s, want %s", in.String(), out)
 	}
-}
-
-func TestQualifier(t *testing.T) {
-
 }

@@ -463,7 +463,7 @@ func FeatureTableParser(prefix string) pars.Parser {
 		keylineParser := featureKeylineParser(prefix+strings.Repeat(" ", pre), depth)
 
 		qualifierParser := QualifierParser(prefix + strings.Repeat(" ", depth))
-		qualifiersParser := pars.Many(pars.Seq(qualifierParser, pars.EOL).Child(0))
+		qualifiersParser := pars.Many(qualifierParser)
 
 		// Does not return error by definition.
 		qualifiersParser(state, result)
