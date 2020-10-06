@@ -274,13 +274,12 @@ func TestBySegment(t *testing.T) {
 		out := make([]Segment, len(tt))
 		copy(in, tt)
 		copy(exp, tt)
-		copy(out, tt)
-		for reflect.DeepEqual(out, exp) {
-			rand.Shuffle(len(out), func(i, j int) {
+		for reflect.DeepEqual(in, exp) {
+			rand.Shuffle(len(in), func(i, j int) {
 				in[i], in[j] = in[j], in[i]
-				out[i], out[j] = out[j], out[i]
 			})
 		}
+		copy(out, in)
 		sort.Sort(BySegment(out))
 		if !reflect.DeepEqual(out, exp) {
 			t.Errorf("sort.Sort(BySegment(%v)) = %v, want %v", in, out, exp)
