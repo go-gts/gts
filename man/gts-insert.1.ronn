@@ -16,7 +16,6 @@ sequence. A locator is a combination of one of `point location`,
 explanation of a locator. Refer to the EXAMPLES for some examples to get
 started.
 
-
 Features that were present at the point of insertion will be split to form
 a `join`ed location. Such features can be instead expanded if the `-e` or
 `--embed` option is provided. Any features present in the _guest_ sequence
