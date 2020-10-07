@@ -44,7 +44,7 @@ func (set CommandSet) Commands() []string {
 func (set CommandSet) Ronn(ctx *Context) error {
 	usage := fmt.Sprintf("usage: %s [--version] [-h | --help] <command> [<args>]", ctx.JoinedName())
 	name := strings.Join(ctx.Name, "-")
-	filename := fmt.Sprintf("%s.1.md", name)
+	filename := fmt.Sprintf("%s.1.ronn", name)
 
 	f, err := os.Create(filename)
 	if err != nil {
