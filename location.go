@@ -1218,6 +1218,15 @@ var parseComplementDefault = parseComplement(&parseLocation)
 
 var parseLocation pars.Parser
 
+// AsLocation interprets the given string as a Location.
+func AsLocation(s string) (Location, error) {
+	result, err := parseLocation.Parse(pars.FromString(s))
+	if err != nil {
+		return nil, err
+	}
+	return result.Value.(Location), nil
+}
+
 func init() {
 	parseLocation = pars.Any(
 		parseRange,

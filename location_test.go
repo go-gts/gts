@@ -928,6 +928,22 @@ func TestLocationParser(t *testing.T) {
 	}
 }
 
+func TestAsLocation(t *testing.T) {
+	for _, tt := range locationParserTests {
+		out, err := AsLocation(tt.in)
+		if err != nil {
+			t.Errorf("while parsing %q got: %v", tt.in, err)
+			continue
+		}
+		if !reflect.DeepEqual(out, tt.out) {
+			t.Errorf("parser output is %s, want %s", locRep(out), locRep(tt.out))
+		}
+	}
+	if _, err := AsLocation(""); err == nil {
+		t.Errorf("expected error in AsLocation(%q)", "")
+	}
+}
+
 func TestLocationPanics(t *testing.T) {
 	testutils.Panics(t, func() { Range(2, 0) })
 	testutils.Panics(t, func() { Join() })
