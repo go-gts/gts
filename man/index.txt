@@ -17,3 +17,6 @@ gts-modifier(7)   gts-modifier.7.ronn
 gts-selector(7)   gts-selector.7.ronn
 gts-seqin(7)      gts-seqin.7.ronn
 gts-seqout(7)     gts-seqout.7.ronn
+
+# external
+cut(1) http://man.cx/cut(1)

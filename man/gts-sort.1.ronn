@@ -1,0 +1,43 @@
+# gts-sort(1) -- sort the list of sequences
+
+## SYNOPSIS
+
+gts-sort [--version] [-h | --help] [<args>] <seqin>
+
+## DESCRIPTION
+
+**gts-sort** takes a single sequence input and sorts the sequences. By default,
+the sequences will be sorted from longest to shortest. It is advised against to
+use this command on files with large numbers of sequences.
+
+## OPTIONS
+
+  * `<seqin>`:
+    Input sequence file (may be omitted if standard input is provided). See
+    gts-seqin(7) for a list of currently supported list of sequence formats.
+
+  * `-F <format>`, `--format=<format>`:
+    Output file format (defaults to same as input). See gts-seqout(7) for a
+    list of currently supported list of sequence formats. The format specified
+    with this option will override the file type detection from the output
+    filename.
+
+  * `-o <output>`, `--output=<output>`:
+    Output sequence file (specifying `-` will force standard output). The
+    output file format will be automatically detected from the filename if none
+    is specified with the `-F` or `--format` option.
+
+  * `-r`, `--reverse`:
+    Reverse the sort order.
+
+## BUGS
+
+**gts-sort** currently has no known bugs.
+
+## AUTHORS
+
+**gts-sort** is written and maintained by @AUTHOR@.
+
+## SEE ALSO
+
+gts(1), gts-pick(1), gts-seqin(7), gts-seqout(7)

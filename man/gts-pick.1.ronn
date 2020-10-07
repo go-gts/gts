@@ -1,0 +1,64 @@
+# gts-pick(1) -- pick sequence(s) from multiple sequences
+
+## SYNOPSIS
+
+gts-pick [--version] [-h | --help] [<args>] <list> <seqin>
+
+## DESCRIPTION
+
+**gts-pick** takes a single sequence input and returns the sequences specified
+by the _list_ option. The _list_ option is equivalent to that of cut(1).
+Sequence numbering starts at 1. Specifying the `-f` or `--feature` option will
+output all sequences but pick the features matching the _list_ option.
+
+## OPTIONS
+
+  * `<list>`:
+    List of sequences to pick (identical to the list option in cut). A list is
+    a comma separated set of numbers and/or number ranges. Number ranges
+    consist of a number, a dash character `-`, and a second number. A number
+    range will select the sequences from the first number to the second,
+    inclusive. Numbers may be preceded by a dash, which selects all sequences
+    from 1 up to the number. Numbers may be followed by a dash, which selects
+    all sequences from the number to the last.
+
+  * `<seqin>`:
+    Input sequence file (may be omitted if standard input is provided). See
+    gts-seqin(7) for a list of currently supported list of sequence formats.
+
+  * `-F <format>`, `--format=<format>`:
+    Output file format (defaults to same as input). See gts-seqout(7) for a
+    list of currently supported list of sequence formats. The format specified
+    with this option will override the file type detection from the output
+    filename.
+
+  * `-f`, `--feature`:
+    Pick features instead of sequences.
+
+  * `-o <output>`, `--output=<output>`:
+    Output sequence file (specifying `-` will force standard output). The
+    output file format will be automatically detected from the filename if none
+    is specified with the `-F` or `--format` option.
+
+
+## EXAMPLES
+
+Pick the first sequence in the file:
+
+    $ gts pick 1 <seqin>
+
+Pick the first ten features from each sequence in the file:
+
+    $ gts pick -f -10 <seqin>
+
+## BUGS
+
+**gts-pick** currently has no known bugs.
+
+## AUTHORS
+
+**gts-pick** is written and maintained by @AUTHOR@.
+
+## SEE ALSO
+
+gts(1), gts-seqin(7), gts-seqout(7) cut(1)
