@@ -1,12 +1,32 @@
 package flags
 
-import "fmt"
+import (
+	"fmt"
+)
 
-var shortNames = []rune("0123456789AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz")
+var shortNames = []rune("aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ")
 
 type optionalName struct {
 	Short rune
 	Long  string
+}
+
+const intMax = ^int(0)
+
+func runeLess(a, b rune) bool {
+	x, y := intMax, intMax
+	for i, r := range shortNames {
+		if a == r {
+			x = i
+		}
+		if b == r {
+			y = i
+		}
+	}
+	if x == intMax && y == intMax {
+		return a < b
+	}
+	return x < y
 }
 
 type byShort []optionalName
@@ -17,11 +37,11 @@ func (names byShort) Less(i, j int) bool {
 	a, b := names[i], names[j]
 	switch {
 	case a.Short != 0 && b.Short != 0:
-		return a.Short < b.Short
+		return runeLess(a.Short, b.Short)
 	case a.Short != 0:
-		return a.Short < []rune(b.Long)[0]
+		return runeLess(a.Short, []rune(b.Long)[0])
 	case b.Short != 0:
-		return []rune(a.Long)[0] < b.Short
+		return runeLess([]rune(a.Long)[0], b.Short)
 	default:
 		return a.Long < b.Long
 	}
