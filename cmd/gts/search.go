@@ -42,14 +42,15 @@ func searchFunc(ctx *flags.Context) error {
 		match = gts.Search
 	}
 
+	order := make(map[string]int)
 	qfs := gts.Values{}
 	for _, s := range *qfstrs {
-		switch i := strings.IndexByte(s, '='); i {
-		case -1:
-			qfs.Add(s, "")
-		default:
-			qfs.Add(s[:i], s[i+1:])
+		name, value := s, ""
+		if i := strings.IndexByte(s, '='); i >= 0 {
+			name, value = s[:i], s[i+1:]
 		}
+		qfs.Add(name, value)
+		order[name] = len(order)
 	}
 
 	queries := []gts.Sequence{}
@@ -104,6 +105,7 @@ func searchFunc(ctx *flags.Context) error {
 					Key:        *featureKey,
 					Location:   gts.Range(head, tail),
 					Qualifiers: qfs,
+					Order:      order,
 				})
 			}
 			if !*nocomplement {
