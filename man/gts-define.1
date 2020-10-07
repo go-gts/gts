@@ -24,19 +24,19 @@ Feature location\.
 .
 .TP
 \fB<seqin>\fR
-Input sequence file (may be omitted if standard input is provided)\.
+Input sequence file (may be omitted if standard input is provided)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
 .
 .TP
 \fB\-F <format>\fR, \fB\-\-format=<format>\fR
-Output file format (defaults to same as input)\.
+Output file format (defaults to same as input)\. See gts\-seqout(7) for a list of currently supported list of sequence formats\. The format specified with this option will override the file type detection from the output filename\.
 .
 .TP
 \fB\-o <output>\fR, \fB\-\-output=<output>\fR
-Output sequence file (specifying \fB\-\fR will force standard output)\.
+Output sequence file (specifying \fB\-\fR will force standard output)\. The output file format will be automatically detected from the filename if none is specified with the \fB\-F\fR or \fB\-\-format\fR option\.
 .
 .TP
 \fB\-q <qualifier>\fR, \fB\-\-qualifier=<qualifier>\fR
-Qualifier key\-value pairs (syntax: key=value))\.
+Qualifier key\-value pairs (syntax: key=value))\. Multiple values may be set by repeatedly passing this option to the command\.
 .
 .SH "BUGS"
 \fBgts\-define\fR currently has no known bugs\.
