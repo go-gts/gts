@@ -160,7 +160,6 @@ func pickFunc(ctx *flags.Context) error {
 			}
 
 			formatter := seqio.NewFormatter(seq, filetype)
-
 			if _, err := formatter.WriteTo(w); err != nil {
 				return ctx.Raise(err)
 			}
