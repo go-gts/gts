@@ -27,14 +27,14 @@ insight.
     Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 
+  * `-e`, `--exact`:
+    Match the exact pattern even for ambiguous letters.
+
   * `-F <format>`, `--format=<format>`:
     Output file format (defaults to same as input). See gts-seqout(7) for a
     list of currently supported list of sequence formats. The format specified
     with this option will override the file type detection from the output
     filename.
-
-  * `-e`, `--exact`:
-    Match the exact pattern even for ambiguous letters.
 
   * `-k <key>`, `--key=<key>`:
     Key for the reported oligomer region features. The default feature key is

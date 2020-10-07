@@ -36,14 +36,14 @@ the _host_ sequence.
     Host sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 
+  * `-e`, `--embed`:
+    Extend existing feature locations when inserting instead of splitting them.
+
   * `-F <format>`, `--format=<format>`:
     Output file format (defaults to same as input). See gts-seqout(7) for a
     list of currently supported list of sequence formats. The format specified
     with this option will override the file type detection from the output
     filename.
-
-  * `-e`, `--embed`:
-    Extend existing feature locations when inserting instead of splitting them.
 
   * `-o <output>`, `--output=<output>`:
     Output sequence file (specifying `-` will force standard output). The

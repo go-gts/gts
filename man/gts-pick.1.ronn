@@ -26,14 +26,14 @@ output all sequences but pick the features matching the _list_ option.
     Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 
+  * `-f`, `--feature`:
+    Pick features instead of sequences.
+
   * `-F <format>`, `--format=<format>`:
     Output file format (defaults to same as input). See gts-seqout(7) for a
     list of currently supported list of sequence formats. The format specified
     with this option will override the file type detection from the output
     filename.
-
-  * `-f`, `--feature`:
-    Pick features instead of sequences.
 
   * `-o <output>`, `--output=<output>`:
     Output sequence file (specifying `-` will force standard output). The
