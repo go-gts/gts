@@ -66,7 +66,7 @@ Search for <query> and retrieve the regions 100 bases around the matches.
 
 ## AUTHORS
 
-**gts-search** is written and maintained by @AUTHOR@.
+**gts-search** is written and maintained by Kotone Itaya.
 
 ## SEE ALSO
 

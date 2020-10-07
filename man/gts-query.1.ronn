@@ -78,7 +78,7 @@ Report all of the `db_xref` qualifiers for every gene in the sequence:
 
 ## AUTHORS
 
-**gts-query** is written and maintained by @AUTHOR@.
+**gts-query** is written and maintained by Kotone Itaya.
 
 ## SEE ALSO
 

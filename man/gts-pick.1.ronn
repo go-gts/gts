@@ -57,7 +57,7 @@ Pick the first ten features from each sequence in the file:
 
 ## AUTHORS
 
-**gts-pick** is written and maintained by @AUTHOR@.
+**gts-pick** is written and maintained by Kotone Itaya.
 
 ## SEE ALSO
 

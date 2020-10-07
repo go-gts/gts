@@ -36,7 +36,7 @@ use this command on files with large numbers of sequences.
 
 ## AUTHORS
 
-**gts-sort** is written and maintained by @AUTHOR@.
+**gts-sort** is written and maintained by Kotone Itaya.
 
 ## SEE ALSO
 

@@ -32,7 +32,7 @@ more elaborate information of features.
 
 ## AUTHORS
 
-**gts-summary** is written and maintained by @AUTHOR@.
+**gts-summary** is written and maintained by Kotone Itaya.
 
 ## SEE ALSO
 
