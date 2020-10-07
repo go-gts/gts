@@ -1,0 +1,46 @@
+# gts-define(1) -- define a new feature
+
+## SYNOPSIS
+
+gts-define [--version] [-h | --help] [<args>] <key> <location> <seqin>
+
+## DESCRIPTION
+
+Define a new feature.
+
+## OPTIONS
+
+  * `<key>`:
+    Feature key.
+
+  * `<location>`:
+    Feature location.
+
+  * `<seqin>`:
+    Input sequence file (may be omitted if standard input is provided). See
+    gts-seqin(7) for a list of currently supported list of sequence formats.
+
+  * `-F <format>`, `--format=<format>`:
+    Output file format (defaults to same as input). See gts-seqout(7) for a
+    list of currently supported list of sequence formats. The format specified
+    with this option will override the file type detection from the output
+    filename.
+
+  * `-o <output>`, `--output=<output>`:
+    Output sequence file (specifying `-` will force standard output). The
+    output file format will be automatically detected from the filename if none
+    is specified with the `-F` or `--format` option.
+
+  * `-q <qualifier>`, `--qualifier=<qualifier>`:
+    Qualifier key-value pairs (syntax: key=value)). Multiple values may be set
+    by repeatedly passing this option to the command.
+
+## BUGS
+
+**gts-define** currently has no known bugs.
+
+## AUTHORS
+
+**gts-define** is written and maintained by @AUTHOR@.
+
+## SEE ALSO

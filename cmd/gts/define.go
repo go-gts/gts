@@ -1,0 +1,111 @@
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/go-gts/gts"
+	"github.com/go-gts/gts/cmd"
+	"github.com/go-gts/gts/internal/flags"
+	"github.com/go-gts/gts/seqio"
+)
+
+func init() {
+	flags.Register("define", "define a new feature", defineFunc)
+}
+
+func defineFunc(ctx *flags.Context) error {
+	pos, opt := flags.Flags()
+
+	key := pos.String("key", "feature key")
+	locstr := pos.String("location", "feature location")
+
+	var seqinPath *string
+	if cmd.IsTerminal(os.Stdin.Fd()) {
+		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
+	}
+
+	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
+	qfstrs := opt.StringSlice('q', "qualifier", nil, "qualifier key-value pairs (syntax: key=value))")
+	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
+
+	if err := ctx.Parse(pos, opt); err != nil {
+		return err
+	}
+
+	loc, err := gts.AsLocation(*locstr)
+	if err != nil {
+		return ctx.Raise(err)
+	}
+
+	order := make(map[string]int)
+	qfs := gts.Values{}
+	for _, s := range *qfstrs {
+		name, value := s, ""
+		if i := strings.IndexByte(s, '='); i >= 0 {
+			name, value = s[:i], s[i+1:]
+		}
+		qfs.Add(name, value)
+		order[name] = len(order)
+	}
+
+	f := gts.Feature{
+		Key:        *key,
+		Location:   loc,
+		Qualifiers: qfs,
+		Order:      order,
+	}
+
+	seqinFile := os.Stdin
+	if seqinPath != nil && *seqinPath != "-" {
+		f, err := os.Open(*seqinPath)
+		if err != nil {
+			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
+		}
+		seqinFile = f
+		defer seqinFile.Close()
+	}
+
+	seqoutFile := os.Stdout
+	if *seqoutPath != "-" {
+		f, err := os.Create(*seqoutPath)
+		if err != nil {
+			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
+		}
+		seqoutFile = f
+		defer seqoutFile.Close()
+	}
+
+	filetype := seqio.Detect(*seqoutPath)
+	if *format != "" {
+		filetype = seqio.ToFileType(*format)
+	}
+
+	w := bufio.NewWriter(seqoutFile)
+
+	scanner := seqio.NewAutoScanner(seqinFile)
+	for scanner.Scan() {
+		seq := scanner.Value()
+
+		ff := seq.Features()
+		ff = ff.Insert(f)
+		seq = gts.WithFeatures(seq, ff)
+
+		formatter := seqio.NewFormatter(seq, filetype)
+		if _, err := formatter.WriteTo(w); err != nil {
+			return ctx.Raise(err)
+		}
+
+		if err := w.Flush(); err != nil {
+			return ctx.Raise(err)
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return ctx.Raise(fmt.Errorf("encountered error in scanner: %v", err))
+	}
+
+	return nil
+}
