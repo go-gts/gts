@@ -336,6 +336,7 @@ func Rotate(seq Sequence, n int) Sequence {
 	for Len(seq) > 0 && n < 0 {
 		n += Len(seq)
 	}
+	n %= Len(seq)
 
 	var ff FeatureTable
 	for _, f := range seq.Features() {
