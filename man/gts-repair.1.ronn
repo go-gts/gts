@@ -1,0 +1,44 @@
+# gts-repair(1) -- repair fragmented features
+
+## SYNOPSIS
+
+gts-repair [--version] [-h | --help] [<args>] <seqin>
+
+## DESCRIPTION
+
+**gts-repair** takes a single input sequence and attempts to reconstruct
+features that have been fragmented as a result of other manipulations.
+Specifically, **gts-repair** will scan each sequence to find features that have
+identical feature keys and qualifier key-value pairs, check if their locations
+are pointing to a consecutive region of the sequence, and if they are, merge
+the locations to create a single feature. Any features that has been lost as a
+result of other manipulations will not be reconstructed.
+
+## OPTIONS
+
+  * `<seqin>`:
+    Input sequence file (may be omitted if standard input is provided). See
+    gts-seqin(7) for a list of currently supported list of sequence formats.
+
+  * `-F <format>`, `--format=<format>`:
+    Output file format (defaults to same as input). See gts-seqout(7) for a
+    list of currently supported list of sequence formats. The format specified
+    with this option will override the file type detection from the output
+    filename.
+
+  * `-o <output>`, `--output=<output>`:
+    Output sequence file (specifying `-` will force standard output). The
+    output file format will be automatically detected from the filename if none
+    is specified with the `-F` or `--format` option.
+
+## BUGS
+
+**gts-repair** currently has no known bugs.
+
+## AUTHORS
+
+**gts-repair** is written and maintained by Kotone Itaya.
+
+## SEE ALSO
+
+gts(1), gts-join(1), gts-seqin(7), gts-seqout(7)
