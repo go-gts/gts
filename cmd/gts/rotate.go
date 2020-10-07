@@ -69,7 +69,7 @@ func rotateFunc(ctx *flags.Context) error {
 		seq := scanner.Value()
 		rr := locate(seq.Features())
 		if len(rr) > 0 {
-			seq = gts.Rotate(seq, rr[0].Head())
+			seq = gts.Rotate(seq, -rr[0].Head())
 		}
 		seq = gts.WithTopology(seq, gts.Circular)
 		formatter := seqio.NewFormatter(seq, filetype)
