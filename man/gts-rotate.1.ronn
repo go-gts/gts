@@ -6,15 +6,20 @@ gts-rotate [--version] [-h | --help] [<args>] <amount> <seqin>
 
 ## DESCRIPTION
 
-**gts-rotate** takes a single sequence input and shifts the sequence with the
-specified amount. For a positive shift, the start of the sequence will be moved
-downstream relative to the strand represented by the sequence. For a negative
-shift, the inverse is true.
+**gts-rotate** takes a single sequence input and shifts the sequence so that
+the position matching the location specified by the given `locator` comes to
+the start of the sequence file. A locator is a combination of one of
+`point location`, `range location`, or `selector`, and a `modifier` in the form
+`[selector|point|range][@modifier]`. See gts-locator(7) for a more in-depth
+explanation of a locator. Refer to the EXAMPLES for some examples to get
+started.
+
+The topology of a sequence that is rotated will be changed to circular.
 
 ## OPTIONS
 
-  * `<amount>`:
-    The amount to rotate the sequence by.
+  * `<locator>`:
+    A locator string ([selector|point|range][@modifier]).
 
   * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided).
@@ -25,18 +30,15 @@ shift, the inverse is true.
   * `-o <output>`, `--output=<output>`:
     Output sequence file (specifying `-` will force standard output).
 
-  * `-v`, `--backward`:
-    Rotate the sequence backwards (equivalent to a negative amount).
-
 ## EXAMPLES
 
 Rotate a sequence 100 bases:
 
     $ gts rotate 100 <seqin>
 
-Rotate a sequence -100 bases:
+Rotate a sequence to the first CDS in the sequence:
 
-    $ gts rotate -100 <seqin>
+    $ gts rotate CDS <seqin>
 
 ## BUGS
 
@@ -48,4 +50,5 @@ Rotate a sequence -100 bases:
 
 ## SEE ALSO
 
-gts(1), gts-seqin(7)
+gts(1), gts-locator(7), gts-modifier(7), gts-selector(7), gts-seqin(7),
+gts-seqout(7)

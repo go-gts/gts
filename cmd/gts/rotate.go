@@ -18,7 +18,7 @@ func init() {
 func rotateFunc(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	n := pos.Int("amount", "the amount to rotate the sequence by")
+	locstr := pos.String("locator", "a locator string ([selector|point|range][@modifier])")
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
@@ -26,15 +26,15 @@ func rotateFunc(ctx *flags.Context) error {
 	}
 
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
-	backward := opt.Switch('v', "backward", "rotate the sequence backwards (equivalent to a negative amount)")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
 	}
 
-	if *backward {
-		*n = -*n
+	locate, err := gts.AsLocator(*locstr)
+	if err != nil {
+		return ctx.Raise(err)
 	}
 
 	seqinFile := os.Stdin
@@ -67,7 +67,11 @@ func rotateFunc(ctx *flags.Context) error {
 	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
-		seq = gts.Rotate(seq, *n)
+		rr := locate(seq.Features())
+		if len(rr) > 0 {
+			seq = gts.Rotate(seq, rr[0].Head())
+		}
+		seq = gts.WithTopology(seq, gts.Circular)
 		formatter := seqio.NewFormatter(seq, filetype)
 		if _, err := formatter.WriteTo(w); err != nil {
 			return ctx.Raise(err)
