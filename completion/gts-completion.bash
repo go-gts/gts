@@ -64,9 +64,31 @@ _gts_complement()
     esac
 }
 
+_gts_define()
+{
+    opts="-h --help --version -F --format -o --output -q --qualifier"
+    local cur="${COMP_WORDS[$COMP_CWORD]}"
+    case "$cur" in
+        -*)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do
+                COMPREPLY+=("$line")
+            done < <(compgen -W "$opts" -- "$cur")
+            ;;
+        *)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do 
+                COMPREPLY+=("$line")
+            done < <(compgen -f -- "$cur")
+            ;;
+    esac
+}
+
 _gts_delete()
 {
-    opts="-h --help --version -F --format -e --erase -o --output"
+    opts="-h --help --version -e --erase -F --format -o --output"
     local cur="${COMP_WORDS[$COMP_CWORD]}"
     case "$cur" in
         -*)
@@ -110,7 +132,29 @@ _gts_extract()
 
 _gts_insert()
 {
-    opts="-h --help --version -F --format -e --embed -o --output"
+    opts="-h --help --version -e --embed -F --format -o --output"
+    local cur="${COMP_WORDS[$COMP_CWORD]}"
+    case "$cur" in
+        -*)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do
+                COMPREPLY+=("$line")
+            done < <(compgen -W "$opts" -- "$cur")
+            ;;
+        *)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do 
+                COMPREPLY+=("$line")
+            done < <(compgen -f -- "$cur")
+            ;;
+    esac
+}
+
+_gts_join()
+{
+    opts="-h --help --version -c --circular -F --format -o --output"
     local cur="${COMP_WORDS[$COMP_CWORD]}"
     case "$cur" in
         -*)
@@ -152,9 +196,53 @@ _gts_length()
     esac
 }
 
+_gts_pick()
+{
+    opts="-h --help --version -f --feature -F --format -o --output"
+    local cur="${COMP_WORDS[$COMP_CWORD]}"
+    case "$cur" in
+        -*)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do
+                COMPREPLY+=("$line")
+            done < <(compgen -W "$opts" -- "$cur")
+            ;;
+        *)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do 
+                COMPREPLY+=("$line")
+            done < <(compgen -f -- "$cur")
+            ;;
+    esac
+}
+
 _gts_query()
 {
-    opts="-h --help --version -d --delimiter --empty --no-header --no-key -n --name --no-location -o --output --source -t --separator"
+    opts="-h --help --version -d --delimiter --empty --no-header --no-key --no-location -n --name -o --output --source -t --separator"
+    local cur="${COMP_WORDS[$COMP_CWORD]}"
+    case "$cur" in
+        -*)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do
+                COMPREPLY+=("$line")
+            done < <(compgen -W "$opts" -- "$cur")
+            ;;
+        *)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do 
+                COMPREPLY+=("$line")
+            done < <(compgen -f -- "$cur")
+            ;;
+    esac
+}
+
+_gts_repair()
+{
+    opts="-h --help --version -F --format -o --output"
     local cur="${COMP_WORDS[$COMP_CWORD]}"
     case "$cur" in
         -*)
@@ -198,7 +286,7 @@ _gts_reverse()
 
 _gts_rotate()
 {
-    opts="-h --help --version -F --format -o --output -v --backward"
+    opts="-h --help --version -F --format -o --output"
     local cur="${COMP_WORDS[$COMP_CWORD]}"
     case "$cur" in
         -*)
@@ -220,7 +308,7 @@ _gts_rotate()
 
 _gts_search()
 {
-    opts="-h --help --version -F --format -e --exact -k --key --no-complement -o --output -q --qualifier"
+    opts="-h --help --version -e --exact -F --format -k --key --no-complement -o --output -q --qualifier"
     local cur="${COMP_WORDS[$COMP_CWORD]}"
     case "$cur" in
         -*)
@@ -262,9 +350,53 @@ _gts_select()
     esac
 }
 
+_gts_sort()
+{
+    opts="-h --help --version -F --format -o --output -r --reverse"
+    local cur="${COMP_WORDS[$COMP_CWORD]}"
+    case "$cur" in
+        -*)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do
+                COMPREPLY+=("$line")
+            done < <(compgen -W "$opts" -- "$cur")
+            ;;
+        *)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do 
+                COMPREPLY+=("$line")
+            done < <(compgen -f -- "$cur")
+            ;;
+    esac
+}
+
+_gts_split()
+{
+    opts="-h --help --version -F --format -o --output"
+    local cur="${COMP_WORDS[$COMP_CWORD]}"
+    case "$cur" in
+        -*)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do
+                COMPREPLY+=("$line")
+            done < <(compgen -W "$opts" -- "$cur")
+            ;;
+        *)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do 
+                COMPREPLY+=("$line")
+            done < <(compgen -f -- "$cur")
+            ;;
+    esac
+}
+
 _gts_summary()
 {
-    opts="-h --help --version -F --no-feature -Q --no-qualifier -o --output"
+    opts="-h --help --version -F --no-feature -o --output -Q --no-qualifier"
     local cur="${COMP_WORDS[$COMP_CWORD]}"
     case "$cur" in
         -*)
@@ -286,7 +418,7 @@ _gts_summary()
 
 _gts()
 {
-    cmds="-h --help --version annotate clear complement delete extract insert length query reverse rotate search select summary"
+    cmds="-h --help --version annotate clear complement define delete extract insert join length pick query repair reverse rotate search select sort split summary"
     local i=0 cmd
 
     while [[ "$i" -lt "$COMP_CWORD" ]]
@@ -329,15 +461,21 @@ _gts()
         annotate)   _gts_annotate ;;
         clear)      _gts_clear ;;
         complement) _gts_complement ;;
+        define)     _gts_define ;;
         delete)     _gts_delete ;;
         extract)    _gts_extract ;;
         insert)     _gts_insert ;;
+        join)       _gts_join ;;
         length)     _gts_length ;;
+        pick)       _gts_pick ;;
         query)      _gts_query ;;
+        repair)     _gts_repair ;;
         reverse)    _gts_reverse ;;
         rotate)     _gts_rotate ;;
         search)     _gts_search ;;
         select)     _gts_select ;;
+        sort)       _gts_sort ;;
+        split)      _gts_split ;;
         summary)    _gts_summary ;;
         *) ;;
     esac
