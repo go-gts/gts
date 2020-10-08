@@ -31,7 +31,7 @@ var asLocatorFailTests = []string{
 }
 
 func TestAsLocator(t *testing.T) {
-	result, err := FeatureTableParser("").Parse(pars.FromString(featureIOTest))
+	result, err := FeatureTableParser("").Parse(pars.FromString(featureIOTests[0]))
 	if err != nil {
 		t.Errorf("failed to parse feature table: %v", err)
 		return
