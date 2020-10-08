@@ -10,6 +10,7 @@ var moleculeCounterTests = []struct {
 	{RNA, "bases"},
 	{AA, "residues"},
 	{SingleStrandDNA, "bases"},
+	{DoubleStrandDNA, "bases"},
 }
 
 func TestMoleculeCounter(t *testing.T) {
@@ -26,6 +27,7 @@ var asMoleculeTests = []Molecule{
 	RNA,
 	AA,
 	SingleStrandDNA,
+	DoubleStrandDNA,
 }
 
 func TestAsMolecule(t *testing.T) {

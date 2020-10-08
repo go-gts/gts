@@ -22,6 +22,7 @@ const (
 	AA           = "AA"
 
 	SingleStrandDNA = "ss-DNA"
+	DoubleStrandDNA = "ds-DNA"
 )
 
 // AsMolecule attempts to convert a string into a Molecule object.
@@ -35,6 +36,8 @@ func AsMolecule(s string) (Molecule, error) {
 		return AA, nil
 	case "ss-DNA":
 		return SingleStrandDNA, nil
+	case "ds-DNA":
+		return DoubleStrandDNA, nil
 	}
 	return "", fmt.Errorf("molecule type for %q not known", s)
 }
