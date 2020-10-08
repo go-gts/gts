@@ -11,7 +11,8 @@ import (
 	"github.com/go-test/deep"
 )
 
-var featureIOTest = `     source          1..465
+var featureIOTests = []string{
+	`     source          1..465
                      /organism="Homo sapiens"
                      /mol_type="mRNA"
                      /db_xref="taxon:9606"
@@ -69,7 +70,19 @@ var featureIOTest = `     source          1..465
      exon            247..465
                      /gene="INS"
                      /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /inference="alignment:Splign:2.1.0"`
+                     /inference="alignment:Splign:2.1.0"`,
+	`     tRNA            complement(3838377..3838450)
+                     /gene="TRI-GAT1-1"
+                     /product="tRNA-Ile"
+                     /inference="COORDINATES: profile:tRNAscan-SE:1.23"
+                     /note="tRNA-Ile (anticodon GAT) 1-1; Derived by automated
+                     computational analysis using gene prediction method:
+                     tRNAscan-SE."
+                     /anticodon=(pos:complement(3838414..3838416),aa:Ile,
+                     seq:gat)
+                     /db_xref="GeneID:100189132"
+                     /db_xref="HGNC:HGNC:34694"`,
+}
 
 func TestFeatureKeylineParser(t *testing.T) {
 	parser := pars.Exact(featureKeylineParser("     ", 21))
@@ -89,26 +102,28 @@ func TestFeatureKeylineParser(t *testing.T) {
 }
 
 func TestFeatureIO(t *testing.T) {
-	state := pars.FromString(featureIOTest)
 	parser := pars.Exact(FeatureTableParser(""))
-	result, err := parser.Parse(state)
-	if err != nil {
-		t.Errorf("while parsing`\n%s\n`: %v", featureIOTest, err)
-		return
-	}
-	switch ff := result.Value.(type) {
-	case FeatureTable:
-		b := strings.Builder{}
-		n, err := ff.Format("     ", 21).WriteTo(&b)
+	for _, in := range featureIOTests {
+		state := pars.FromString(in)
+		result, err := parser.Parse(state)
 		if err != nil {
-			t.Errorf("f.WriteTo(w) = %d, %v, want %d, nil", n, err, n)
+			t.Errorf("while parsing`\n%s\n`: %v", in, err)
+			return
 		}
-		out := b.String()
-		if out != featureIOTest {
-			t.Errorf("f.Format(%q, 21) = %q, want %q", "     ", out, featureIOTest)
+		switch ff := result.Value.(type) {
+		case FeatureTable:
+			b := strings.Builder{}
+			n, err := ff.Format("     ", 21).WriteTo(&b)
+			if err != nil {
+				t.Errorf("f.WriteTo(w) = %d, %v, want %d, nil", n, err, n)
+			}
+			out := b.String()
+			if out != in {
+				t.Errorf("f.Format(%q, 21) = %q, want %q", "     ", out, in)
+			}
+		default:
+			t.Errorf("result.Value.(type) = %T, want %T", ff, FeatureTable{})
 		}
-	default:
-		t.Errorf("result.Value.(type) = %T, want %T", ff, FeatureTable{})
 	}
 
 	if err := parser(pars.FromString(""), pars.Void); err == nil {
@@ -134,11 +149,11 @@ func TestFeature(t *testing.T) {
 }
 
 func TestFeatureRepair(t *testing.T) {
-	state := pars.FromString(featureIOTest)
+	state := pars.FromString(featureIOTests[0])
 	parser := pars.Exact(FeatureTableParser(""))
 	result, err := parser.Parse(state)
 	if err != nil {
-		t.Errorf("while parsing`\n%s\n`: %v", featureIOTest, err)
+		t.Errorf("while parsing`\n%s\n`: %v", featureIOTests[0], err)
 		return
 	}
 	m, n := 200, 465
@@ -226,11 +241,11 @@ func TestFeatureQualifierFilter(t *testing.T) {
 }
 
 func TestFeatureTableSort(t *testing.T) {
-	state := pars.FromString(featureIOTest)
+	state := pars.FromString(featureIOTests[0])
 	parser := pars.Exact(FeatureTableParser(""))
 	result, err := parser.Parse(state)
 	if err != nil {
-		t.Errorf("while parsing`\n%s\n`: %v", featureIOTest, err)
+		t.Errorf("while parsing`\n%s\n`: %v", featureIOTests[0], err)
 		return
 	}
 

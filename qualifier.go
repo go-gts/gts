@@ -249,6 +249,8 @@ func literalQualifierValueParser(prefix string) pars.Parser {
 			pars.Line(state, result)
 			p = append(p, '\n')
 			p = append(p, result.Token...)
+			state.Drop()
+			state.Push()
 		}
 		result.SetToken(p)
 		state.Drop()
