@@ -1,14 +1,12 @@
 package seqio
 
 import (
-	"bufio"
 	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/go-ascii/ascii"
 	"github.com/go-gts/gts"
@@ -118,7 +116,7 @@ func toOriginLength(length int) int {
 			ret += lastBlock + 1
 		}
 	}
-	return ret
+	return gts.Max(0, ret-1)
 }
 
 func fromOriginLength(length int) int {
@@ -156,23 +154,30 @@ type Origin struct {
 
 // NewOrigin formats a byte slice into GenBank sequence origin format.
 func NewOrigin(p []byte) Origin {
-	buf := &bytes.Buffer{}
-	w := bufio.NewWriter(buf)
+	q := make([]byte, toOriginLength(len(p)))
+	offset := 0
 	for i := 0; i < len(p); i += 60 {
 		if i != 0 {
-			io.WriteString(w, "\n")
+			q[offset] = '\n'
+			offset++
 		}
-		prefix := fmt.Sprintf("%9d", i+1)
-		io.WriteString(w, prefix)
+
+		prefix := []byte(fmt.Sprintf("%9d", i+1))
+		copy(q[offset:], prefix)
+		offset += len(prefix)
+
 		for j := 0; j < 60 && i+j < len(p); j += 10 {
 			start := i + j
 			end := gts.Min(start+10, len(p))
-			io.WriteString(w, " ")
-			w.Write(p[start:end])
+
+			q[offset] = ' '
+			offset++
+
+			copy(q[offset:], p[start:end])
+			offset += end - start
 		}
 	}
-	w.Flush()
-	return Origin{buf.Bytes(), false}
+	return Origin{q, false}
 }
 
 // Bytes converts the GenBank sequence origin into a byte slice.
@@ -427,7 +432,12 @@ var genbankLocusParser = pars.Seq(
 	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
 	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
 	pars.Count(pars.Byte(), 3).Map(pars.Cat), pars.Spaces,
-	pars.AsParser(pars.Line).Map(pars.Time("02-Jan-2006")),
+	pars.AsParser(pars.Line).Map(func(result *pars.Result) (err error) {
+		s := string(result.Token)
+		date, err := AsDate(s)
+		result.SetValue(date)
+		return err
+	}),
 ).Children(1, 2, 4, 7, 9, 11, 13)
 
 func genbankFieldBodyParser(depth int) pars.Parser {
@@ -465,7 +475,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 		return pars.NewError(err.Error(), state.Position())
 	}
 	division := string(result.Children[5].Token)
-	date := FromTime(result.Children[6].Value.(time.Time))
+	date := result.Children[6].Value.(Date)
 
 	fields := GenBankFields{
 		LocusName: locus,
@@ -665,7 +675,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 			pars.Line(state, result)
 
 			state.Push()
-			if err := state.Request(toOriginLength(length)); err != nil {
+			if err := state.Request(toOriginLength(length) + 1); err != nil {
 				return pars.NewError("not enough bytes in state", state.Position())
 			}
 			buffer := state.Buffer()

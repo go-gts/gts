@@ -32,6 +32,32 @@ func TestScannerGenBank(t *testing.T) {
 	}
 }
 
+func TestScannerGenBankCRLF(t *testing.T) {
+	in := testutils.ReadTestfile(t, "NC_001422.gb")
+	in = strings.ReplaceAll(in, "\n", "\r\n")
+	s := NewScanner(GenBankParser, strings.NewReader(in))
+
+	if s.Value() != nil {
+		t.Error("First scan should be empty")
+	}
+
+	if !s.Scan() {
+		if s.Err() == nil {
+			t.Error("Scan failed but returned nil error")
+			return
+		}
+	}
+
+	if s.Err() != nil {
+		t.Errorf("Scan failed: %v", s.Err())
+		return
+	}
+
+	if seq, ok := s.Value().(GenBank); !ok {
+		t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
+	}
+}
+
 func TestScannerGenBankFail(t *testing.T) {
 	in := testutils.ReadTestfile(t, "NC_001422.fasta")
 	s := NewScanner(GenBankParser, strings.NewReader(in))

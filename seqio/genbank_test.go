@@ -247,7 +247,7 @@ func TestGenBankIO(t *testing.T) {
 	}
 }
 
-func TestGenBankIO2(t *testing.T) {
+func TestGenBankIOContig(t *testing.T) {
 	in := testutils.ReadTestfile(t, "NC_000913.3.min.gb")
 	state := pars.FromString(in)
 	parser := pars.AsParser(GenBankParser)
