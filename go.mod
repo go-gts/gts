@@ -11,5 +11,4 @@ require (
 	github.com/go-wrap/wrap v1.0.3
 	github.com/mattn/go-isatty v0.0.12
 	golang.org/x/sys v0.0.0-20201007165808-a893ed343c85 // indirect
-	golang.org/x/text v0.3.3
 )
