@@ -91,6 +91,7 @@ COMMENT     PROVISIONAL REFSEQ: This record has not yet been subject to final
             residues could also be damaged when the reaction was performed in
             the dark, in the presence of promazine cation radicals [22].
             COMPLETENESS: full length.
+WARNING     THIS FILE HAS BEEN MODIFIED FOR USE IN TESTING.
 FEATURES             Location/Qualifiers
      source          1..133
                      /organism="Escherichia virus phiX174"

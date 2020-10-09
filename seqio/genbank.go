@@ -1,8 +1,6 @@
 package seqio
 
 import (
-	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -13,6 +11,33 @@ import (
 	"github.com/go-pars/pars"
 	"github.com/go-wrap/wrap"
 )
+
+const defaultGenBankIndent = "            "
+
+// FieldFormatter represents a function for formatting a field.
+type FieldFormatter func(name, value string) string
+
+// ExtraField represents an uncommon field of a genome flat-file.
+type ExtraField struct {
+	Name   string
+	Value  string
+	Format func(name, value string) string
+}
+
+// String satisfies the fmt.Stringer interface.
+func (field ExtraField) String() string {
+	return field.Format(field.Name, field.Value)
+}
+
+func genbankFieldFormatter(name, value string) string {
+	value = AddPrefix(value, defaultGenBankIndent)
+	return fmt.Sprintf("%-12s%s", name, value)
+}
+
+// GenBankExtraField creates a new extra field with a default formatter.
+func GenBankExtraField(name, value string) ExtraField {
+	return ExtraField{name, value, genbankFieldFormatter}
+}
 
 // GenBankFields represents the fields of a GenBank record other than the
 // features and sequence.
@@ -30,10 +55,11 @@ type GenBankFields struct {
 	Keywords   []string
 	Source     Organism
 	References []Reference
-	Comment    string
+	Comments   []string
+	Extra      []ExtraField
 	Contig     Contig
 
-	Region gts.Region
+	Region gts.Region // Appears in sliced files.
 }
 
 // Slice returns a metadata sliced with the given region.
@@ -170,7 +196,7 @@ func NewOrigin(p []byte) Origin {
 			start := i + j
 			end := gts.Min(start+10, len(p))
 
-			q[offset] = ' '
+			q[offset] = spaceByte
 			offset++
 
 			copy(q[offset:], p[start:end])
@@ -286,7 +312,7 @@ func (gb GenBank) WithTopology(t gts.Topology) gts.Sequence {
 // String satisifes the fmt.Stringer interface.
 func (gb GenBank) String() string {
 	b := strings.Builder{}
-	indent := "            "
+	indent := defaultGenBankIndent
 
 	length := gb.Origin.Len()
 	if length == 0 {
@@ -321,18 +347,15 @@ func (gb GenBank) String() string {
 	}
 
 	keywords := wrap.Space(strings.Join(gb.Fields.Keywords, "; ")+".", 67)
-	keywords =
-		AddPrefix(keywords, indent)
+	keywords = AddPrefix(keywords, indent)
 	b.WriteString("\nKEYWORDS    " + keywords)
 
 	source := wrap.Space(gb.Fields.Source.Species, 67)
-	source =
-		AddPrefix(source, indent)
+	source = AddPrefix(source, indent)
 	b.WriteString("\nSOURCE      " + source)
 
 	organism := wrap.Space(gb.Fields.Source.Name, 67)
-	organism =
-		AddPrefix(organism, indent)
+	organism = AddPrefix(organism, indent)
 	b.WriteString("\n  ORGANISM  " + organism)
 
 	taxon := wrap.Space(strings.Join(gb.Fields.Source.Taxon, "; ")+".", 67)
@@ -346,20 +369,16 @@ func (gb GenBank) String() string {
 			b.WriteString(pad + ref.Info)
 		}
 		if ref.Authors != "" {
-			b.WriteString("\n  AUTHORS   " +
-				AddPrefix(ref.Authors, indent))
+			b.WriteString("\n  AUTHORS   " + AddPrefix(ref.Authors, indent))
 		}
 		if ref.Group != "" {
-			b.WriteString("\n  CONSRTM   " +
-				AddPrefix(ref.Group, indent))
+			b.WriteString("\n  CONSRTM   " + AddPrefix(ref.Group, indent))
 		}
 		if ref.Title != "" {
-			b.WriteString("\n  TITLE     " +
-				AddPrefix(ref.Title, indent))
+			b.WriteString("\n  TITLE     " + AddPrefix(ref.Title, indent))
 		}
 		if ref.Journal != "" {
-			b.WriteString("\n  JOURNAL   " +
-				AddPrefix(ref.Journal, indent))
+			b.WriteString("\n  JOURNAL   " + AddPrefix(ref.Journal, indent))
 		}
 		if ref.Xref != nil {
 			if v, ok := ref.Xref["PUBMED"]; ok {
@@ -367,14 +386,16 @@ func (gb GenBank) String() string {
 			}
 		}
 		if ref.Comment != "" {
-			b.WriteString("\n  REMARK    " +
-				AddPrefix(ref.Comment, indent))
+			b.WriteString("\n  REMARK    " + AddPrefix(ref.Comment, indent))
 		}
 	}
 
-	if gb.Fields.Comment != "" {
-		b.WriteString("\nCOMMENT     " +
-			AddPrefix(gb.Fields.Comment, indent))
+	for _, comment := range gb.Fields.Comments {
+		b.WriteString("\nCOMMENT     " + AddPrefix(comment, indent))
+	}
+
+	for _, extra := range gb.Fields.Extra {
+		b.WriteString("\n" + extra.String())
 	}
 
 	b.WriteString("\nFEATURES             Location/Qualifiers\n")
@@ -428,10 +449,11 @@ func (gf GenBankFormatter) WriteTo(w io.Writer) (int64, error) {
 var genbankLocusParser = pars.Seq(
 	"LOCUS", pars.Spaces,
 	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
-	pars.Int, " bp", pars.Spaces,
+	pars.Int, pars.Any(" bp", " aa"), pars.Spaces,
 	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
 	pars.Word(ascii.Not(ascii.IsSpace)), pars.Spaces,
-	pars.Count(pars.Byte(), 3).Map(pars.Cat), pars.Spaces,
+	pars.Maybe(pars.Count(pars.Filter(ascii.IsUpper), 3).Map(pars.Cat)),
+	pars.Spaces,
 	pars.AsParser(pars.Line).Map(func(result *pars.Result) (err error) {
 		s := string(result.Token)
 		date, err := AsDate(s)
@@ -440,16 +462,21 @@ var genbankLocusParser = pars.Seq(
 	}),
 ).Children(1, 2, 4, 7, 9, 11, 13)
 
-func genbankFieldBodyParser(depth int) pars.Parser {
-	indent := pars.String(strings.Repeat(" ", depth))
-	return func(state *pars.State, result *pars.Result) error {
-		pars.Line(state, result)
-		tmp := *pars.NewTokenResult(result.Token)
-		parser := pars.Many(pars.Seq(indent, pars.Line).Child(1))
-		parser(state, result)
-		children := append([]pars.Result{tmp}, result.Children...)
-		result.SetChildren(children)
-		return nil
+func tryAllParsers(pp []pars.Parser) pars.Parser {
+	return func(state *pars.State, result *pars.Result) (err error) {
+		for _, p := range pp {
+			state.Push()
+			err = p(state, result)
+			if err == nil {
+				state.Drop()
+				return nil
+			}
+			if !state.Pushed() {
+				return err
+			}
+			state.Pop()
+		}
+		return err
 	}
 }
 
@@ -459,10 +486,9 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 		return err
 	}
 
-	pars.Cut(state, result)
+	state.Clear()
 
 	depth := len(result.Children[0].Token) + 5
-	indent := pars.String(strings.Repeat(" ", depth))
 
 	locus := string(result.Children[1].Token)
 	length := result.Children[2].Value.(int)
@@ -477,214 +503,52 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 	division := string(result.Children[5].Token)
 	date := result.Children[6].Value.(Date)
 
-	fields := GenBankFields{
+	gb := &GenBank{Fields: GenBankFields{
 		LocusName: locus,
 		Molecule:  molecule,
 		Topology:  topology,
 		Division:  division,
 		Date:      date,
 		Region:    nil,
+	}}
+
+	genbankOriginParser := makeGenbankOriginParser(length)
+
+	generators := []genbankSubparser{
+		genbankDefinitionParser,
+		genbankAccessionParser,
+		genbankVersionParser,
+		genbankDBLinkParser,
+		genbankKeywordsParser,
+		genbankSourceParser,
+		genbankReferenceParser,
+		genbankCommentParser,
+		genbankFeatureParser,
+		genbankContigParser,
+		genbankOriginParser,
+		genbankExtraFieldParser,
 	}
 
-	gb := GenBank{Fields: fields}
+	subparsers := make([]pars.Parser, len(generators))
+	for i, generate := range generators {
+		subparsers[i] = generate(gb, depth)
+	}
+	parser := tryAllParsers(subparsers)
 
-	fieldNameParser := pars.Word(ascii.IsUpper).Error(errors.New("expected field name"))
-	fieldBodyParser := genbankFieldBodyParser(depth)
-	end := pars.Seq("//", pars.EOL).Error(errors.New("expected end of record"))
+	end := pars.Seq("//", pars.EOL)
 
-	for {
-		if end(state, result) == nil {
-			result.SetValue(gb)
-			return nil
-		}
-		if err := fieldNameParser(state, result); err != nil {
-			return err
-		}
-		name := string(result.Token)
-		paddingParser := pars.Count(' ', depth-len(name))
-
-		if err := paddingParser(state, result); name != "ORIGIN" && err != nil {
-			return pars.NewError("uneven indent", state.Position())
-		}
-
-		switch name {
-		case "DEFINITION":
-			parser := fieldBodyParser.Map(pars.Join([]byte("\n")))
-			parser(state, result)
-			token := bytes.TrimRight(result.Token, ".")
-			gb.Fields.Definition = string(token)
-
-		case "ACCESSION":
-			pars.Line(state, result)
-			gb.Fields.Accession = string(result.Token)
-
-		case "VERSION":
-			pars.Line(state, result)
-			gb.Fields.Version = string(result.Token)
-
-		case "DBLINK":
-			headParser := pars.Seq(pars.Until(':'), ':', pars.Line).Children(0, 2)
-			if err := headParser(state, result); err != nil {
+	for end(state, result) != nil {
+		if err := parser(state, result); err != nil {
+			if dig(err) != errGenBankExtra {
 				return err
 			}
-			db := string(result.Children[0].Token)
-			id := string(result.Children[1].Token[1:])
-			gb.Fields.DBLink.Set(db, id)
-
-			tailParser := pars.Many(pars.Seq(indent, headParser).Child(1))
-			tailParser(state, result)
-			for _, child := range result.Children {
-				db = string(child.Children[0].Token)
-				id = string(child.Children[1].Token[1:])
-				gb.Fields.DBLink.Set(db, id)
-			}
-
-		case "KEYWORDS":
-			parser := fieldBodyParser.Map(pars.Join([]byte(" ")))
-			parser(state, result)
-			gb.Fields.Keywords =
-				FlatFileSplit(string(result.Token))
-
-		case "SOURCE":
-			sourceParser := fieldBodyParser.Map(pars.Join([]byte("\n")))
-			sourceParser(state, result)
-
-			organism := Organism{}
-			organism.Species = string(result.Token)
-
-			organismLineParser := pars.Seq(
-				pars.Spaces, []byte("ORGANISM"), pars.Spaces,
-			).Map(pars.Cat)
-
-			if organismLineParser(state, result) == nil {
-				if len(result.Token) != depth {
-					return pars.NewError("uneven indent", state.Position())
-				}
-				pars.Line(state, result)
-				organism.Name = string(result.Token)
-
-				taxonParser := pars.Many(
-					pars.Seq(indent, pars.Line).Child(1),
-				).Map(pars.Join([]byte(" ")))
-				taxonParser(state, result)
-				organism.Taxon =
-					FlatFileSplit(string(result.Token))
-			}
-
-			gb.Fields.Source = organism
-
-		case "REFERENCE":
-			pars.Spaces(state, result)
-
-			if err := pars.Int(state, result); err != nil {
-				return pars.NewError("expected a reference number", state.Position())
-			}
-
-			number := result.Value.(int)
-
-			reference := Reference{
-				Number: number,
-			}
-
-			pad := strings.Repeat(" ", 3-len(strconv.Itoa(number)))
-			infoParser := pars.Seq(pad, pars.Line).Child(1)
-			if infoParser(state, result) == nil {
-				reference.Info = string(result.Token)
-			} else {
-				pars.Line(state, result)
-			}
-
-			subfieldParser := pars.Seq(
-				pars.Spaces,
-				pars.Any(
-					"AUTHORS",
-					"CONSRTM",
-					"TITLE",
-					"JOURNAL",
-					"PUBMED",
-					"REMARK",
-				),
-				pars.Spaces,
-			).Map(func(result *pars.Result) error {
-				children := result.Children
-				name := children[1].Value.(string)
-				depth := len(name) + len(children[0].Token) + len(children[2].Token)
-				*result = *pars.AsResults(name, depth)
-				return nil
-			})
-
-			for subfieldParser(state, result) == nil {
-				name := result.Children[0].Value.(string)
-				if result.Children[1].Value.(int) != depth {
-					return pars.NewError("uneven indent", state.Position())
-				}
-				parser := fieldBodyParser.Map(pars.Join([]byte("\n")))
-				parser(state, result)
-				switch name {
-				case "AUTHORS":
-					reference.Authors = string(result.Token)
-				case "CONSRTM":
-					reference.Group = string(result.Token)
-				case "TITLE":
-					reference.Title = string(result.Token)
-				case "JOURNAL":
-					reference.Journal = string(result.Token)
-				case "PUBMED":
-					reference.Xref = map[string]string{"PUBMED": string(result.Token)}
-				case "REMARK":
-					reference.Comment = string(result.Token)
-				}
-			}
-
-			gb.Fields.References = append(gb.Fields.References, reference)
-
-		case "COMMENT":
-			parser := fieldBodyParser.Map(pars.Join([]byte("\n")))
-			parser(state, result)
-			gb.Fields.Comment = string(result.Token)
-
-		case "FEATURES":
 			pars.Line(state, result)
-			parser := gts.FeatureTableParser("")
-			if err := parser(state, result); err != nil {
-				return err
+			if pars.End(state, result) == nil {
+				return errGenBankField
 			}
-			gb.Table = gts.FeatureTable(result.Value.(gts.FeatureTable))
-
-		case "CONTIG":
-			contigParser := pars.Seq(
-				"join(",
-				pars.Until(':'), ':',
-				pars.Int, "..", pars.Int,
-				')', pars.Line,
-			).Map(func(result *pars.Result) error {
-				id := string(result.Children[1].Token)
-				head := result.Children[3].Value.(int)
-				tail := result.Children[5].Value.(int)
-				contig := Contig{id, gts.Segment{head - 1, tail}}
-				result.SetValue(contig)
-				return nil
-			})
-			if err := contigParser(state, result); err != nil {
-				return err
-			}
-			gb.Fields.Contig = result.Value.(Contig)
-
-		case "ORIGIN":
-			// Trim off excess whitespace.
-			pars.Line(state, result)
-
-			state.Push()
-			if err := state.Request(toOriginLength(length) + 1); err != nil {
-				return pars.NewError("not enough bytes in state", state.Position())
-			}
-			buffer := state.Buffer()
-			state.Advance()
-			gb.Origin = Origin{buffer[:len(buffer)-1], false}
-
-		default:
-			what := fmt.Sprintf("unexpected field name `%s`", name)
-			return pars.NewError(what, state.Position())
 		}
 	}
+
+	result.SetValue(*gb)
+	return nil
 }

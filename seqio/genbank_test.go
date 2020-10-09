@@ -19,8 +19,6 @@ func formatGenBankHelper(t *testing.T, seq gts.Sequence, in string) {
 	n, err := f.WriteTo(&b)
 	if int(n) != len([]byte(in)) || err != nil {
 		t.Errorf("f.WriteTo(&b) = (%d, %v), want %d, nil", n, err, len(in))
-		testutils.Diff(t, in, b.String())
-		return
 	}
 	testutils.Diff(t, in, b.String())
 }
@@ -81,6 +79,7 @@ func TestGenBankFields(t *testing.T) {
 	}
 }
 
+/*
 func TestGenBank(t *testing.T) {
 	length := 100
 
@@ -102,7 +101,7 @@ func TestGenBank(t *testing.T) {
 			Taxon:   []string{"Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "species"},
 		},
 		nil,
-		"",
+		nil,
 		Contig{"", gts.Segment{}},
 		nil,
 	}
@@ -126,31 +125,26 @@ func TestGenBank(t *testing.T) {
 	seq := gts.New(info, ff, p)
 	formatGenBankHelper(t, seq, in)
 }
+*/
 
 func TestGenBankWithInterface(t *testing.T) {
 	length := 100
 
 	info := GenBankFields{
-		"LOCUS_NAME",
-		"DNA",
-		gts.Linear,
-		"UNA",
-		FromTime(time.Now()),
+		LocusName: "LOCUS_NAME",
+		Molecule:  gts.DNA,
+		Topology:  gts.Linear,
+		Division:  "UNA",
+		Date:      FromTime(time.Now()),
 
-		"Sample sequence",
-		"ACCESSION",
-		"VERSION",
-		Dictionary{},
-		nil,
-		Organism{
+		Definition: "Sample sequence",
+		Accession:  "ACCESSION",
+		Version:    "VERSION",
+		Source: Organism{
 			Species: "Genus species",
 			Name:    "Name",
 			Taxon:   []string{"Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "species"},
 		},
-		nil,
-		"",
-		Contig{"", gts.Segment{}},
-		nil,
 	}
 
 	p := []byte(strings.Repeat("atgc", length))
@@ -207,62 +201,76 @@ func TestGenBankSlice(t *testing.T) {
 		t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
 	}
 }
-
 func TestGenBankIO(t *testing.T) {
-	in := testutils.ReadTestfile(t, "NC_001422.gb")
-	state := pars.FromString(in)
-	parser := pars.AsParser(GenBankParser)
-
-	result, err := parser.Parse(state)
-	if err != nil {
-		t.Errorf("parser returned %v\nBuffer:\n%q", err, string(result.Token))
+	files := []string{
+		"NC_001422.gb",
+		"NC_000913.3.min.gb",
 	}
+	for _, file := range files {
+		in := testutils.ReadTestfile(t, file)
+		state := pars.FromString(in)
+		parser := pars.AsParser(GenBankParser)
 
-	switch seq := result.Value.(type) {
-	case GenBank:
-		data := seq.Bytes()
-		if len(data) != gts.Len(seq) {
-			t.Errorf("len(data) = %d, want %d", len(data), gts.Len(seq))
+		result, err := parser.Parse(state)
+		if err != nil {
+			t.Errorf("in file %q, parser returned %v\nBuffer:\n%q", file, err, string(result.Token))
 			return
 		}
-		if seq.Info() == nil {
-			t.Error("seq.Info() is nil")
-			return
-		}
-		if seq.Features() == nil {
-			t.Error("seq.Features() is nil")
-			return
-		}
-		for i, c := range data {
-			if !ascii.IsLetterFilter(c) {
-				t.Errorf("origin contains `%U` at byte %d, expected a sequence character", c, i+1)
-				return
-			}
-		}
 
-		formatGenBankHelper(t, &seq, in)
+		switch seq := result.Value.(type) {
+		case GenBank:
+			formatGenBankHelper(t, &seq, in)
+			cpy := gts.New(seq.Info(), seq.Features(), seq.Bytes())
+			formatGenBankHelper(t, &cpy, in)
 
-	default:
-		t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
+		default:
+			t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
+		}
 	}
 }
 
-func TestGenBankIOContig(t *testing.T) {
-	in := testutils.ReadTestfile(t, "NC_000913.3.min.gb")
-	state := pars.FromString(in)
-	parser := pars.AsParser(GenBankParser)
-
-	result, err := parser.Parse(state)
-	if err != nil {
-		t.Errorf("parser returned %v\nBuffer:\n%q", err, string(result.Token))
+func TestGenBankParser(t *testing.T) {
+	files := []string{
+		"NC_001422.gb",
+		"pBAT5.txt",
 	}
 
-	switch seq := result.Value.(type) {
-	case GenBank:
-		formatGenBankHelper(t, &seq, in)
+	for _, file := range files {
+		in := testutils.ReadTestfile(t, file)
+		state := pars.FromString(in)
+		parser := pars.AsParser(GenBankParser)
 
-	default:
-		t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
+		result, err := parser.Parse(state)
+		if err != nil {
+			t.Errorf("in file %q, parser returned %v\nBuffer:\n%q", file, err, string(result.Token))
+			return
+		}
+
+		switch seq := result.Value.(type) {
+		case GenBank:
+			data := seq.Bytes()
+			if len(data) != gts.Len(seq) {
+				t.Errorf("len(data) = %d, want %d", len(data), gts.Len(seq))
+				return
+			}
+			if seq.Info() == nil {
+				t.Error("seq.Info() is nil")
+				return
+			}
+			if seq.Features() == nil {
+				t.Error("seq.Features() is nil")
+				return
+			}
+			for i, c := range data {
+				if !ascii.IsLetterFilter(c) {
+					t.Errorf("origin contains `%U` at byte %d, expected a sequence character", c, i+1)
+					return
+				}
+			}
+
+		default:
+			t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
+		}
 	}
 }
 
@@ -281,6 +289,9 @@ var genbankIOFailTests = []string{
 	"" +
 		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
 		"DEFINITION",
+	"" +
+		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
+		"DEFINITION ",
 	"" +
 		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
 		"DBLINK      FOO",
@@ -328,7 +339,7 @@ func TestGenBankIOFail(t *testing.T) {
 	parser := pars.AsParser(GenBankParser)
 	for _, in := range genbankIOFailTests {
 		state := pars.FromString(in)
-		if _, err := parser.Parse(state); err == nil {
+		if err := parser(state, pars.Void); err == nil {
 			t.Errorf("while parsing`\n%s\n`: expected error", in)
 			return
 		}

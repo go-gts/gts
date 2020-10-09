@@ -2,6 +2,7 @@ package gts
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"regexp"
@@ -392,6 +393,8 @@ func (ftf FeatureTableFormatter) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
+var errFeatureKey = errors.New("expected feature key")
+
 type keyline struct {
 	pre int
 	key string
@@ -400,7 +403,7 @@ type keyline struct {
 }
 
 func featureKeylineParser(prefix string, depth int) pars.Parser {
-	word := pars.Word(ascii.IsSnake)
+	word := pars.Word(ascii.IsSnake).Error(errFeatureKey)
 	p := []byte(prefix)
 	return func(state *pars.State, result *pars.Result) error {
 		if err := state.Request(len(p)); err != nil {
@@ -440,7 +443,7 @@ func featureKeylineParser(prefix string, depth int) pars.Parser {
 func FeatureTableParser(prefix string) pars.Parser {
 	firstParser := pars.Seq(
 		prefix, pars.Spaces,
-		pars.Word(ascii.IsSnake), pars.Spaces,
+		pars.Word(ascii.IsSnake).Error(errFeatureKey), pars.Spaces,
 		parseLocation, pars.EOL,
 	).Map(func(result *pars.Result) error {
 		children := result.Children

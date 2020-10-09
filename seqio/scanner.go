@@ -1,13 +1,10 @@
 package seqio
 
 import (
-	"bytes"
 	"io"
 
 	"github.com/go-gts/gts"
 	"github.com/go-pars/pars"
-	"golang.org/x/text/runes"
-	"golang.org/x/text/transform"
 )
 
 var sequenceParsers = []pars.Parser{
@@ -23,41 +20,15 @@ type Scanner struct {
 	err error
 }
 
-func isCarriageReturn(r rune) bool {
-	return r == '\r'
-}
-
 // NewScanner creates a new sequence scanner.
 func NewScanner(p pars.Parser, r io.Reader) *Scanner {
-	// Check if there are carriage returns in the io.Reader. If there are, the
-	// carriage returns must be removed.
-	state, result := pars.NewState(r), &pars.Result{}
-	state.Push()
-	pars.Until(pars.EOL)(state, result)
-	pars.EOL(state, result)
-	if bytes.Contains(result.Token, []byte{'\r'}) {
-		state.Pop()
-		set := runes.Predicate(isCarriageReturn)
-		remove := runes.Remove(set)
-		r = transform.NewReader(state, remove)
-		state = pars.NewState(r)
-		state.Push()
-	}
-	state.Pop()
-	return &Scanner{p, state, pars.Result{}, nil}
+	return &Scanner{p, pars.NewState(r), pars.Result{}, nil}
 }
 
 // NewAutoScanner creates a new sequence scanner which will automatically
 // detect the sequence format from a list of known parsers on the first scan.
 func NewAutoScanner(r io.Reader) *Scanner {
 	return NewScanner(nil, r)
-}
-
-func dig(err error) error {
-	if v, ok := err.(interface{ Unwrap() error }); ok {
-		return dig(v.Unwrap())
-	}
-	return err
 }
 
 // Scan advances the scanner using the given parser. If the parser is not yet
