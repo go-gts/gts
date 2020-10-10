@@ -80,7 +80,7 @@ type CommonLine string
 
 // String returns the pretiffied edit string representation.
 func (op CommonLine) String() string {
-	return string(op)
+	return "|\t" + string(op)
 }
 
 // InsertLine represents a line insert operation.
@@ -88,7 +88,7 @@ type InsertLine string
 
 // String returns the pretiffied edit string representation.
 func (op InsertLine) String() string {
-	return fmt.Sprintf("\x1b[32m%s\x1b[0m", string(op))
+	return fmt.Sprintf("\x1b[32m+\t%s\x1b[0m", string(op))
 }
 
 // DeleteLine represents a line delete operation.
@@ -96,7 +96,7 @@ type DeleteLine string
 
 // String returns the pretiffied edit string representation.
 func (op DeleteLine) String() string {
-	return fmt.Sprintf("\x1b[31m%s\x1b[0m", string(op))
+	return fmt.Sprintf("\x1b[31m-\t%s\x1b[0m", string(op))
 }
 
 // Point represents a point in the edit graph.

@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -18,6 +17,8 @@ const spaceByte = byte(' ')
 func joinByte(c byte) pars.Map {
 	return pars.Join([]byte{c})
 }
+
+var isBaseCharacter = ascii.Range(33, 126)
 
 var errGenBankField = errors.New("expected field name")
 var errGenBankExtra = errors.New("failed to parse unknown field")
@@ -114,7 +115,11 @@ type genbankSubparser func(gb *GenBank, depth int) pars.Parser
 func genbankDefinitionParser(gb *GenBank, depth int) pars.Parser {
 	parser := genbankGenericFieldParser("DEFINITION", depth)
 	return parser.Map(func(result *pars.Result) error {
-		p := bytes.TrimSuffix(result.Token, []byte{'.'})
+		p := result.Token
+		if len(p) != 0 && p[len(p)-1] != '.' {
+			return errors.New("expected period")
+		}
+		p = bytes.TrimSuffix(p, []byte{'.'})
 		gb.Fields.Definition = string(p)
 		return nil
 	})
@@ -288,29 +293,79 @@ func genbankContigParser(gb *GenBank, depth int) pars.Parser {
 	return pars.Seq(fieldNameParser, fieldBodyParser, pars.EOL)
 }
 
+func validateOrigin(p []byte, length int, pos pars.Position) error {
+	offset := 0
+	for i := 0; i < length; i += 60 {
+		prefix := []byte(fmt.Sprintf("%9d", i+1))
+		if !bytes.HasPrefix(p[offset:], prefix) {
+			return pars.NewError("expected sequence index", pos)
+		}
+		offset += len(prefix)
+		pos.Byte += len(prefix)
+
+		for j := 0; j < 60 && i+j < length; j += 10 {
+			if p[offset] != spaceByte {
+				return pars.NewError("expected whitespace", pos)
+			}
+			offset++
+			pos.Byte++
+
+			for k := 0; k < 10 && i+j+k < length; k++ {
+				if !isBaseCharacter(p[offset]) {
+					return pars.NewError("expected character", pos)
+				}
+				offset++
+				pos.Byte++
+			}
+		}
+
+		if p[offset] != '\n' {
+			return pars.NewError("expected newline", pos)
+		}
+		offset++
+
+		pos.Line++
+		pos.Byte = 0
+	}
+
+	return nil
+}
+
 func slowGenBankOriginParser(length int) pars.Parser {
 	return func(state *pars.State, result *pars.Result) error {
 		p := make([]byte, toOriginLength(length))
 		offset := 0
 		for i := 0; i < length; i += 60 {
+			pos := state.Position()
 			pars.Line(state, result)
-			pattern := fmt.Sprintf("%9d", i+1)
+
+			q := result.Token
+			extent := 0
+			prefix := []byte(fmt.Sprintf("%9d", i+1))
+			if !bytes.HasPrefix(q, prefix) {
+				return pars.NewError("expected sequence index", pos)
+			}
+			extent += len(prefix)
+
 			for j := 0; j < 60 && i+j < length; j += 10 {
-				n := gts.Min(length-(i+j), 10)
-				pattern += fmt.Sprintf(" \\w{%d}", n)
+				if q[extent] != spaceByte {
+					pos.Byte += extent
+					return pars.NewError("expected whitespace", pos)
+				}
+				extent++
+
+				for k := 0; k < 10 && i+j+k < length; k++ {
+					if !isBaseCharacter(q[extent]) {
+						pos.Byte += extent
+						return pars.NewError("expected character", pos)
+					}
+					extent++
+				}
 			}
-			re := regexp.MustCompile(pattern)
-			index := re.FindIndex(result.Token)
-			if index == nil {
-				return pars.NewError("malformed origin", state.Position())
-			}
-			head, tail := index[0], index[1]
-			copy(p[offset:], result.Token[head:tail])
-			offset += tail - head
-			if offset < len(p) {
-				p[offset] = '\n'
-				offset++
-			}
+
+			offset += copy(p[offset:], q[:extent])
+			p[offset] = '\n'
+			offset++
 		}
 		result.SetToken(p)
 		return nil
@@ -326,25 +381,24 @@ func makeGenbankOriginParser(length int) genbankSubparser {
 			}
 			pars.Line(state, result)
 
-			state.Push()
 			if err := state.Request(toOriginLength(length)); err != nil {
 				return pars.NewError("not enough bytes in state", state.Position())
 			}
 
-			buffer := state.Buffer()
-			state.Advance()
-
-			if err := pars.EOL(state, result); err != nil {
-				state.Pop()
-				parser := slowGenBankOriginParser(length)
-				if err := parser(state, result); err != nil {
-					return err
-				}
-				buffer = result.Token
-			} else {
-				state.Drop()
+			p := state.Buffer()
+			if validateOrigin(p, length, state.Position()) == nil {
+				state.Advance()
+				gb.Origin = Origin{p, false}
+				return nil
 			}
-			gb.Origin = Origin{buffer, false}
+
+			parser := slowGenBankOriginParser(length)
+			if err := parser(state, result); err != nil {
+				return err
+			}
+			p = result.Token
+
+			gb.Origin = Origin{p, false}
 			return nil
 		}
 	}

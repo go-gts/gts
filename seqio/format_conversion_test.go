@@ -44,5 +44,5 @@ func TestFormatConversion(t *testing.T) {
 		t.Errorf("formatter.WriteTo(builder) = (%d, %v), want (%d, nil)", n, err, len(s2))
 	}
 	out := b.String()
-	testutils.Diff(t, strings.ToUpper(s2), strings.ToUpper(out))
+	testutils.DiffLine(t, strings.ToUpper(s2), strings.ToUpper(out))
 }

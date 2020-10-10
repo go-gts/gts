@@ -31,6 +31,6 @@ var addPrefixTests = []struct {
 func TestAddPrefix(t *testing.T) {
 	for _, tt := range addPrefixTests {
 		out := AddPrefix(tt.in, "    ")
-		testutils.Diff(t, out, tt.out)
+		testutils.DiffLine(t, out, tt.out)
 	}
 }

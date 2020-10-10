@@ -52,6 +52,21 @@ func Equals(t *testing.T, a, b interface{}) {
 func Diff(t *testing.T, a, b string) {
 	t.Helper()
 	if a != b {
+		ops := diff.Diff(a, b)
+		ss := make([]string, len(ops))
+		for i, op := range ops {
+			ss[i] = op.String()
+		}
+		s := strings.Join(ss, "")
+		t.Errorf("\n%s", s)
+	}
+}
+
+// DiffLine checks the equality of two strings and reports its diff by lines
+// if they differ.
+func DiffLine(t *testing.T, a, b string) {
+	t.Helper()
+	if a != b {
 		ops := diff.LineDiff(a, b)
 		lines := make([]string, len(ops))
 		for i, op := range ops {

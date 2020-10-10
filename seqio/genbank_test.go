@@ -20,37 +20,7 @@ func formatGenBankHelper(t *testing.T, seq gts.Sequence, in string) {
 	if int(n) != len([]byte(in)) || err != nil {
 		t.Errorf("f.WriteTo(&b) = (%d, %v), want %d, nil", n, err, len(in))
 	}
-	testutils.Diff(t, in, b.String())
-}
-
-func TestOrigin(t *testing.T) {
-	in := "gagttttatcgcttccatgacgcagaagttaacactttcggatatttctgatgagtcgaa"
-	exp := "        1 gagttttatc gcttccatga cgcagaagtt aacactttcg gatatttctg atgagtcgaa"
-	o := NewOrigin([]byte(in))
-	out := o.String()
-	if out != exp {
-		testutils.Diff(t, out, exp)
-	}
-	if o.Len() != len(in) {
-		t.Errorf("o.Len() = %d, expected %d", o.Len(), len(in))
-	}
-
-	out = string(o.Bytes())
-	if out != in {
-		testutils.Diff(t, out, in)
-	}
-	if o.Len() != len(in) {
-		t.Errorf("o.Len() = %d, expected %d", o.Len(), len(in))
-	}
-
-	out = o.String()
-	if out != exp {
-		testutils.Diff(t, out, exp)
-	}
-	out = string(o.Buffer)
-	if out != in {
-		testutils.Diff(t, out, in)
-	}
+	testutils.DiffLine(t, in, b.String())
 }
 
 func TestGenBankFields(t *testing.T) {
@@ -292,6 +262,9 @@ var genbankIOFailTests = []string{
 	"" +
 		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
 		"DEFINITION ",
+	"" +
+		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
+		"DEFINITION  Coliphage phi-X174, complete genome",
 	"" +
 		"LOCUS       NC_001422               5386 bp ss-DNA     circular PHG 06-JUL-2018\n" +
 		"DBLINK      FOO",

@@ -40,7 +40,7 @@ func TestFastaIO(t *testing.T) {
 				return
 			}
 			out := b.String()
-			testutils.Diff(t, in, out)
+			testutils.DiffLine(t, in, out)
 		})
 		t.Run("format from BasicSequence", func(t *testing.T) {
 			b := strings.Builder{}
@@ -51,7 +51,7 @@ func TestFastaIO(t *testing.T) {
 				return
 			}
 			out := b.String()
-			testutils.Diff(t, in, out)
+			testutils.DiffLine(t, in, out)
 		})
 	default:
 		t.Errorf("result.Value.(type) = %T, want %T", seq, Fasta{})

@@ -173,7 +173,7 @@ func TestFeatureRepair(t *testing.T) {
 		sout := out.Format("     ", 21).String()
 		sexp := exp.Format("     ", 21).String()
 		t.Errorf("Repair: \n%s\nDiff:", sin)
-		testutils.Diff(t, sout, sexp)
+		testutils.DiffLine(t, sout, sexp)
 	}
 }
 
@@ -264,7 +264,7 @@ func TestFeatureTableSort(t *testing.T) {
 		sout := out.Format("     ", 21).String()
 		sexp := exp.Format("     ", 21).String()
 		t.Errorf("Repair: \n%s\nDiff:", sin)
-		testutils.Diff(t, sout, sexp)
+		testutils.DiffLine(t, sout, sexp)
 	}
 }
 
