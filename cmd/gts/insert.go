@@ -6,9 +6,9 @@ import (
 	"os"
 	"sort"
 
+	"github.com/go-gts/flags"
 	"github.com/go-gts/gts"
 	"github.com/go-gts/gts/cmd"
-	"github.com/go-gts/gts/internal/flags"
 	"github.com/go-gts/gts/seqio"
 )
 

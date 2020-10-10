@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/go-gts/flags"
 	"github.com/go-gts/gts"
-	"github.com/go-gts/gts/internal/flags"
 )
 
 // Host is the togows host url.
