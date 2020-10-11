@@ -48,7 +48,7 @@ type Origin struct {
 }
 
 // NewOrigin formats a byte slice into GenBank sequence origin format.
-func NewOrigin(p []byte) Origin {
+func NewOrigin(p []byte) *Origin {
 	length := len(p)
 	q := make([]byte, toOriginLength(length))
 	offset := 0
@@ -65,7 +65,7 @@ func NewOrigin(p []byte) Origin {
 		q[offset] = '\n'
 		offset++
 	}
-	return Origin{q, false}
+	return &Origin{q, false}
 }
 
 // Bytes converts the GenBank sequence origin into a byte slice.

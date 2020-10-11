@@ -388,7 +388,7 @@ func makeGenbankOriginParser(length int) genbankSubparser {
 			p := state.Buffer()
 			if validateOrigin(p, length, state.Position()) == nil {
 				state.Advance()
-				gb.Origin = Origin{p, false}
+				gb.Origin = &Origin{p, false}
 				return nil
 			}
 
@@ -398,7 +398,7 @@ func makeGenbankOriginParser(length int) genbankSubparser {
 			}
 			p = result.Token
 
-			gb.Origin = Origin{p, false}
+			gb.Origin = &Origin{p, false}
 			return nil
 		}
 	}

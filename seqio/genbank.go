@@ -134,7 +134,7 @@ func (gbf GenBankFields) String() string {
 type GenBank struct {
 	Fields GenBankFields
 	Table  gts.FeatureTable
-	Origin Origin
+	Origin *Origin
 }
 
 // NewGenBank creates a new GenBank object.
