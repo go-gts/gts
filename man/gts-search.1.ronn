@@ -20,8 +20,9 @@ insight.
 ## OPTIONS
 
   * `<query>`:
-    Query sequence (will attempt to open as file). See gts-seqin(7) for a list
-    of currently supported list of sequence formats.
+    Query sequence file (will be interpreted literally if preceded with @).
+    See gts-seqin(7) for a list of currently supported list of sequence
+    formats.
 
   * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See

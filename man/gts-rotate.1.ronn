@@ -19,7 +19,8 @@ The topology of a sequence that is rotated will be changed to circular.
 ## OPTIONS
 
   * `<locator>`:
-    A locator string ([selector|point|range][@modifier]).
+    A locator string ([selector|point|range][@modifier]). See gts-locator(7)
+    for more details.
 
   * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See

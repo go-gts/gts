@@ -18,7 +18,7 @@ func init() {
 func rotateFunc(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	locstr := pos.String("locator", "a locator string ([selector|point|range][@modifier])")
+	locstr := pos.String("locator", "a locator string ([modifier|selector|point|range][@modifier])")
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
@@ -67,7 +67,7 @@ func rotateFunc(ctx *flags.Context) error {
 	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
-		rr := locate(seq.Features())
+		rr := locate(seq)
 		if len(rr) > 0 {
 			seq = gts.Rotate(seq, -rr[0].Head())
 		}

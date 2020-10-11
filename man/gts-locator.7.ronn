@@ -14,11 +14,13 @@ _location specifier_ is one of either a `selector`, `point location`, or
 gts-selector(7) for more details. A _point location_ is simply a single integer
 that directly specifies a single point in the sequence (starting at 1). A
 _range location_ is a pair of integers connected with `..` (starting at 1),
-which is identical to the notation of a feature range location. The locations
-specified by the _location specifier_ can be modified using a _modifier_. A
-_modifier_ can take one of five forms: `^[(+|-)n]`, `$[[(+|-)m]]`,
-`^[(+|-)n]..$[(+|-)m]`, `^[(+|-)n]..^[(+|-)m]`, or `$[(+|-)n]..$[(+|-)m]`.
-See gts-modifier(7) for more details.
+which is identical to the notation of a feature range location. However, the
+_range location_ of a _locator_ may specify a _modifier_, in which case the `^`
+represents the beginning of the sequence and the `$` represents the end of the
+sequence. The locations specified by the _location specifier_ can be modified
+using a _modifier_. A _modifier_ can take one of five forms: `^[(+|-)n]`,
+`$[[(+|-)m]]`, `^[(+|-)n]..$[(+|-)m]`, `^[(+|-)n]..^[(+|-)m]`, or
+`$[(+|-)n]..$[(+|-)m]`. See gts-modifier(7) for more details.
 
 ## EXAMPLES
 

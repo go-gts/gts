@@ -11,6 +11,7 @@ var asLocatorTests = []struct {
 	in  string
 	loc Locator
 }{
+	{"^..$", relativeLocator(HeadTail{0, 0})},
 	{"1", locationLocator(Point(0))},
 	{"3..6", locationLocator(Range(2, 6))},
 	{"complement(3..6)", locationLocator(Range(2, 6).Complement())},
@@ -37,14 +38,22 @@ func TestAsLocator(t *testing.T) {
 		return
 	}
 	ff := result.Value.(FeatureTable)
+	seq := New(nil, ff, []byte(""+
+		"AGCCCTCCAGGACAGGCTGCATCAGAAGAGGCCATCAAGCAGATCACTGTCCTTCTGCCATGGCCCTGTG"+
+		"GATGCGCCTCCTGCCCCTGCTGGCGCTGCTGGCCCTCTGGGGACCTGACCCAGCCGCAGCCTTTGTGAAC"+
+		"CAACACCTGTGCGGCTCACACCTGGTGGAAGCTCTCTACCTAGTGTGCGGGGAACGAGGCTTCTTCTACA"+
+		"CACCCAAGACCCGCCGGGAGGCAGAGGACCTGCAGGTGGGGCAGGTGGAGCTGGGCGGGGGCCCTGGTGC"+
+		"AGGCAGCCTGCAGCCCTTGGCCCTGGAGGGGTCCCTGCAGAAGCGTGGCATTGTGGAACAATGCTGTACC"+
+		"AGCATCTGCTCCCTCTACCAGCTGGAGAACTACTGCAACTAGACGCAGCCCGCAGGCAGCCCCACACCCG"+
+		"CCGCCTCCTGCACCGAGAGAGATGGAATAAAGCCCTTGAACCAGC"))
 	for _, tt := range asLocatorTests {
 		loc, err := AsLocator(tt.in)
 		if err != nil {
 			t.Errorf("AsLocator(%q): %v", tt.in, err)
 			return
 		}
-		out := loc(ff)
-		exp := tt.loc(ff)
+		out := loc(seq)
+		exp := tt.loc(seq)
 		if diff := deep.Equal(out, exp); diff != nil {
 			t.Errorf("AsLocator(%q): %v", tt.in, diff)
 		}

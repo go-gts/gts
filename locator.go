@@ -8,9 +8,10 @@ import (
 )
 
 // Locator is a function that maps features to its regions.
-type Locator func(ff FeatureTable) Regions
+type Locator func(seq Sequence) Regions
 
-func allLocator(ff FeatureTable) Regions {
+func allLocator(seq Sequence) Regions {
+	ff := seq.Features()
 	rr := make(Regions, len(ff))
 	for i, f := range ff {
 		rr[i] = f.Location.Region()
@@ -19,8 +20,8 @@ func allLocator(ff FeatureTable) Regions {
 }
 
 func resizeLocator(locate Locator, mod Modifier) Locator {
-	return func(ff FeatureTable) Regions {
-		rr := locate(ff)
+	return func(seq Sequence) Regions {
+		rr := locate(seq)
 		for i, r := range rr {
 			rr[i] = r.Resize(mod)
 		}
@@ -28,14 +29,22 @@ func resizeLocator(locate Locator, mod Modifier) Locator {
 	}
 }
 
+func relativeLocator(mod Modifier) Locator {
+	return func(seq Sequence) Regions {
+		seg := Segment{0, Len(seq)}
+		return Regions{seg.Resize(mod)}
+	}
+}
+
 func locationLocator(loc Location) Locator {
-	return func(ff FeatureTable) Regions {
+	return func(seq Sequence) Regions {
 		return Regions{loc.Region()}
 	}
 }
 
 func filterLocator(f Filter) Locator {
-	return func(ff FeatureTable) Regions {
+	return func(seq Sequence) Regions {
+		ff := seq.Features()
 		ff = ff.Filter(f)
 		rr := make(Regions, len(ff))
 		for i, f := range ff {
@@ -59,6 +68,11 @@ func tryLocation(s string) (Location, bool) {
 func AsLocator(s string) (Locator, error) {
 	switch i := strings.IndexByte(s, '@'); i {
 	case -1:
+		mod, err := AsModifier(s)
+		if err == nil {
+			return relativeLocator(mod), nil
+		}
+
 		loc, ok := tryLocation(s)
 		if ok {
 			return locationLocator(loc), nil

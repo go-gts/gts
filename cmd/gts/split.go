@@ -19,7 +19,7 @@ func init() {
 func splitFunc(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	locstr := pos.String("locator", "a locator string ([selector|point|range][@modifier])")
+	locstr := pos.String("locator", "a locator string ([modifier|selector|point|range][@modifier])")
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
@@ -68,7 +68,7 @@ func splitFunc(ctx *flags.Context) error {
 	scanner := seqio.NewAutoScanner(seqinFile)
 	for scanner.Scan() {
 		seq := scanner.Value()
-		rr := locate(seq.Features())
+		rr := locate(seq)
 
 		top := gts.Linear
 		switch v := seq.(type) {

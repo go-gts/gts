@@ -19,7 +19,7 @@ func init() {
 func deleteFunc(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	locstr := pos.String("locator", "a locator string ([selector|point|range][@modifier])")
+	locstr := pos.String("locator", "a locator string ([modifier|selector|point|range][@modifier])")
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
@@ -75,7 +75,7 @@ func deleteFunc(ctx *flags.Context) error {
 	for scanner.Scan() {
 		seq := scanner.Value()
 
-		ss := gts.Minimize(locate(seq.Features()))
+		ss := gts.Minimize(locate(seq))
 		flip.Flip(gts.BySegment(ss))
 		for _, s := range ss {
 			i, n := s.Head(), s.Len()

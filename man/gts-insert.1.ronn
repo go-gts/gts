@@ -29,8 +29,9 @@ the _host_ sequence.
     for more details.
 
   * `<guest>`:
-    Guest sequence file. See gts-seqin(7) for a list of currently supported
-    list of sequence formats.
+    Guest sequence file (will be interpreted literally if preceded with @).
+    See gts-seqin(7) for a list of currently supported list of sequence
+    formats.
 
   * `<host>`:
     Host sequence file (may be omitted if standard input is provided). See

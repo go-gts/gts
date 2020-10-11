@@ -310,13 +310,14 @@ func (ff FeatureTable) Len() int {
 // Less reports whether the element with index i should sort before the element
 // with index j.
 func (ff FeatureTable) Less(i, j int) bool {
-	if ff[i].Key == "source" && ff[j].Key != "source" {
+	f, g := ff[i], ff[j]
+	if f.Key == "source" && g.Key != "source" {
 		return true
 	}
-	if ff[i].Key != "source" && ff[j].Key == "source" {
+	if f.Key != "source" && g.Key == "source" {
 		return false
 	}
-	return ff[i].Location.Less(ff[j].Location)
+	return f.Location.Less(g.Location)
 }
 
 // Swap the elements with indexes i and j.

@@ -19,8 +19,8 @@ func init() {
 func insertFunc(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	locstr := pos.String("locator", "a locator string ([selector|point|range][@modifier])")
-	guestPath := pos.String("guest", "guest sequence file")
+	locstr := pos.String("locator", "a locator string ([modifier|selector|point|range][@modifier])")
+	guestPath := pos.String("guest", "guest sequence file (will be interpreted literally if preceded with @)")
 
 	var hostPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
@@ -55,11 +55,28 @@ func insertFunc(ctx *flags.Context) error {
 		defer hostFile.Close()
 	}
 
-	guestFile, err := os.Open(*guestPath)
-	if err != nil {
-		return ctx.Raise(fmt.Errorf("failed to open file: %q: %v", *guestPath, err))
+	guests := []gts.Sequence{}
+	guestBytes := []byte(*guestPath)
+
+	switch guestBytes[0] {
+	case '@':
+		guest := gts.New(nil, nil, guestBytes[1:])
+		guests = append(guests, guest)
+	default:
+		guestFile, err := os.Open(*guestPath)
+		if err != nil {
+			return ctx.Raise(fmt.Errorf("failed to open file: %q: %v", *guestPath, err))
+		}
+		defer guestFile.Close()
+
+		scanner := seqio.NewAutoScanner(guestFile)
+		for scanner.Scan() {
+			guests = append(guests, scanner.Value())
+		}
+		if len(guests) == 0 {
+			ctx.Raise(fmt.Errorf("guest sequence file %q does not contain a sequence", *guestPath))
+		}
 	}
-	defer guestFile.Close()
 
 	seqoutFile := os.Stdout
 	if *seqoutPath != "-" {
@@ -76,22 +93,13 @@ func insertFunc(ctx *flags.Context) error {
 		filetype = seqio.ToFileType(*format)
 	}
 
-	scanner := seqio.NewAutoScanner(guestFile)
-	guests := []gts.Sequence{}
-	for scanner.Scan() {
-		guests = append(guests, scanner.Value())
-	}
-	if len(guests) == 0 {
-		ctx.Raise(fmt.Errorf("guest sequence file %q does not contain a sequence", *guestPath))
-	}
-
 	w := bufio.NewWriter(seqoutFile)
 
-	scanner = seqio.NewAutoScanner(hostFile)
+	scanner := seqio.NewAutoScanner(hostFile)
 	for scanner.Scan() {
 		host := scanner.Value()
 
-		rr := locate(host.Features())
+		rr := locate(host)
 		indices := make([]int, len(rr))
 		for i, r := range rr {
 			indices[i] = r.Head()

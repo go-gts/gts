@@ -19,7 +19,7 @@ func init() {
 func searchFunc(ctx *flags.Context) error {
 	pos, opt := flags.Flags()
 
-	queryString := pos.String("query", "query sequence (will attempt to open as file)")
+	queryString := pos.String("query", "query sequence file (will be interpreted literally if preceded with @)")
 
 	var seqinPath *string
 	if cmd.IsTerminal(os.Stdin.Fd()) {
@@ -54,15 +54,21 @@ func searchFunc(ctx *flags.Context) error {
 	}
 
 	queries := []gts.Sequence{}
+	queryBytes := []byte(*queryString)
 
-	queryFile, err := os.Open(*queryString)
-	if err == nil {
+	switch queryBytes[0] {
+	case '@':
+		query := gts.New(nil, nil, queryBytes[1:])
+		queries = append(queries, query)
+	default:
+		queryFile, err := os.Open(*queryString)
+		if err != nil {
+			return ctx.Raise(err)
+		}
 		scanner := seqio.NewAutoScanner(queryFile)
 		for scanner.Scan() {
 			queries = append(queries, scanner.Value())
 		}
-	} else {
-		queries = append(queries, gts.New(nil, nil, []byte(*queryString)))
 	}
 
 	seqinFile := os.Stdin
