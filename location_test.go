@@ -12,6 +12,106 @@ import (
 	"github.com/go-pars/pars"
 )
 
+var locationUtilsTests = []struct {
+	s0, e0, s1, e1  int
+	within, overlap bool
+	compare         int
+}{
+	{3, 6, 3, 6, true, true, 0},
+	{3, 6, 4, 6, false, true, -1},
+	{3, 6, 2, 6, true, true, 1},
+	{3, 6, 3, 7, true, true, -1},
+	{3, 6, 3, 5, false, true, 1},
+	{3, 6, 6, 9, false, false, -1},
+	{3, 6, 0, 3, false, false, 1},
+
+	{6, 3, 3, 6, true, true, 0},
+	{6, 3, 4, 6, false, true, -1},
+	{6, 3, 2, 6, true, true, 1},
+	{6, 3, 3, 7, true, true, -1},
+	{6, 3, 3, 5, false, true, 1},
+	{6, 3, 6, 9, false, false, -1},
+	{6, 3, 0, 3, false, false, 1},
+
+	{3, 6, 6, 3, true, true, 0},
+	{3, 6, 6, 4, false, true, -1},
+	{3, 6, 6, 2, true, true, 1},
+	{3, 6, 7, 3, true, true, -1},
+	{3, 6, 5, 3, false, true, 1},
+	{3, 6, 9, 6, false, false, -1},
+	{3, 6, 3, 0, false, false, 1},
+}
+
+func TestLocationUtils(t *testing.T) {
+	for _, tt := range locationUtilsTests {
+		isWithin := rangeWithin(tt.s0, tt.e0, tt.s1, tt.e1)
+		if isWithin != tt.within {
+			t.Errorf(
+				"rangeWithin(%d, %d, %d, %d) = %v, expected %v",
+				tt.s0, tt.e0, tt.s1, tt.e1, isWithin, tt.within,
+			)
+		}
+		isOverlap := rangeOverlap(tt.s0, tt.e0, tt.s1, tt.e1)
+		if isOverlap != tt.overlap {
+			t.Errorf(
+				"rangeOverlap(%d, %d, %d, %d) = %v, expected %v",
+				tt.s0, tt.e0, tt.s1, tt.e1, isOverlap, tt.overlap,
+			)
+		}
+		compare := rangeCompare(tt.s0, tt.e0, tt.s1, tt.e1)
+		if compare != tt.compare {
+			t.Errorf("rangeCmp(%d, %d, %d, %d) = %d, expected %d",
+				tt.s0, tt.e0, tt.s1, tt.e1, compare, tt.compare,
+			)
+		}
+	}
+}
+
+var locationSpanTests = []struct {
+	in   contiguousLocation
+	a, b int
+}{
+	{Between(3), 3, 3},
+	{Point(3), 3, 4},
+	{Ranged{3, 6, Complete}, 3, 6},
+	{Ambiguous{3, 6}, 3, 6},
+}
+
+func TestLocationSpan(t *testing.T) {
+	for _, tt := range locationSpanTests {
+		a, b := tt.in.span()
+		if a != tt.a || b != tt.b {
+			t.Errorf(
+				"%s.span() = (%d, %d), want (%d, %d)",
+				tt.in, a, b, tt.a, tt.b,
+			)
+		}
+	}
+}
+
+var locationSliceTests = []struct {
+	in  locationSlice
+	out []Location
+}{
+	{
+		Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}},
+		[]Location{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}},
+	},
+	{
+		Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}},
+		[]Location{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}},
+	},
+}
+
+func TestLocationSlice(t *testing.T) {
+	for _, tt := range locationSliceTests {
+		out := tt.in.slice()
+		if !reflect.DeepEqual(out, tt.out) {
+			t.Errorf("%s.slice = %#v, want %#v", tt.in, out, tt.out)
+		}
+	}
+}
+
 type NullLocation int
 
 func (null NullLocation) String() string {
@@ -28,10 +128,6 @@ func (null NullLocation) Head() int {
 
 func (null NullLocation) Tail() int {
 	return int(null)
-}
-
-func (null NullLocation) Less(loc Location) bool {
-	return false
 }
 
 func (null NullLocation) Region() Region {
@@ -56,6 +152,133 @@ func (null NullLocation) Shift(i, n int) Location {
 
 func (null NullLocation) Expand(i, n int) Location {
 	return null
+}
+
+var locationLessTests = []struct {
+	a, b Location
+	out  bool
+}{
+	{NullLocation(0), NullLocation(0), false},
+	{NullLocation(0), Ranged{3, 6, Complete}, false},
+	{Ranged{3, 6, Complete}, NullLocation(0), true},
+
+	{Ranged{3, 6, Complete}, Ranged{2, 5, Complete}, false},
+	{Ranged{3, 6, Complete}, Ranged{4, 7, Complete}, true},
+
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Complete}, false},
+	{Ranged{3, 6, Partial5}, Ranged{3, 6, Partial5}, false},
+	{Ranged{3, 6, Partial3}, Ranged{3, 6, Partial3}, false},
+	{Ranged{3, 6, Partial5}, Ranged{3, 6, Partial3}, false},
+	{Ranged{3, 6, Partial3}, Ranged{3, 6, Partial5}, false},
+	{Ranged{3, 6, PartialBoth}, Ranged{3, 6, PartialBoth}, false},
+
+	{Ranged{3, 6, Partial5}, Ranged{3, 6, Complete}, false},
+	{Ranged{3, 6, Partial3}, Ranged{3, 6, Complete}, false},
+	{Ranged{3, 6, PartialBoth}, Ranged{3, 6, Complete}, false},
+	{Ranged{3, 6, PartialBoth}, Ranged{3, 6, Partial5}, false},
+	{Ranged{3, 6, PartialBoth}, Ranged{3, 6, Partial3}, false},
+
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Partial5}, true},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, Partial3}, true},
+	{Ranged{3, 6, Complete}, Ranged{3, 6, PartialBoth}, true},
+	{Ranged{3, 6, Partial5}, Ranged{3, 6, PartialBoth}, true},
+	{Ranged{3, 6, Partial3}, Ranged{3, 6, PartialBoth}, true},
+
+	{Ranged{3, 6, Complete}, Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, false},
+	{Ranged{3, 6, Complete}, Joined{Ranged{4, 7, Complete}, Ranged{13, 16, Complete}}, true},
+
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ranged{3, 6, Complete}, false},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, Ranged{4, 7, Complete}, true},
+}
+
+func TestLocationLess(t *testing.T) {
+	for _, tt := range locationLessTests {
+		a, b := tt.a, tt.b
+		out := Locationless(a, b)
+		if out != tt.out {
+			t.Errorf(
+				"expected %s < %s = %v, want %v",
+				locRep(a), locRep(b), out, tt.out,
+			)
+		}
+		a, b = a.Complement(), b.Complement()
+		out = Locationless(a, b)
+		if out != tt.out {
+			t.Errorf(
+				"expected %s < %s = %v, want %v",
+				locRep(a), locRep(b), out, tt.out,
+			)
+		}
+	}
+}
+
+var locationWithinTests = []struct {
+	loc  Location
+	l, u int
+	out  bool
+}{
+	{NullLocation(0), 3, 6, false},
+
+	{Ranged{3, 6, Complete}, 3, 6, true},
+	{Ranged{3, 6, Complete}, 2, 7, true},
+	{Ranged{3, 6, Complete}, 2, 5, false},
+	{Ranged{3, 6, Complete}, 4, 7, false},
+
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 3, 6, false},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 3, 16, true},
+}
+
+func TestLocationWithin(t *testing.T) {
+	for _, tt := range locationWithinTests {
+		format := "expected %s to be within (%d, %d)"
+		if !tt.out {
+			format = "expected %s not to be within (%d, %d)"
+		}
+		loc, l, u := tt.loc, tt.l, tt.u
+		out := LocationWithin(loc, l, u)
+		if out != tt.out {
+			t.Errorf(format, locRep(loc), l, u)
+		}
+		loc = loc.Complement()
+		out = LocationWithin(loc, l, u)
+		if out != tt.out {
+			t.Errorf(format, locRep(loc), l, u)
+		}
+	}
+}
+
+var locationOverlapTests = []struct {
+	loc  Location
+	l, u int
+	out  bool
+}{
+	{NullLocation(0), 3, 6, false},
+
+	{Ranged{3, 6, Complete}, 3, 6, true},
+	{Ranged{3, 6, Complete}, 0, 3, false},
+	{Ranged{3, 6, Complete}, 6, 9, false},
+
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 3, 6, true},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, 6, 9, false},
+}
+
+func TestLocationOverlap(t *testing.T) {
+	for _, tt := range locationOverlapTests {
+		format := "expected %s to overlap (%d, %d)"
+		if !tt.out {
+			format = "expected %s not to overlap (%d, %d)"
+		}
+		loc, l, u := tt.loc, tt.l, tt.u
+		out := LocationOverlap(loc, l, u)
+		if out != tt.out {
+			t.Errorf(format, locRep(loc), l, u)
+		}
+		loc = loc.Complement()
+		out = LocationOverlap(loc, l, u)
+		if out != tt.out {
+			t.Errorf(format, locRep(loc), l, u)
+		}
+	}
 }
 
 func locRep(loc Location) string {
@@ -138,144 +361,6 @@ func TestLocationAccessors(t *testing.T) {
 	}
 }
 
-var locationLessTests = []struct {
-	loc  Location
-	pass []Location
-	fail []Location
-}{
-	{
-		Between(1),
-		[]Location{
-			Between(2),
-			Point(1),
-			Range(1, 3),
-			Join(Range(1, 3), Range(4, 6)),
-			Ambiguous{1, 3},
-			Order(Range(1, 3), Range(4, 6)),
-			NullLocation(0),
-		},
-		[]Location{
-			Between(1),
-			Point(0),
-			Range(0, 2),
-			Join(Range(0, 2), Range(3, 5)),
-			Ambiguous{0, 2},
-			Order(Range(0, 2), Range(3, 5)),
-		},
-	},
-	{
-		Point(0),
-		[]Location{
-			Between(1),
-			Point(1),
-			Range(1, 3),
-			Join(Range(1, 3), Range(4, 6)),
-			Ambiguous{1, 3},
-			Order(Range(1, 3), Range(4, 6)),
-			NullLocation(0),
-		},
-		[]Location{
-			Between(0),
-			Point(0),
-			Range(0, 2),
-			Join(Range(0, 2), Range(3, 5)),
-			Ambiguous{0, 2},
-			Order(Range(0, 2), Range(3, 5)),
-		},
-	},
-	{
-		Range(1, 3),
-		[]Location{
-			Between(2),
-			Point(1),
-			Range(2, 3),
-			Range(1, 4),
-			Join(Range(2, 4), Range(5, 7)),
-			Ambiguous{2, 3},
-			Ambiguous{1, 4},
-			Order(Range(2, 4), Range(5, 7)),
-			NullLocation(0),
-		},
-		[]Location{
-			Between(1),
-			Point(0),
-			Range(0, 3),
-			Range(1, 2),
-			Range(1, 3),
-			Join(Range(1, 3), Range(4, 6)),
-			Ambiguous{0, 3},
-			Ambiguous{1, 2},
-			Ambiguous{1, 3},
-			Order(Range(1, 3), Range(4, 6)),
-		},
-	},
-	{PartialRange(1, 3, Partial5), []Location{Range(1, 3), Ambiguous{1, 3}}, nil},
-	{PartialRange(1, 3, Partial3), nil, []Location{Range(1, 3), Ambiguous{1, 3}}},
-	{Range(1, 3), nil, []Location{PartialRange(1, 3, Partial5)}},
-	{Range(1, 3), []Location{PartialRange(1, 3, Partial3)}, nil},
-	{
-		Join(Range(0, 2), Range(3, 5)),
-		[]Location{Join(Range(1, 2), Range(3, 5))},
-		[]Location{Join(Range(0, 2), Range(3, 5))},
-	},
-	{
-		Ambiguous{1, 3},
-		[]Location{
-			Between(2),
-			Point(1),
-			Range(2, 3),
-			Range(1, 4),
-			PartialRange(1, 3, Partial3),
-			Join(Range(2, 4), Range(5, 7)),
-			Ambiguous{2, 3},
-			Ambiguous{1, 4},
-			Order(Range(2, 4), Range(5, 7)),
-			NullLocation(0),
-		},
-		[]Location{
-			Between(1),
-			Point(0),
-			Range(0, 3),
-			PartialRange(1, 3, Partial5),
-			Range(1, 2),
-			Range(1, 3),
-			Join(Range(1, 3), Range(4, 6)),
-			Ambiguous{0, 3},
-			Ambiguous{1, 3},
-			Order(Range(1, 3), Range(4, 6)),
-		},
-	},
-	{
-		Order(Range(0, 2), Range(3, 5)),
-		[]Location{Order(Range(1, 2), Range(3, 5))},
-		[]Location{Order(Range(0, 2), Range(3, 5))},
-	},
-}
-
-func locationLessPassTest(t *testing.T, lhs, rhs Location) {
-	if !lhs.Less(rhs) {
-		t.Errorf("expected %s < %s", locRep(lhs), locRep(rhs))
-	}
-	if _, ok := lhs.(Complemented); !ok {
-		locationLessPassTest(t, lhs.Complement(), rhs)
-	}
-	if _, ok := rhs.(Complemented); !ok {
-		locationLessPassTest(t, lhs, rhs.Complement())
-	}
-}
-
-func locationLessFailTest(t *testing.T, lhs, rhs Location) {
-	if lhs.Less(rhs) {
-		t.Errorf("expected %s >= %s", locRep(lhs), locRep(rhs))
-	}
-	if _, ok := lhs.(Complemented); !ok {
-		locationLessFailTest(t, lhs.Complement(), rhs)
-	}
-	if _, ok := rhs.(Complemented); !ok {
-		locationLessFailTest(t, lhs, rhs.Complement())
-	}
-}
-
 var locationSortTest = [][]Location{
 	{Range(3, 13), Range(4, 13), Range(6, 14), Range(6, 16)},
 }
@@ -296,17 +381,6 @@ func TestLocationSort(t *testing.T) {
 		sort.Sort(Locations(out))
 		if !reflect.DeepEqual(out, exp) {
 			t.Errorf("sort.Sort(Locations(%v)) = %v, want %v", in, out, exp)
-		}
-	}
-}
-
-func TestLocationLess(t *testing.T) {
-	for _, tt := range locationLessTests {
-		for _, loc := range tt.pass {
-			locationLessPassTest(t, tt.loc, loc)
-		}
-		for _, loc := range tt.fail {
-			locationLessFailTest(t, tt.loc, loc)
 		}
 	}
 }

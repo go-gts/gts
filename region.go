@@ -13,8 +13,6 @@ type Region interface {
 	Tail() int
 	Resize(mod Modifier) Region
 	Complement() Region
-	Within(lower, upper int) bool
-	Overlap(lower, upper int) bool
 	Locate(seq Sequence) Sequence
 }
 
@@ -48,24 +46,6 @@ func (s Segment) Resize(mod Modifier) Region {
 func (s Segment) Complement() Region {
 	head, tail := Unpack(s)
 	return Segment{tail, head}
-}
-
-// Within checks if the region is within the bounds of the given segment.
-func (s Segment) Within(lower, upper int) bool {
-	head, tail := Unpack(s)
-	if tail < head {
-		head, tail = tail, head
-	}
-	return sort.IntsAreSorted([]int{lower, head, tail, upper})
-}
-
-// Overlap checks if the region overlaps with the bounds of the given segment.
-func (s Segment) Overlap(lower, upper int) bool {
-	head, tail := Unpack(s)
-	if tail < head {
-		head, tail = tail, head
-	}
-	return (head < upper) && (lower < tail)
 }
 
 // Locate the subsequence corresponding to the region in the given sequence.
@@ -164,26 +144,6 @@ func (rr Regions) Complement() Region {
 		ret[len(rr)-i-1] = r.Complement()
 	}
 	return ret
-}
-
-// Within checks if the region is within the bounds of the given segment.
-func (rr Regions) Within(lower, upper int) bool {
-	for _, r := range rr {
-		if !r.Within(lower, upper) {
-			return false
-		}
-	}
-	return true
-}
-
-// Overlap checks if the region overlaps with the bounds of the given segment.
-func (rr Regions) Overlap(lower, upper int) bool {
-	for _, r := range rr {
-		if r.Overlap(lower, upper) {
-			return true
-		}
-	}
-	return false
 }
 
 // Locate the subsequence corresponding to the region in the given sequence.

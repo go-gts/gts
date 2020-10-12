@@ -12,7 +12,7 @@ func parseReferenceInfo(s string) pars.Parser {
 	parser := pars.Seq(pars.Int, " to ", pars.Int).Map(func(result *pars.Result) error {
 		start := result.Children[0].Value.(int) - 1
 		end := result.Children[2].Value.(int)
-		result.SetValue(gts.Segment{start, end})
+		result.SetValue(gts.Range(start, end))
 		return nil
 	})
 	return pars.Seq(
@@ -21,12 +21,12 @@ func parseReferenceInfo(s string) pars.Parser {
 		pars.Many(pars.Seq("; ", parser).Child(1)),
 		')',
 	).Map(func(result *pars.Result) error {
-		head := result.Children[1].Value.(gts.Segment)
+		head := result.Children[1].Value.(gts.Ranged)
 		tail := result.Children[2].Children
-		locs := make([]gts.Segment, len(tail)+1)
+		locs := make([]gts.Ranged, len(tail)+1)
 		locs[0] = head
 		for i, r := range tail {
-			locs[i+1] = r.Value.(gts.Segment)
+			locs[i+1] = r.Value.(gts.Ranged)
 		}
 		result.SetValue(locs)
 		return nil

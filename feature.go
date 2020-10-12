@@ -177,7 +177,7 @@ func FalseFilter(f Feature) bool { return false }
 // bounds.
 func Within(lower, upper int) Filter {
 	return func(f Feature) bool {
-		return f.Location.Region().Within(lower, upper)
+		return LocationWithin(f.Location, lower, upper)
 	}
 }
 
@@ -185,7 +185,7 @@ func Within(lower, upper int) Filter {
 // bounds.
 func Overlap(lower, upper int) Filter {
 	return func(f Feature) bool {
-		return f.Location.Region().Overlap(lower, upper)
+		return LocationOverlap(f.Location, lower, upper)
 	}
 }
 
@@ -317,7 +317,7 @@ func (ff FeatureTable) Less(i, j int) bool {
 	if f.Key != "source" && g.Key == "source" {
 		return false
 	}
-	return f.Location.Less(g.Location)
+	return Locationless(f.Location, g.Location)
 }
 
 // Swap the elements with indexes i and j.
@@ -334,7 +334,7 @@ func (ff FeatureTable) Insert(f Feature) FeatureTable {
 	}
 	if f.Key != "source" {
 		i += sort.Search(len(ff[i:]), func(j int) bool {
-			return f.Location.Less(ff[i+j].Location)
+			return Locationless(f.Location, ff[i+j].Location)
 		})
 	}
 

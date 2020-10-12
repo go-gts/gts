@@ -68,31 +68,32 @@ func (gbf GenBankFields) Slice(start, end int) interface{} {
 
 	prefix := gbf.Molecule.Counter()
 	parser := parseReferenceInfo(prefix)
-	tryParse := func(info string) ([]gts.Segment, bool) {
+
+	tryParse := func(info string) ([]gts.Ranged, bool) {
 		result, err := parser.Parse(pars.FromString(info))
 		if err != nil {
 			return nil, false
 		}
-		return result.Value.([]gts.Segment), true
+		return result.Value.([]gts.Ranged), true
 	}
 
 	refs := []Reference{}
 	for _, ref := range gbf.References {
 		info := ref.Info
 
-		segs, ok := tryParse(info)
+		locs, ok := tryParse(info)
 		switch {
 		case ok:
-			olap := []gts.Segment{}
-			for _, seg := range segs {
-				if seg.Overlap(start, end) {
-					olap = append(olap, seg)
+			olap := []gts.Ranged{}
+			for _, loc := range locs {
+				if gts.LocationOverlap(loc, start, end) {
+					olap = append(olap, loc)
 				}
 			}
 			if len(olap) > 0 {
 				ss := make([]string, len(olap))
-				for i, seg := range olap {
-					head, tail := gts.Unpack(seg)
+				for i, loc := range olap {
+					head, tail := loc.Start, loc.End
 					head = gts.Max(0, head-start)
 					tail = gts.Min(end-start, tail-start)
 					ss[i] = fmt.Sprintf("%d to %d", head+1, tail)
@@ -396,7 +397,7 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 		Division:  division,
 		Date:      date,
 		Region:    nil,
-	}}
+	}, Origin: NewOrigin(nil)}
 
 	genbankOriginParser := makeGenbankOriginParser(length)
 

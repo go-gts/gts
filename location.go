@@ -10,18 +10,185 @@ import (
 	"github.com/go-pars/pars"
 )
 
+func rangeCompare(s1, e1, s2, e2 int) int {
+	if e1 < s1 {
+		s1, e1 = e1, s1
+	}
+	if e2 < s2 {
+		s2, e2 = e2, s2
+	}
+	switch {
+	case s1 < s2:
+		return -1
+	case s2 < s1:
+		return 1
+	case e1 < e2:
+		return -1
+	case e2 < e1:
+		return 1
+	default:
+		return 0
+	}
+}
+
+func rangeWithin(s, e, l, u int) bool {
+	if e < s {
+		s, e = e, s
+	}
+	if u < l {
+		l, u = u, l
+	}
+	return l <= s && e <= u
+}
+
+func rangeOverlap(s, e, l, u int) bool {
+	if e < s {
+		s, e = e, s
+	}
+	if u < l {
+		l, u = u, l
+	}
+	return s < u && l < e
+}
+
+// LocationLess tests if location a is less than b.
+func Locationless(a, b Location) bool {
+	if c, ok := a.(Complemented); ok {
+		return Locationless(c.Location, b)
+	}
+
+	if c, ok := b.(Complemented); ok {
+		return Locationless(a, c.Location)
+	}
+
+	if ll, ok := a.(locationSlice); ok {
+		for _, l := range ll.slice() {
+			if Locationless(l, b) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if ll, ok := b.(locationSlice); ok {
+		for _, l := range ll.slice() {
+			if !Locationless(a, l) {
+				return false
+			}
+		}
+		return true
+	}
+
+	l, lok := a.(contiguousLocation)
+	r, rok := b.(contiguousLocation)
+
+	switch {
+	case lok && rok:
+		s1, e1 := l.span()
+		s2, e2 := r.span()
+		if cmp := rangeCompare(s1, e1, s2, e2); cmp != 0 {
+			return cmp < 0
+		}
+
+		v, vok := a.(Ranged)
+		u, uok := b.(Ranged)
+		vp, up := 0, 0
+
+		if vok {
+			if v.Partial[0] {
+				vp++
+			}
+			if v.Partial[1] {
+				vp++
+			}
+		}
+
+		if uok {
+			if u.Partial[0] {
+				up++
+			}
+			if u.Partial[1] {
+				up++
+			}
+		}
+
+		return vp < up
+
+	case lok:
+		return true
+
+	default:
+		return false
+	}
+}
+
+// LocationWithin tests if the given location is within the given bounds.
+func LocationWithin(loc Location, lower, upper int) bool {
+	switch v := loc.(type) {
+	case Complemented:
+		return LocationWithin(v.Location, lower, upper)
+
+	case locationSlice:
+		for _, l := range v.slice() {
+			if !LocationWithin(l, lower, upper) {
+				return false
+			}
+		}
+		return true
+
+	case contiguousLocation:
+		s, e := v.span()
+		return rangeWithin(s, e, lower, upper)
+
+	default:
+		return false
+	}
+}
+
+// LocationOverlap tests if the given location overlaps with the given bounds.
+func LocationOverlap(loc Location, lower, upper int) bool {
+	switch v := loc.(type) {
+	case Complemented:
+		return LocationOverlap(v.Location, lower, upper)
+
+	case locationSlice:
+		for _, l := range v.slice() {
+			if LocationOverlap(l, lower, upper) {
+				return true
+			}
+		}
+		return false
+
+	case contiguousLocation:
+		s, e := v.span()
+		return rangeOverlap(s, e, lower, upper)
+
+	default:
+		return false
+	}
+}
+
 // Location represents a location in a sequence as defined by the INSDC feature
 // table definition.
 type Location interface {
 	fmt.Stringer
 	Len() int
-	Less(loc Location) bool
 	Region() Region
 	Complement() Location
 	Reverse(length int) Location
 	Normalize(length int) Location
 	Shift(i, n int) Location
 	Expand(i, n int) Location
+}
+
+type contiguousLocation interface {
+	Location
+	span() (int, int)
+}
+
+type locationSlice interface {
+	Location
+	slice() []Location
 }
 
 // Locations represents a sortable list of locations.
@@ -35,7 +202,7 @@ func (ll Locations) Len() int {
 // Less reports whether the element with index i should sort before the element
 // with index j.
 func (ll Locations) Less(i, j int) bool {
-	return ll[i].Less(ll[j])
+	return Locationless(ll[i], ll[j])
 }
 
 // Swap the elements with indexes i and j.
@@ -47,6 +214,11 @@ func (ll Locations) Swap(i, j int) {
 // sense if the start and end positions are directly adjacent.
 type Between int
 
+func (between Between) span() (int, int) {
+	pos := int(between)
+	return pos, pos
+}
+
 // String satisfies the fmt.Stringer interface.
 func (between Between) String() string {
 	return fmt.Sprintf("%d^%d", between, between+1)
@@ -55,38 +227,6 @@ func (between Between) String() string {
 // Len returns the total length spanned by the location.
 func (between Between) Len() int {
 	return 0
-}
-
-// Less returns true if the location is less than the given location.
-func (between Between) Less(loc Location) bool {
-	switch v := loc.(type) {
-	case Between:
-		return int(between) < int(v)
-	case Point:
-		return int(between) <= int(v)
-	case Ranged:
-		return int(between) <= v.Start
-	case Complemented:
-		return between.Less(v.Location)
-	case Joined:
-		for _, u := range v {
-			if !between.Less(u) {
-				return false
-			}
-		}
-		return true
-	case Ambiguous:
-		return int(between) <= v[0]
-	case Ordered:
-		for _, u := range v {
-			if !between.Less(u) {
-				return false
-			}
-		}
-		return true
-	default:
-		return true
-	}
 }
 
 // Region returns the region pointed to by the location.
@@ -127,6 +267,11 @@ func (between Between) Expand(i, n int) Location {
 // Point represents a single base position in a sequence.
 type Point int
 
+func (point Point) span() (int, int) {
+	p := int(point)
+	return p, p + 1
+}
+
 // String satisfies the fmt.Stringer interface.
 func (point Point) String() string {
 	return strconv.Itoa(int(point + 1))
@@ -135,43 +280,6 @@ func (point Point) String() string {
 // Len returns the total length spanned by the location.
 func (point Point) Len() int {
 	return 1
-}
-
-// Less returns true if the location is less than the given location.
-func (point Point) Less(loc Location) bool {
-	switch v := loc.(type) {
-	case Between:
-		return int(point) < int(v)
-	case Point:
-		return int(point) < int(v)
-	case Ranged:
-		switch {
-		case int(point) < v.Start:
-			return true
-		default:
-			return false
-		}
-	case Complemented:
-		return point.Less(v.Location)
-	case Joined:
-		for _, u := range v {
-			if !point.Less(u) {
-				return false
-			}
-		}
-		return true
-	case Ambiguous:
-		return int(point) < v[0]
-	case Ordered:
-		for _, u := range v {
-			if !point.Less(u) {
-				return false
-			}
-		}
-		return true
-	default:
-		return true
-	}
 }
 
 // Region returns the region pointed to by the location.
@@ -272,6 +380,10 @@ func Range(start, end int) Ranged {
 	return PartialRange(start, end, Complete)
 }
 
+func (ranged Ranged) span() (int, int) {
+	return ranged.Start, ranged.End
+}
+
 // String satisfies the fmt.Stringer interface.
 func (ranged Ranged) String() string {
 	b := strings.Builder{}
@@ -290,72 +402,6 @@ func (ranged Ranged) String() string {
 // Len returns the total length spanned by the location.
 func (ranged Ranged) Len() int {
 	return ranged.End - ranged.Start
-}
-
-// Less returns true if the location is less than the given location.
-func (ranged Ranged) Less(loc Location) bool {
-	switch v := loc.(type) {
-	case Between:
-		return ranged.Start < int(v)
-	case Point:
-		return ranged.Start <= int(v)
-	case Ranged:
-		switch {
-		case ranged.Start < v.Start:
-			return true
-		case v.Start < ranged.Start:
-			return false
-		case ranged.Partial[0] && !v.Partial[0]:
-			return true
-		case !ranged.Partial[0] && v.Partial[0]:
-			return false
-		case ranged.End < v.End:
-			return true
-		case v.End < ranged.End:
-			return false
-		case !ranged.Partial[1] && v.Partial[1]:
-			return true
-		case ranged.Partial[1] && !v.Partial[1]:
-			return false
-		default:
-			return false
-		}
-	case Complemented:
-		return ranged.Less(v.Location)
-	case Joined:
-		for _, u := range v {
-			if !ranged.Less(u) {
-				return false
-			}
-		}
-		return true
-	case Ambiguous:
-		switch {
-		case ranged.Start < v[0]:
-			return true
-		case v[0] < ranged.Start:
-			return false
-		case ranged.Partial[0]:
-			return true
-		case ranged.End < v[1]:
-			return true
-		case v[1] < ranged.End:
-			return false
-		case ranged.Partial[1]:
-			return false
-		default:
-			return false
-		}
-	case Ordered:
-		for _, u := range v {
-			if !ranged.Less(u) {
-				return false
-			}
-		}
-		return true
-	default:
-		return true
-	}
 }
 
 // Region returns the region pointed to by the location.
@@ -468,60 +514,8 @@ func (ambiguous Ambiguous) Len() int {
 	return 1
 }
 
-// Less returns true if the location is less than the given location.
-func (ambiguous Ambiguous) Less(loc Location) bool {
-	switch v := loc.(type) {
-	case Between:
-		return ambiguous[0] < int(v)
-	case Point:
-		return ambiguous[0] <= int(v)
-	case Ranged:
-		switch {
-		case ambiguous[0] < v.Start:
-			return true
-		case v.Start < ambiguous[0]:
-			return false
-		case v.Partial[0]:
-			return false
-		case ambiguous[1] < v.End:
-			return true
-		case v.End < ambiguous[1]:
-			return false
-		case v.Partial[1]:
-			return true
-		default:
-			return false
-		}
-	case Complemented:
-		return ambiguous.Less(v.Location)
-	case Joined:
-		for _, u := range v {
-			if !ambiguous.Less(u) {
-				return false
-			}
-		}
-		return true
-	case Ambiguous:
-		switch {
-		case ambiguous[0] < v[0]:
-			return true
-		case v[0] < ambiguous[0]:
-			return false
-		case ambiguous[1] < v[1]:
-			return true
-		default:
-			return false
-		}
-	case Ordered:
-		for _, u := range v {
-			if !ambiguous.Less(u) {
-				return false
-			}
-		}
-		return true
-	default:
-		return true
-	}
+func (ambiguous Ambiguous) span() (int, int) {
+	return Unpack(ambiguous)
 }
 
 // Region returns the region pointed to by the location.
@@ -726,6 +720,10 @@ func Join(locs ...Location) Location {
 	}
 }
 
+func (joined Joined) slice() []Location {
+	return joined
+}
+
 // String satisfies the fmt.Stringer interface.
 func (joined Joined) String() string {
 	tmp := make([]string, len(joined))
@@ -742,16 +740,6 @@ func (joined Joined) Len() int {
 		n += loc.Len()
 	}
 	return n
-}
-
-// Less returns true if the location is less than the given location.
-func (joined Joined) Less(loc Location) bool {
-	for _, v := range joined {
-		if v.Less(loc) {
-			return true
-		}
-	}
-	return false
 }
 
 // Region returns the region pointed to by the location.
@@ -841,6 +829,10 @@ func flattenLocations(locs []Location) []Location {
 	return list
 }
 
+func (ordered Ordered) slice() []Location {
+	return ordered
+}
+
 // Order takes the given Locations and returns an Ordered containing the
 // simplest form.
 func Order(locs ...Location) Location {
@@ -871,16 +863,6 @@ func (ordered Ordered) Len() int {
 		n += loc.Len()
 	}
 	return n
-}
-
-// Less returns true if the location is less than the given location.
-func (ordered Ordered) Less(loc Location) bool {
-	for _, v := range ordered {
-		if v.Less(loc) {
-			return true
-		}
-	}
-	return false
 }
 
 // Region returns the region pointed to by the location.
@@ -946,11 +928,6 @@ func (complement Complemented) String() string {
 // Len returns the total length spanned by the location.
 func (complement Complemented) Len() int {
 	return complement.Location.Len()
-}
-
-// Less returns true if the location is less than the given location.
-func (complement Complemented) Less(loc Location) bool {
-	return complement.Location.Less(loc)
 }
 
 // Region returns the region pointed to by the location.
