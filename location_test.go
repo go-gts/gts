@@ -194,7 +194,7 @@ var locationLessTests = []struct {
 func TestLocationLess(t *testing.T) {
 	for _, tt := range locationLessTests {
 		a, b := tt.a, tt.b
-		out := Locationless(a, b)
+		out := LocationLess(a, b)
 		if out != tt.out {
 			t.Errorf(
 				"expected %s < %s = %v, want %v",
@@ -202,7 +202,7 @@ func TestLocationLess(t *testing.T) {
 			)
 		}
 		a, b = a.Complement(), b.Complement()
-		out = Locationless(a, b)
+		out = LocationLess(a, b)
 		if out != tt.out {
 			t.Errorf(
 				"expected %s < %s = %v, want %v",

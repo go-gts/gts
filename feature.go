@@ -317,7 +317,7 @@ func (ff FeatureTable) Less(i, j int) bool {
 	if f.Key != "source" && g.Key == "source" {
 		return false
 	}
-	return Locationless(f.Location, g.Location)
+	return LocationLess(f.Location, g.Location)
 }
 
 // Swap the elements with indexes i and j.
@@ -334,7 +334,7 @@ func (ff FeatureTable) Insert(f Feature) FeatureTable {
 	}
 	if f.Key != "source" {
 		i += sort.Search(len(ff[i:]), func(j int) bool {
-			return Locationless(f.Location, ff[i+j].Location)
+			return LocationLess(f.Location, ff[i+j].Location)
 		})
 	}
 

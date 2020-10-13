@@ -52,18 +52,18 @@ func rangeOverlap(s, e, l, u int) bool {
 }
 
 // LocationLess tests if location a is less than b.
-func Locationless(a, b Location) bool {
+func LocationLess(a, b Location) bool {
 	if c, ok := a.(Complemented); ok {
-		return Locationless(c.Location, b)
+		return LocationLess(c.Location, b)
 	}
 
 	if c, ok := b.(Complemented); ok {
-		return Locationless(a, c.Location)
+		return LocationLess(a, c.Location)
 	}
 
 	if ll, ok := a.(locationSlice); ok {
 		for _, l := range ll.slice() {
-			if Locationless(l, b) {
+			if LocationLess(l, b) {
 				return true
 			}
 		}
@@ -72,7 +72,7 @@ func Locationless(a, b Location) bool {
 
 	if ll, ok := b.(locationSlice); ok {
 		for _, l := range ll.slice() {
-			if !Locationless(a, l) {
+			if !LocationLess(a, l) {
 				return false
 			}
 		}
@@ -202,7 +202,7 @@ func (ll Locations) Len() int {
 // Less reports whether the element with index i should sort before the element
 // with index j.
 func (ll Locations) Less(i, j int) bool {
-	return Locationless(ll[i], ll[j])
+	return LocationLess(ll[i], ll[j])
 }
 
 // Swap the elements with indexes i and j.
