@@ -150,11 +150,16 @@ func pickFunc(ctx *flags.Context) error {
 
 		if pick(i) || *feature {
 			if *feature {
-				ff := []gts.Feature{}
-				for j, f := range seq.Features() {
+				ff := seq.Features()
+				indices := make([]int, 0, len(ff))
+				for j := range ff {
 					if pick(j) {
-						ff = append(ff, f)
+						indices = append(indices, j)
 					}
+				}
+				gg := make([]gts.Feature, len(indices))
+				for j, k := range indices {
+					gg[j] = ff[k]
 				}
 				seq = gts.WithFeatures(seq, ff)
 			}

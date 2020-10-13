@@ -14,6 +14,36 @@ var genbankSubparsersTests = []struct {
 	fail   []string
 }{
 	{
+		"DBLink Parser",
+		genbankDBLinkParser(&GenBank{}, 12),
+		[]string{
+			multiLineString(
+				"DBLINK      BioProject: PRJNA14015",
+				"            KEGG BRITE:  NC_001422",
+			),
+		},
+		[]string{
+			multiLineString(
+				"DBLINK      BioProject: PRJNA14015",
+				"            KEGG BRITE",
+			),
+		},
+	},
+	{
+		"Contig Parser",
+		genbankContigParser(&GenBank{}, 12),
+		[]string{
+			"CONTIG      join(U00096.3:1..4641652)",
+		},
+		[]string{
+			"CONTIG      join(U00096.3)",
+			"CONTIG      join(U00096.3:foo)",
+			"CONTIG      join(U00096.3:1foo)",
+			"CONTIG      join(U00096.3:1..foo)",
+			"CONTIG      join(U00096.3:1..4641652",
+		},
+	},
+	{
 		"Origin Parser",
 		makeGenbankOriginParser(120)(&GenBank{}, 12),
 		[]string{

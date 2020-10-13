@@ -220,20 +220,20 @@ func TestGenBankParser(t *testing.T) {
 		case GenBank:
 			data := seq.Bytes()
 			if len(data) != gts.Len(seq) {
-				t.Errorf("len(data) = %d, want %d", len(data), gts.Len(seq))
+				t.Errorf("in file %s: len(data) = %d, want %d", file, len(data), gts.Len(seq))
 				return
 			}
 			if seq.Info() == nil {
-				t.Error("seq.Info() is nil")
+				t.Errorf("in file %s: seq.Info() is nil", file)
 				return
 			}
 			if seq.Features() == nil {
-				t.Error("seq.Features() is nil")
+				t.Errorf("in file %s: seq.Features() is nil", file)
 				return
 			}
 			for i, c := range data {
 				if !ascii.IsLetterFilter(c) {
-					t.Errorf("origin contains `%U` at byte %d, expected a sequence character", c, i+1)
+					t.Errorf("in file %s: origin contains `%U` at byte %d, expected a sequence character", file, c, i+1)
 					return
 				}
 			}

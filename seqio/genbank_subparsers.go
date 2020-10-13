@@ -14,17 +14,13 @@ import (
 
 const spaceByte = byte(' ')
 
-func joinByte(c byte) pars.Map {
-	return pars.Join([]byte{c})
-}
-
 var isBaseCharacter = ascii.Range(33, 126)
 
 var errGenBankField = errors.New("expected field name")
 var errGenBankExtra = errors.New("failed to parse unknown field")
 
 func genbankFieldNameParser(q interface{}, depth int) pars.Parser {
-	nameParser := pars.AsParser(q).Error(errGenBankField)
+	nameParser := pars.AsParser(q)
 	if s, ok := q.(string); ok {
 		nameParser = pars.Bytes([]byte(s))
 	}
@@ -47,55 +43,70 @@ func genbankFieldNameParser(q interface{}, depth int) pars.Parser {
 
 func genbankFieldLineParser(depth int) pars.Parser {
 	indentParser := pars.String(strings.Repeat(" ", depth))
-	return pars.Seq(indentParser, pars.Line).Child(1)
+	return func(state *pars.State, result *pars.Result) error {
+		if err := indentParser(state, pars.Void); err != nil {
+			return pars.NewError("expected indent", state.Position())
+		}
+		return pars.Line(state, result)
+	}
 }
 
-func genbankFieldBodyParser(depth int) pars.Parser {
+func genbankFieldBodyParser(depth int, sep byte) pars.Parser {
 	fieldLineParser := genbankFieldLineParser(depth)
 	return func(state *pars.State, result *pars.Result) error {
 		pars.Line(state, result)
-		p := result.Token
-		pars.Many(fieldLineParser)(state, result)
-		children := make([]pars.Result, len(result.Children)+1)
-		children[0] = *pars.NewTokenResult(p)
-		for i, child := range result.Children {
-			children[i+1] = child
+		w := bytes.NewBuffer(result.Token)
+		for fieldLineParser(state, result) == nil {
+			w.WriteByte(sep)
+			w.Write(result.Token)
 		}
-		result.SetChildren(children)
+		result.SetToken(w.Bytes())
 		return nil
 	}
 }
 
 func genbankGenericFieldParser(name string, depth int) pars.Parser {
 	fieldNameParser := genbankFieldNameParser(name, depth)
-	fieldBodyParser := genbankFieldBodyParser(depth).Map(joinByte('\n'))
-	return pars.Seq(fieldNameParser, fieldBodyParser).Child(1)
+	fieldBodyParser := genbankFieldBodyParser(depth, '\n')
+	return func(state *pars.State, result *pars.Result) error {
+		if err := fieldNameParser(state, pars.Void); err != nil {
+			return err
+		}
+		return fieldBodyParser(state, result)
+	}
 }
 
 func genbankExtraFieldParser(gb *GenBank, depth int) pars.Parser {
 	fieldNamePattern := pars.Word(ascii.IsUpper)
 	fieldNameParser := genbankFieldNameParser(fieldNamePattern, depth)
-	fieldBodyparser := genbankFieldBodyParser(depth).Map(joinByte('\n'))
-	fieldParser := pars.Seq(fieldNameParser, fieldBodyparser).Error(errGenBankExtra)
-	return fieldParser.Map(func(result *pars.Result) error {
-		name := string(result.Children[0].Token)
-		value := string(result.Children[1].Token)
+	fieldBodyparser := genbankFieldBodyParser(depth, '\n')
+	return func(state *pars.State, result *pars.Result) error {
+		if fieldNameParser(state, result) != nil {
+			return errGenBankExtra
+		}
+		name := string(result.Token)
+		fieldBodyparser(state, result)
+		value := string(result.Token)
 		extra := GenBankExtraField(name, value)
 		gb.Fields.Extra = append(gb.Fields.Extra, extra)
 		return nil
-	})
+	}
 }
 
 func genbankSubfieldNameParser(name string, depth int) pars.Parser {
 	nameParser := pars.String(name)
-	paddingParser := pars.Many(spaceByte).Map(pars.Cat)
-	parser := pars.Seq(paddingParser, nameParser, paddingParser)
+	paddingParser := pars.Word(ascii.Is(spaceByte))
 	return func(state *pars.State, result *pars.Result) error {
-		if err := parser(state, result); err != nil {
+		paddingParser(state, result)
+		prefixLength := len(result.Token)
+		if prefixLength == 0 {
+			return pars.NewError("expected indent", state.Position())
+		}
+		if err := nameParser(state, pars.Void); err != nil {
 			return err
 		}
-		prefixLength := len(result.Children[0].Token)
-		suffixLength := len(result.Children[2].Token)
+		paddingParser(state, result)
+		suffixLength := len(result.Token)
 		if prefixLength+len(name)+suffixLength != depth {
 			what := fmt.Sprintf("uneven indent in subfield `%s`", name)
 			return pars.NewError(what, state.Position())
@@ -106,8 +117,13 @@ func genbankSubfieldNameParser(name string, depth int) pars.Parser {
 
 func genbankGenericSubfieldParser(name string, depth int) pars.Parser {
 	subfieldNameParser := genbankSubfieldNameParser(name, depth)
-	subfieldBodyParser := genbankFieldBodyParser(depth)
-	return pars.Seq(subfieldNameParser, subfieldBodyParser).Child(1)
+	subfieldBodyParser := genbankFieldBodyParser(depth, '\n')
+	return func(state *pars.State, result *pars.Result) error {
+		if err := subfieldNameParser(state, result); err != nil {
+			return err
+		}
+		return subfieldBodyParser(state, result)
+	}
 }
 
 type genbankSubparser func(gb *GenBank, depth int) pars.Parser
@@ -141,29 +157,52 @@ func genbankVersionParser(gb *GenBank, depth int) pars.Parser {
 	})
 }
 
+func genbankDBLinkPairParser(gb *GenBank, depth int) pars.Parser {
+	return func(state *pars.State, result *pars.Result) error {
+		pars.Line(state, result)
+		s := string(result.Token)
+		switch i := strings.IndexByte(s, ':'); i {
+		case -1:
+			return pars.NewError("expected `:`", state.Position())
+		default:
+			db, id := s[:i], s[i+2:]
+			gb.Fields.DBLink.Set(db, id)
+			return nil
+		}
+	}
+}
+
 func genbankDBLinkParser(gb *GenBank, depth int) pars.Parser {
 	fieldNameParser := genbankFieldNameParser("DBLINK", depth)
-	pairParser := pars.Seq(
-		pars.Until(':'), ": ", pars.Line,
-	).Map(func(result *pars.Result) error {
-		db := string(result.Children[0].Token)
-		id := string(result.Children[2].Token)
-		gb.Fields.DBLink.Set(db, id)
-		return nil
-	})
 	indentParser := pars.String(strings.Repeat(" ", depth))
-	extraParser := pars.Many(pars.Seq(indentParser, pairParser))
-	return pars.Seq(fieldNameParser, pairParser, extraParser)
+	pairParser := genbankDBLinkPairParser(gb, depth)
+	return func(state *pars.State, result *pars.Result) error {
+		if err := fieldNameParser(state, pars.Void); err != nil {
+			return err
+		}
+		if err := pairParser(state, result); err != nil {
+			return err
+		}
+		for indentParser(state, pars.Void) == nil {
+			if err := pairParser(state, result); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 }
 
 func genbankKeywordsParser(gb *GenBank, depth int) pars.Parser {
 	fieldNameParser := genbankFieldNameParser("KEYWORDS", depth)
-	fieldBodyParser := genbankFieldBodyParser(depth).Map(joinByte(' '))
-	fieldParser := pars.Seq(fieldNameParser, fieldBodyParser).Child(1)
-	return fieldParser.Map(func(result *pars.Result) error {
+	fieldBodyParser := genbankFieldBodyParser(depth, ' ')
+	return func(state *pars.State, result *pars.Result) error {
+		if err := fieldNameParser(state, pars.Void); err != nil {
+			return err
+		}
+		fieldBodyParser(state, result)
 		gb.Fields.Keywords = FlatFileSplit(string(result.Token))
 		return nil
-	})
+	}
 }
 
 func genbankSourceParser(gb *GenBank, depth int) pars.Parser {
@@ -188,9 +227,14 @@ func genbankSourceParser(gb *GenBank, depth int) pars.Parser {
 		pars.Line(state, result)
 		gb.Fields.Source.Name = string(result.Token)
 
-		taxonParser := pars.Many(fieldLineParser).Map(joinByte(spaceByte))
-		taxonParser(state, result)
-		gb.Fields.Source.Taxon = FlatFileSplit(string(result.Token))
+		w := bytes.Buffer{}
+		for fieldLineParser(state, result) == nil {
+			if w.Len() > 0 {
+				w.WriteByte(spaceByte)
+			}
+			w.Write(result.Token)
+		}
+		gb.Fields.Source.Taxon = FlatFileSplit(string(w.Bytes()))
 
 		return nil
 	}
@@ -198,7 +242,7 @@ func genbankSourceParser(gb *GenBank, depth int) pars.Parser {
 
 func genbankReferenceSubfieldParser(ref *Reference, depth int) pars.Parser {
 	subfieldParser := func(name string, depth int) pars.Parser {
-		return genbankGenericSubfieldParser(name, depth).Map(joinByte('\n'))
+		return genbankGenericSubfieldParser(name, depth)
 	}
 	authorsParser := subfieldParser("AUTHORS", depth)
 	consrtmParser := subfieldParser("CONSRTM", depth)
@@ -236,9 +280,11 @@ func genbankReferenceSubfieldParser(ref *Reference, depth int) pars.Parser {
 
 func genbankReferenceParser(gb *GenBank, depth int) pars.Parser {
 	fieldNameParser := genbankFieldNameParser("REFERENCE", depth)
-	referenceLineParser := pars.Seq(fieldNameParser, pars.Int).Child(1)
 	return func(state *pars.State, result *pars.Result) error {
-		if err := referenceLineParser(state, result); err != nil {
+		if err := fieldNameParser(state, pars.Void); err != nil {
+			return err
+		}
+		if err := pars.Int(state, result); err != nil {
 			return err
 		}
 
@@ -246,12 +292,13 @@ func genbankReferenceParser(gb *GenBank, depth int) pars.Parser {
 
 		paddingLength := 3 - len(strconv.Itoa(ref.Number))
 		paddingParser := pars.String(strings.Repeat(" ", paddingLength))
-		infoParser := pars.Seq(pars.Maybe(paddingParser), pars.Line).Child(1)
-		infoParser(state, result)
+		paddingParser(state, pars.Void)
+		pars.Line(state, result)
 		ref.Info = string(result.Token)
 
 		subfieldParser := genbankReferenceSubfieldParser(&ref, depth)
-		pars.Many(subfieldParser)(state, result)
+		for subfieldParser(state, result) == nil {
+		}
 
 		gb.Fields.References = append(gb.Fields.References, ref)
 
@@ -268,29 +315,56 @@ func genbankCommentParser(gb *GenBank, depth int) pars.Parser {
 }
 
 func genbankFeatureParser(gb *GenBank, depth int) pars.Parser {
-	fieldNameParser := pars.Seq("FEATURES", pars.Line)
+	fieldNameParser := pars.String("FEATURES")
 	fieldBodyParser := gts.FeatureTableParser("")
-	fieldParser := pars.Seq(fieldNameParser, pars.Cut, fieldBodyParser).Child(2)
-	return fieldParser.Map(func(result *pars.Result) error {
+	return func(state *pars.State, result *pars.Result) error {
+		if err := fieldNameParser(state, result); err != nil {
+			return err
+		}
+		pars.Line(state, result)
+		state.Clear()
+		if err := fieldBodyParser(state, result); err != nil {
+			return err
+		}
 		gb.Table = result.Value.(gts.FeatureTable)
 		return nil
-	})
+	}
 }
 
 func genbankContigParser(gb *GenBank, depth int) pars.Parser {
 	fieldNameParser := genbankFieldNameParser("CONTIG", depth)
-	accessionParser := pars.Seq(pars.Until(':'), ':').Child(0)
-	locationParser := pars.Seq(pars.Int, "..", pars.Int).Children(0, 2)
-	contigParser := pars.Seq("join(", accessionParser, locationParser, ')')
-	fieldBodyParser := contigParser.Map(func(result *pars.Result) error {
-		accession := string(result.Children[1].Token)
-		head := result.Children[2].Children[0].Value.(int)
-		tail := result.Children[2].Children[1].Value.(int)
+	untilColon := pars.Until(byte(':'))
+	l, m, r := pars.String("join("), pars.String(".."), pars.Byte(')')
+	return func(state *pars.State, result *pars.Result) error {
+		if err := fieldNameParser(state, result); err != nil {
+			return err
+		}
+		if err := l(state, pars.Void); err != nil {
+			return err
+		}
+		if err := untilColon(state, result); err != nil {
+			return err
+		}
+		accession := string(result.Token)
+		pars.Skip(state, 1)
+		if err := pars.Int(state, result); err != nil {
+			return err
+		}
+		head := result.Value.(int)
+		if err := m(state, pars.Void); err != nil {
+			return err
+		}
+		if err := pars.Int(state, result); err != nil {
+			return err
+		}
+		tail := result.Value.(int)
+		if err := r(state, pars.Void); err != nil {
+			return err
+		}
 		gb.Fields.Contig.Accession = accession
 		gb.Fields.Contig.Region = gts.Segment{head - 1, tail}
 		return nil
-	})
-	return pars.Seq(fieldNameParser, fieldBodyParser, pars.EOL)
+	}
 }
 
 func validateOrigin(p []byte, length int, pos pars.Position) error {
