@@ -17,29 +17,62 @@ func init() {
 }
 
 func searchFunc(ctx *flags.Context) error {
+	h := newHash()
 	pos, opt := flags.Flags()
 
 	queryString := pos.String("query", "query sequence file (will be interpreted literally if preceded with @)")
 
-	var seqinPath *string
+	seqinPath := new(string)
+	*seqinPath = "-"
 	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
+	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
+	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 	featureKey := opt.String('k', "key", "misc_feature", "key for the reported oligomer region features")
+	qfstrs := opt.StringSlice('q', "qualifier", nil, "qualifier key-value pairs (syntax: key=value))")
 	exact := opt.Switch('e', "exact", "match the exact pattern even for ambiguous letters")
 	nocomplement := opt.Switch(0, "no-complement", "do not match the complement strand")
-	qfstrs := opt.StringSlice('q', "qualifier", nil, "qualifier key-value pairs (syntax: key=value))")
-	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
 	}
 
-	match := gts.Match
-	if *exact {
-		match = gts.Search
+	queries := []gts.Sequence{}
+	queryBytes := []byte(*queryString)
+	querySum := make([]byte, h.Size())
+
+	switch queryBytes[0] {
+	case '@':
+		digest(h, querySum, queryBytes)
+		query := gts.New(nil, nil, queryBytes[1:])
+		queries = append(queries, query)
+	default:
+		queryFile, err := os.Open(*queryString)
+		if err != nil {
+			return ctx.Raise(err)
+		}
+
+		h.Reset()
+		r := attach(h, queryFile)
+		scanner := seqio.NewAutoScanner(r)
+		for scanner.Scan() {
+			queries = append(queries, scanner.Value())
+		}
+		copy(querySum, h.Sum(nil))
+	}
+
+	d, err := newIODelegate(h, *seqinPath, *seqoutPath)
+	if err != nil {
+		return ctx.Raise(err)
+	}
+	defer d.Close()
+
+	filetype := seqio.Detect(*seqoutPath)
+	if *format != "" {
+		filetype = seqio.ToFileType(*format)
 	}
 
 	order := make(map[string]int)
@@ -53,52 +86,32 @@ func searchFunc(ctx *flags.Context) error {
 		order[name] = len(order)
 	}
 
-	queries := []gts.Sequence{}
-	queryBytes := []byte(*queryString)
+	if !*nocache {
+		data := encodePayload([]tuple{
+			{"command", strings.Join(ctx.Name, "-")},
+			{"version", gts.Version.String()},
+			{"query", encodeToString(querySum)},
+			{"filetype", filetype},
+			{"featureKey", *featureKey},
+			{"qfstrs", *qfstrs},
+			{"exact", *exact},
+			{"nocomplement", *nocomplement},
+		})
 
-	switch queryBytes[0] {
-	case '@':
-		query := gts.New(nil, nil, queryBytes[1:])
-		queries = append(queries, query)
-	default:
-		queryFile, err := os.Open(*queryString)
-		if err != nil {
+		ok, err := d.Cache(data)
+		if ok || err != nil {
 			return ctx.Raise(err)
 		}
-		scanner := seqio.NewAutoScanner(queryFile)
-		for scanner.Scan() {
-			queries = append(queries, scanner.Value())
-		}
 	}
 
-	seqinFile := os.Stdin
-	if seqinPath != nil && *seqinPath != "-" {
-		f, err := os.Open(*seqinPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
-		}
-		seqinFile = f
-		defer seqinFile.Close()
+	match := gts.Match
+	if *exact {
+		match = gts.Search
 	}
 
-	seqoutFile := os.Stdout
-	if *seqoutPath != "-" {
-		f, err := os.Create(*seqoutPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
-		}
-		seqoutFile = f
-		defer seqoutFile.Close()
-	}
+	w := bufio.NewWriter(d)
 
-	filetype := seqio.Detect(*seqoutPath)
-	if *format != "" {
-		filetype = seqio.ToFileType(*format)
-	}
-
-	w := bufio.NewWriter(seqoutFile)
-
-	scanner := seqio.NewAutoScanner(seqinFile)
+	scanner := seqio.NewAutoScanner(d)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		cmp := gts.Reverse(gts.Complement(gts.New(nil, nil, seq.Bytes())))
@@ -133,10 +146,10 @@ func searchFunc(ctx *flags.Context) error {
 		if _, err := formatter.WriteTo(w); err != nil {
 			return ctx.Raise(err)
 		}
-	}
 
-	if err := w.Flush(); err != nil {
-		return ctx.Raise(err)
+		if err := w.Flush(); err != nil {
+			return ctx.Raise(err)
+		}
 	}
 
 	if err := scanner.Err(); err != nil {

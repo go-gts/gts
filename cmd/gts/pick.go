@@ -96,18 +96,21 @@ func asPicker(list string) picker {
 }
 
 func pickFunc(ctx *flags.Context) error {
+	h := newHash()
 	pos, opt := flags.Flags()
 
 	list := pos.String("list", "list of sequences to pick (identical to the list option in cut)")
 
-	var seqinPath *string
+	seqinPath := new(string)
+	*seqinPath = "-"
 	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
+	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
-	feature := opt.Switch('f', "feature", "pick features instead of sequences")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
+	feature := opt.Switch('f', "feature", "pick features instead of sequences")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -115,34 +118,35 @@ func pickFunc(ctx *flags.Context) error {
 
 	pick := asPicker(*list)
 
-	seqinFile := os.Stdin
-	if seqinPath != nil && *seqinPath != "-" {
-		f, err := os.Open(*seqinPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
-		}
-		seqinFile = f
-		defer seqinFile.Close()
+	d, err := newIODelegate(h, *seqinPath, *seqoutPath)
+	if err != nil {
+		return ctx.Raise(err)
 	}
-
-	seqoutFile := os.Stdout
-	if *seqoutPath != "-" {
-		f, err := os.Create(*seqoutPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
-		}
-		seqoutFile = f
-		defer seqoutFile.Close()
-	}
+	defer d.Close()
 
 	filetype := seqio.Detect(*seqoutPath)
 	if *format != "" {
 		filetype = seqio.ToFileType(*format)
 	}
 
-	w := bufio.NewWriter(seqoutFile)
+	if !*nocache {
+		data := encodePayload([]tuple{
+			{"command", strings.Join(ctx.Name, "-")},
+			{"version", gts.Version.String()},
+			{"list", *list},
+			{"feature", *feature},
+			{"filetype", filetype},
+		})
 
-	scanner := seqio.NewAutoScanner(seqinFile)
+		ok, err := d.Cache(data)
+		if ok || err != nil {
+			return ctx.Raise(err)
+		}
+	}
+
+	w := bufio.NewWriter(d)
+
+	scanner := seqio.NewAutoScanner(d)
 	i := 0
 	for scanner.Scan() {
 		seq := scanner.Value()

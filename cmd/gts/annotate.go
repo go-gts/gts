@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/go-gts/flags"
 	"github.com/go-gts/gts"
@@ -17,15 +18,18 @@ func init() {
 }
 
 func annotateFunc(ctx *flags.Context) error {
+	h := newHash()
 	pos, opt := flags.Flags()
 
 	featinPath := pos.String("feature_table", "feature table file containing features to merge")
 
-	var seqinPath *string
+	seqinPath := new(string)
+	*seqinPath = "-"
 	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
+	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
@@ -33,43 +37,46 @@ func annotateFunc(ctx *flags.Context) error {
 		return err
 	}
 
-	seqinFile := os.Stdin
-	if seqinPath != nil && *seqinPath != "-" {
-		f, err := os.Open(*seqinPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
-		}
-		seqinFile = f
-		defer seqinFile.Close()
-	}
-
 	featinFile, err := os.Open(*featinPath)
 	if err != nil {
 		return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *featinPath, err))
 	}
 
-	seqoutFile := os.Stdout
-	if *seqoutPath != "-" {
-		f, err := os.Create(*seqoutPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
-		}
-		seqoutFile = f
-		defer seqoutFile.Close()
+	h.Reset()
+	r := attach(h, featinFile)
+	state := pars.NewState(r)
+	result, err := gts.FeatureTableParser("").Parse(state)
+	featin := result.Value.(gts.FeatureTable)
+	featsum := h.Sum(nil)
+
+	d, err := newIODelegate(h, *seqinPath, *seqoutPath)
+	if err != nil {
+		return ctx.Raise(err)
 	}
+	defer d.Close()
 
 	filetype := seqio.Detect(*seqoutPath)
 	if *format != "" {
 		filetype = seqio.ToFileType(*format)
 	}
 
-	state := pars.NewState(featinFile)
-	result, err := gts.FeatureTableParser("").Parse(state)
-	featin := result.Value.(gts.FeatureTable)
+	if !*nocache {
+		data := encodePayload([]tuple{
+			{"command", strings.Join(ctx.Name, "-")},
+			{"version", gts.Version.String()},
+			{"featin", encodeToString(featsum)},
+			{"filetype", filetype},
+		})
 
-	w := bufio.NewWriter(seqoutFile)
+		ok, err := d.Cache(data)
+		if ok || err != nil {
+			return ctx.Raise(err)
+		}
+	}
 
-	scanner := seqio.NewAutoScanner(seqinFile)
+	w := bufio.NewWriter(d)
+
+	scanner := seqio.NewAutoScanner(d)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		ff := seq.Features()

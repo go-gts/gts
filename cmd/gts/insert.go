@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/go-gts/flags"
 	"github.com/go-gts/gts"
@@ -17,27 +18,25 @@ func init() {
 }
 
 func insertFunc(ctx *flags.Context) error {
+	h := newHash()
 	pos, opt := flags.Flags()
 
 	locstr := pos.String("locator", "a locator string ([modifier|selector|point|range][@modifier])")
 	guestPath := pos.String("guest", "guest sequence file (will be interpreted literally if preceded with @)")
 
-	var hostPath *string
+	hostPath := new(string)
+	*hostPath = "-"
 	if cmd.IsTerminal(os.Stdin.Fd()) {
 		hostPath = pos.String("host", "host sequence file (may be omitted if standard input is provided)")
 	}
 
-	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
+	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
+	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
 	embed := opt.Switch('e', "embed", "extend existing feature locations when inserting instead of splitting them")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
-	}
-
-	insert := gts.Insert
-	if *embed {
-		insert = gts.Embed
 	}
 
 	locate, err := gts.AsLocator(*locstr)
@@ -45,21 +44,13 @@ func insertFunc(ctx *flags.Context) error {
 		return ctx.Raise(err)
 	}
 
-	hostFile := os.Stdin
-	if hostPath != nil && *hostPath != "-" {
-		f, err := os.Open(*hostPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *hostPath, err))
-		}
-		hostFile = f
-		defer hostFile.Close()
-	}
-
 	guests := []gts.Sequence{}
 	guestBytes := []byte(*guestPath)
+	guestSum := make([]byte, h.Size())
 
 	switch guestBytes[0] {
 	case '@':
+		digest(h, guestSum, guestBytes)
 		guest := gts.New(nil, nil, guestBytes[1:])
 		guests = append(guests, guest)
 	default:
@@ -69,7 +60,9 @@ func insertFunc(ctx *flags.Context) error {
 		}
 		defer guestFile.Close()
 
-		scanner := seqio.NewAutoScanner(guestFile)
+		h.Reset()
+		r := attach(h, guestFile)
+		scanner := seqio.NewAutoScanner(r)
 		for scanner.Scan() {
 			guests = append(guests, scanner.Value())
 		}
@@ -78,24 +71,41 @@ func insertFunc(ctx *flags.Context) error {
 		}
 	}
 
-	seqoutFile := os.Stdout
-	if *seqoutPath != "-" {
-		f, err := os.Create(*seqoutPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
-		}
-		seqoutFile = f
-		defer seqoutFile.Close()
+	d, err := newIODelegate(h, *hostPath, *seqoutPath)
+	if err != nil {
+		return ctx.Raise(err)
 	}
+	defer d.Close()
 
 	filetype := seqio.Detect(*seqoutPath)
 	if *format != "" {
 		filetype = seqio.ToFileType(*format)
 	}
 
-	w := bufio.NewWriter(seqoutFile)
+	insert := gts.Insert
+	if *embed {
+		insert = gts.Embed
+	}
 
-	scanner := seqio.NewAutoScanner(hostFile)
+	if !*nocache {
+		data := encodePayload([]tuple{
+			{"command", strings.Join(ctx.Name, "-")},
+			{"version", gts.Version.String()},
+			{"locator", *locstr},
+			{"guest", guestSum},
+			{"embed", *embed},
+			{"filetype", filetype},
+		})
+
+		ok, err := d.Cache(data)
+		if ok || err != nil {
+			return ctx.Raise(err)
+		}
+	}
+
+	w := bufio.NewWriter(d)
+
+	scanner := seqio.NewAutoScanner(d)
 	for scanner.Scan() {
 		host := scanner.Value()
 

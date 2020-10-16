@@ -17,19 +17,22 @@ func init() {
 }
 
 func defineFunc(ctx *flags.Context) error {
+	h := newHash()
 	pos, opt := flags.Flags()
 
 	key := pos.String("key", "feature key")
 	locstr := pos.String("location", "feature location")
 
-	var seqinPath *string
+	seqinPath := new(string)
+	*seqinPath = "-"
 	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
+	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
+	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
 	qfstrs := opt.StringSlice('q', "qualifier", nil, "qualifier key-value pairs (syntax: key=value))")
-	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -38,6 +41,17 @@ func defineFunc(ctx *flags.Context) error {
 	loc, err := gts.AsLocation(*locstr)
 	if err != nil {
 		return ctx.Raise(err)
+	}
+
+	d, err := newIODelegate(h, *seqinPath, *seqoutPath)
+	if err != nil {
+		return ctx.Raise(err)
+	}
+	defer d.Close()
+
+	filetype := seqio.Detect(*seqoutPath)
+	if *format != "" {
+		filetype = seqio.ToFileType(*format)
 	}
 
 	order := make(map[string]int)
@@ -58,34 +72,25 @@ func defineFunc(ctx *flags.Context) error {
 		Order:      order,
 	}
 
-	seqinFile := os.Stdin
-	if seqinPath != nil && *seqinPath != "-" {
-		f, err := os.Open(*seqinPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
+	if !*nocache {
+		data := encodePayload([]tuple{
+			{"command", strings.Join(ctx.Name, "-")},
+			{"version", gts.Version.String()},
+			{"key", *key},
+			{"location", loc.String()},
+			{"qualifiers", *qfstrs},
+			{"filetype", filetype},
+		})
+
+		ok, err := d.Cache(data)
+		if ok || err != nil {
+			return ctx.Raise(err)
 		}
-		seqinFile = f
-		defer seqinFile.Close()
 	}
 
-	seqoutFile := os.Stdout
-	if *seqoutPath != "-" {
-		f, err := os.Create(*seqoutPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
-		}
-		seqoutFile = f
-		defer seqoutFile.Close()
-	}
+	w := bufio.NewWriter(d)
 
-	filetype := seqio.Detect(*seqoutPath)
-	if *format != "" {
-		filetype = seqio.ToFileType(*format)
-	}
-
-	w := bufio.NewWriter(seqoutFile)
-
-	scanner := seqio.NewAutoScanner(seqinFile)
+	scanner := seqio.NewAutoScanner(d)
 	for scanner.Scan() {
 		seq := scanner.Value()
 

@@ -47,44 +47,47 @@ func (pp byValue) Swap(i, j int) {
 }
 
 func summaryFunc(ctx *flags.Context) error {
+	h := newHash()
 	pos, opt := flags.Flags()
 
-	var seqinPath *string
+	seqinPath := new(string)
+	*seqinPath = "-"
 	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
+	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
+	outPath := opt.String('o', "output", "-", "output file (specifying `-` will force standard output)")
 	nofeature := opt.Switch('F', "no-feature", "suppress feature summary")
 	noqualifier := opt.Switch('Q', "no-qualifier", "suppress qualifier summary")
-	outPath := opt.String('o', "output", "-", "output file (specifying `-` will force standard output)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
 	}
 
-	seqinFile := os.Stdin
-	if seqinPath != nil && *seqinPath != "-" {
-		f, err := os.Open(*seqinPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
+	d, err := newIODelegate(h, *seqinPath, *outPath)
+	if err != nil {
+		return ctx.Raise(err)
+	}
+	defer d.Close()
+
+	if !*nocache {
+		data := encodePayload([]tuple{
+			{"command", strings.Join(ctx.Name, "-")},
+			{"version", gts.Version.String()},
+			{"nofeature", *nofeature},
+			{"noqualifier", noqualifier},
+		})
+
+		ok, err := d.Cache(data)
+		if ok || err != nil {
+			return ctx.Raise(err)
 		}
-		seqinFile = f
-		defer seqinFile.Close()
 	}
 
-	outFile := os.Stdout
-	if *outPath != "-" {
-		f, err := os.Create(*outPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *outPath, err))
-		}
-		outFile = f
-		defer outFile.Close()
-	}
+	w := bufio.NewWriter(d)
 
-	w := bufio.NewWriter(outFile)
-
-	scanner := seqio.NewAutoScanner(seqinFile)
+	scanner := seqio.NewAutoScanner(d)
 	i := 0
 	for scanner.Scan() {
 		seq := scanner.Value()

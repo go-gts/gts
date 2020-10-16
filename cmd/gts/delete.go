@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/go-flip/flip"
 	"github.com/go-gts/flags"
@@ -17,26 +18,24 @@ func init() {
 }
 
 func deleteFunc(ctx *flags.Context) error {
+	h := newHash()
 	pos, opt := flags.Flags()
 
 	locstr := pos.String("locator", "a locator string ([modifier|selector|point|range][@modifier])")
 
-	var seqinPath *string
+	seqinPath := new(string)
+	*seqinPath = "-"
 	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
+	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
+	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
 	erase := opt.Switch('e', "erase", "remove features contained in the deleted regions")
-	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
-	}
-
-	delete := gts.Delete
-	if *erase {
-		delete = gts.Erase
 	}
 
 	locate, err := gts.AsLocator(*locstr)
@@ -44,34 +43,40 @@ func deleteFunc(ctx *flags.Context) error {
 		return ctx.Raise(err)
 	}
 
-	seqinFile := os.Stdin
-	if seqinPath != nil && *seqinPath != "-" {
-		f, err := os.Open(*seqinPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
-		}
-		seqinFile = f
-		defer seqinFile.Close()
+	d, err := newIODelegate(h, *seqinPath, *seqoutPath)
+	if err != nil {
+		return ctx.Raise(err)
 	}
-
-	seqoutFile := os.Stdout
-	if *seqoutPath != "-" {
-		f, err := os.Create(*seqoutPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
-		}
-		seqoutFile = f
-		defer seqoutFile.Close()
-	}
+	defer d.Close()
 
 	filetype := seqio.Detect(*seqoutPath)
 	if *format != "" {
 		filetype = seqio.ToFileType(*format)
 	}
 
-	w := bufio.NewWriter(seqoutFile)
+	delete := gts.Delete
+	if *erase {
+		delete = gts.Erase
+	}
 
-	scanner := seqio.NewAutoScanner(seqinFile)
+	if !*nocache {
+		data := encodePayload([]tuple{
+			{"command", strings.Join(ctx.Name, "-")},
+			{"version", gts.Version.String()},
+			{"locator", *locstr},
+			{"erase", *erase},
+			{"filetype", filetype},
+		})
+
+		ok, err := d.Cache(data)
+		if ok || err != nil {
+			return ctx.Raise(err)
+		}
+	}
+
+	w := bufio.NewWriter(d)
+
+	scanner := seqio.NewAutoScanner(d)
 	for scanner.Scan() {
 		seq := scanner.Value()
 

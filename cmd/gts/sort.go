@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/go-gts/flags"
 	"github.com/go-gts/gts"
@@ -31,51 +32,50 @@ func (ss byLength) Swap(i, j int) {
 }
 
 func sortFunc(ctx *flags.Context) error {
+	h := newHash()
 	pos, opt := flags.Flags()
 
-	var seqinPath *string
+	seqinPath := new(string)
+	*seqinPath = "-"
 	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
+	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
-	reverse := opt.Switch('r', "reverse", "reverse the sort order")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
+	reverse := opt.Switch('r', "reverse", "reverse the sort order")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
 	}
 
-	seqinFile := os.Stdin
-	if seqinPath != nil && *seqinPath != "-" {
-		f, err := os.Open(*seqinPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
-		}
-		seqinFile = f
-		defer seqinFile.Close()
+	d, err := newIODelegate(h, *seqinPath, *seqoutPath)
+	if err != nil {
+		return ctx.Raise(err)
 	}
-
-	seqoutFile := os.Stdout
-	if *seqoutPath != "-" {
-		f, err := os.Create(*seqoutPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *seqoutPath, err))
-		}
-		seqoutFile = f
-		defer seqoutFile.Close()
-	}
+	defer d.Close()
 
 	filetype := seqio.Detect(*seqoutPath)
 	if *format != "" {
 		filetype = seqio.ToFileType(*format)
 	}
 
-	w := bufio.NewWriter(seqoutFile)
+	if !*nocache {
+		data := encodePayload([]tuple{
+			{"command", strings.Join(ctx.Name, "-")},
+			{"version", gts.Version.String()},
+			{"reverse", *reverse},
+			{"filetype", filetype},
+		})
 
+		ok, err := d.Cache(data)
+		if ok || err != nil {
+			return ctx.Raise(err)
+		}
+	}
 	seqs := []gts.Sequence{}
-
-	scanner := seqio.NewAutoScanner(seqinFile)
+	scanner := seqio.NewAutoScanner(d)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		seqs = append(seqs, seq)
@@ -87,6 +87,8 @@ func sortFunc(ctx *flags.Context) error {
 		iface = sort.Reverse(iface)
 	}
 	sort.Sort(iface)
+
+	w := bufio.NewWriter(d)
 
 	for _, seq := range seqs {
 		formatter := seqio.NewFormatter(seq, filetype)

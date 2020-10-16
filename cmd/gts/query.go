@@ -36,13 +36,16 @@ func formatCSV(record []string, comma rune) (string, error) {
 }
 
 func queryFunc(ctx *flags.Context) error {
+	h := newHash()
 	pos, opt := flags.Flags()
 
-	var seqinPath *string
+	seqinPath := new(string)
+	*seqinPath = "-"
 	if cmd.IsTerminal(os.Stdin.Fd()) {
 		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
+	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
 	outPath := opt.String('o', "output", "-", "output table file (specifying `-` will force standard output)")
 	names := opt.StringSlice('n', "name", nil, "qualifier name(s) to select")
 	delim := opt.String('d', "delimiter", "\t", "string to insert between columns")
@@ -57,40 +60,48 @@ func queryFunc(ctx *flags.Context) error {
 		return err
 	}
 
+	d, err := newIODelegate(h, *seqinPath, *outPath)
+	if err != nil {
+		return ctx.Raise(err)
+	}
+	defer d.Close()
+
+	sort.Strings(*names)
+
 	sep := []rune(*sepstr)
 	if len(sep) > 1 {
 		return ctx.Raise(fmt.Errorf("separator must be a single character: got %q", *sepstr))
 	}
 	comma := sep[0]
 
-	seqinFile := os.Stdin
-	if seqinPath != nil && *seqinPath != "-" {
-		f, err := os.Open(*seqinPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to open file %q: %v", *seqinPath, err))
-		}
-		seqinFile = f
-		defer seqinFile.Close()
-	}
+	if !*nocache {
+		data := encodePayload([]tuple{
+			{"command", strings.Join(ctx.Name, "-")},
+			{"version", gts.Version.String()},
+			{"names", *names},
+			{"delim", *delim},
+			{"comma", comma},
+			{"noheader", *noheader},
+			{"source", *source},
+			{"nokey", *nokey},
+			{"noloc", *noloc},
+			{"empty", *empty},
+		})
 
-	outFile := os.Stdout
-	if *outPath != "-" {
-		f, err := os.Create(*outPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to create file %q: %v", *outPath, err))
+		ok, err := d.Cache(data)
+		if ok || err != nil {
+			return ctx.Raise(err)
 		}
-		outFile = f
-		defer outFile.Close()
 	}
-
-	w := bufio.NewWriter(outFile)
 
 	var common []string = nil
 
 	ids := make([]string, 0)
 	fff := [][]gts.Feature{}
 
-	scanner := seqio.NewAutoScanner(seqinFile)
+	w := bufio.NewWriter(d)
+
+	scanner := seqio.NewAutoScanner(d)
 	for scanner.Scan() {
 		seq := scanner.Value()
 		switch info := seq.Info().(type) {
@@ -110,11 +121,17 @@ func queryFunc(ctx *flags.Context) error {
 				}
 				sort.Strings(common)
 			}
+			indices := make([]int, 0, len(common))
 			for i := 0; i < len(common); i++ {
-				if _, ok := f.Qualifiers[common[i]]; !ok {
-					common = append(common[:i], common[i+1:]...)
+				if _, ok := f.Qualifiers[common[i]]; ok {
+					indices = append(indices, i)
 				}
 			}
+			remain := make([]string, len(indices))
+			for i, index := range indices {
+				remain[i] = common[index]
+			}
+			common = remain
 		}
 		fff = append(fff, ff)
 	}
