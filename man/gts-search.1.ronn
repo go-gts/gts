@@ -41,6 +41,9 @@ insight.
     Key for the reported oligomer region features. The default feature key is
     `misc_feature`.
 
+  * `--no-cache`:
+    Do not use or create cache. See gts-cache(7) for details.
+
   * `--no-complement`:
     Do not match the complement strand.
 

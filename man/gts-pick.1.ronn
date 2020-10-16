@@ -35,6 +35,9 @@ output all sequences but pick the features matching the _list_ option.
     with this option will override the file type detection from the output
     filename.
 
+  * `--no-cache`:
+    Do not use or create cache. See gts-cache(7) for details.
+
   * `-o <output>`, `--output=<output>`:
     Output sequence file (specifying `-` will force standard output). The
     output file format will be automatically detected from the filename if none

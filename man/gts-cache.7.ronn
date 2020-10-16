@@ -1,0 +1,46 @@
+## gts-cache(7) -- intelligent caching of intermediate files
+
+## DESCRIPTION
+
+**gts-cache**s are files that are kept in user cache directories to avoid
+re-executing previously executed commands. By using a **gts-cache**, gts(1)
+commands will not only skip the command specific computations but also parsing,
+which can provide significant performance boosts in certain scenarios. A cache
+file consists of a header which contains information for validating the content
+of the cache file, and a body which can be any form of data of any length.
+
+A gts(1) command will first check for the availability of a cache. This is done
+by computing a SHA-1 hash value using the inputs given to the command. First,
+the primary input file is digested to produce an _input sum_. Other inputs to
+the command is combined into a list of key-value pairs along with the name of
+the command and the command version. This list is then serialized and digested
+to produce the _data sum_. The _input sum_ and _data sum_ are concatenated and
+digested to produce the _output sum_. This _output sum_ will then be encoded as
+a hexadecimal string, and this value will be used as the cache filename.
+
+If a cache file with the computed filename does not exist, a command will
+attempt to create a cache file unless caching is disabled or an output file is
+specified explicitly. This means that even if caching is enabled, the cache
+file will only be created if the command is writing to standard output.
+Furthermore, a cache file will be deleted if an output file is specified by the
+user. This is done to minimize duplicate data from existing within the system.
+While caches do provide temporal benefits, they do occupy disk space which is
+generally undesierable. Therefore, gts(1) commands will try to minimize the
+amount of cache existing within the system at a given moment. Once the cache
+file is created, the _input sum_, _data sum_ and the hash value of the digested
+body designated the _body sum_ will be written into the file comprising the
+header, followed by the body content.
+
+If a cache file with the computed filename does exist, a command will attempt
+to open the file unless caching is disabled. Once open, the header is read to
+verify that the _input sum_ and _data sum_ produces an _output sum_ whose
+hexadecimal encoding is identical to the filename. The body is then digested to
+also verify that the body content is intact. If either of this verification
+fails, the cache is immediately discarded and a new cache file is created. If
+both verifications pass, the body content is then written to the specified
+output stream. If the output is a file explicitly specified by the user, the
+cache file is removed.
+
+## SEE ALSO
+
+gts(1), gts-cache(1), gts-cache-list(1), gts-cache-path(1), gts-cache-purge(1)

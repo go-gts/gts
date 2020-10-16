@@ -19,16 +19,20 @@ gts\-summary [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIseqin\fR
 Input sequence file (may be omitted if standard input is provided)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
 .
 .TP
-\fB\-\-no\-feature\fR
+\fB\-F\fR, \fB\-\-no\-feature\fR
 Suppress feature summary\.
 .
 .TP
-\fB\-\-no\-qualifier\fR
-Suppress qualifier summary\.
+\fB\-\-no\-cache\fR
+Do not use or create cache\.
 .
 .TP
 \fB\-o <output>\fR, \fB\-\-output=<output>\fR
 Output file (specifying \fB\-\fR will force standard output)\.
+.
+.TP
+\fB\-Q\fR, \fB\-\-no\-qualifier\fR
+Suppress qualifier summary\.
 .
 .SH "BUGS"
 \fBgts\-summary\fR currently has no known bugs\.

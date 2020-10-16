@@ -26,6 +26,12 @@ such features, first run **gts-join** and pass the output to gts-repair(1).
     with this option will override the file type detection from the output
     filename.
 
+  * `--no-cache`:
+    Do not use or create cache. See gts-cache(7) for details.
+
+  * `--no-cache`:
+    Do not use or create cache. See gts-cache(7) for details.
+
   * `-o <output>`, `--output=<output>`:
     Output sequence file (specifying `-` will force standard output). The
     output file format will be automatically detected from the filename if none

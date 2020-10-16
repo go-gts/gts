@@ -26,6 +26,9 @@ Define a new feature.
     with this option will override the file type detection from the output
     filename.
 
+  * `--no-cache`:
+    Do not use or create cache. See gts-cache(7) for details.
+
   * `-o <output>`, `--output=<output>`:
     Output sequence file (specifying `-` will force standard output). The
     output file format will be automatically detected from the filename if none
@@ -41,6 +44,6 @@ Define a new feature.
 
 ## AUTHORS
 
-**gts-define** is written and maintained by @AUTHOR@.
+**gts-define** is written and maintained by Kotone Itaya.
 
 ## SEE ALSO

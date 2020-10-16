@@ -1,0 +1,26 @@
+# gts-cache-purge(1) -- delete all cache files
+
+## SYNOPSIS
+
+gts-cache-purge [--version] [-h | --help]
+
+## DESCRIPTION
+
+**gts-cache-purge** will remove all of the files contained in the cache
+directory.
+
+## OPTIONS
+
+None.
+
+## BUGS
+
+**gts-cache-purge** currently has no known bugs.
+
+## AUTHORS
+
+**gts-cache-purge** is written and maintained by Kotone Itaya.
+
+## SEE ALSO
+
+gts(1), gts-cache(1), gts-cache-list(1), gts-cache-path(1), gts-cache(7)

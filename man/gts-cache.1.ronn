@@ -1,0 +1,33 @@
+# gts-cache -- manage gts cache files
+
+## SYNOPSIS
+
+usage: gts cache [--version] [-h | --help] <command> [<args>]
+
+## DESCRIPTION
+
+**gts-cache** is a command set for interacting with gts-cache(7) files. For all
+detailed description of how gts(1) handles caches, refer to gts-cache(7).
+
+## COMMANDS
+
+  * `gts-cache-list(1)`:
+    List the cache files.
+
+  * `gts-cache-path(1)`:
+    Print the cache directory path.
+
+  * `gts-cache-purge(1)`:
+    Delete all cache files.
+
+## BUGS
+
+**gts-cache** currently has no known bugs.
+
+## AUTHORS
+
+**gts-cache** is written and maintained by Kotone Itaya.
+
+## SEE ALSO
+
+gts(1), gts-cache-list(1), gts-cache-path(1), gts-cache-purge(1), gts-cache(7)

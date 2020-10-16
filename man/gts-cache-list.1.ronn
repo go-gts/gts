@@ -1,0 +1,26 @@
+# gts-cache-list(1) -- list the cache files
+
+## SYNOPSIS
+
+gts-cache-list [--version] [-h | --help]
+
+## DESCRIPTION
+
+**gts-cache-list** will print a list of existing gts-cache(7) files, along with
+its file size and the total size occupied by the files.
+
+## OPTIONS
+
+None.
+
+## BUGS
+
+**gts-cache-list** currently has no known bugs.
+
+## AUTHORS
+
+**gts-cache-list** is written and maintained by Kotone Itaya.
+
+## SEE ALSO
+
+gts(1), gts-cache(1), gts-cache-path(1), gts-cache-purge(1), gts-cache(7)

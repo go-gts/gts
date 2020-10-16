@@ -17,14 +17,18 @@ more elaborate information of features.
     Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 
-  * `--no-feature`:
+  * `-F`, `--no-feature`:
     Suppress feature summary.
 
-  * `--no-qualifier`:
-    Suppress qualifier summary.
+  * `--no-cache`:
+    Do not use or create cache.
 
   * `-o <output>`, `--output=<output>`:
     Output file (specifying `-` will force standard output).
+
+  * `-Q`, `--no-qualifier`:
+    Suppress qualifier summary.
+
 
 ## BUGS
 

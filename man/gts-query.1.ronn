@@ -31,6 +31,9 @@ insight. For a brief summary of a sequence, consider using gts-summary(1).
     Allow missing qualifiers to be reported. Unlink GFFs, these columns will be
     completely empty.
 
+  * `--no-cache`:
+    Do not use or create cache. See gts-cache(7) for details.
+
   * `--no-header`:
     Do not print the header line.
 
