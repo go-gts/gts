@@ -7,9 +7,65 @@ function _gts_annotate {
         "--version[print the version number]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
+}
+
+function _gts_cache_list {
+    _arguments \
+        "-h[show help]" \
+        "--help[show help]" \
+        "--version[print the version number]" \
+         \
+        "*::files:_files"
+}
+
+function _gts_cache_path {
+    _arguments \
+        "-h[show help]" \
+        "--help[show help]" \
+        "--version[print the version number]" \
+         \
+        "*::files:_files"
+}
+
+function _gts_cache_purge {
+    _arguments \
+        "-h[show help]" \
+        "--help[show help]" \
+        "--version[print the version number]" \
+         \
+        "*::files:_files"
+}
+
+function _gts_cache {
+    local line
+
+    function _commands {
+        local -a commands
+        commands=(
+            'list:list the cache files'
+            'path:print the cache directory path'
+            'purge:delete all cache files'
+        )
+        _describe 'command' commands
+    }
+
+    _arguments -C \
+        "-h[show help]" \
+        "--help[show help]" \
+        "--version[print the version number]" \
+        "1: :_commands" \
+        "*::arg:->args"
+
+    case $line[1] in
+        list)  _gts_cache_list ;;
+        path)  _gts_cache_path ;;
+        purge) _gts_cache_purge ;;
+        *) ;;
+    esac
 }
 
 function _gts_clear {
@@ -19,6 +75,7 @@ function _gts_clear {
         "--version[print the version number]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
@@ -31,6 +88,7 @@ function _gts_complement {
         "--version[print the version number]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
@@ -43,6 +101,7 @@ function _gts_define {
         "--version[print the version number]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "-q[qualifier key-value pairs (syntax: key=value))]" \
@@ -59,6 +118,7 @@ function _gts_delete {
         "--erase[remove features contained in the deleted regions]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
@@ -73,6 +133,7 @@ function _gts_extract {
         "--format[output file format (defaults to same as input)]" \
         "-m[location range modifier]" \
         "--range[location range modifier]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
@@ -87,6 +148,7 @@ function _gts_insert {
         "--embed[extend existing feature locations when inserting instead of splitting them]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
@@ -101,6 +163,7 @@ function _gts_join {
         "--circular[output the sequence as circular if possible]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
@@ -125,6 +188,7 @@ function _gts_pick {
         "--feature[pick features instead of sequences]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
@@ -138,11 +202,12 @@ function _gts_query {
         "-d[string to insert between columns]" \
         "--delimiter[string to insert between columns]" \
         "--empty[allow missing qualifiers to be reported]" \
+        "--no-cache[do not use or create cache]" \
+        "--no-header[do not print the header line]" \
         "--no-key[do not report the feature key]" \
-        "--no-location[do not report the feature location]" \
         "-n[qualifier name(s) to select]" \
         "--name[qualifier name(s) to select]" \
-        "--no-header[do not print the header line]" \
+        "--no-location[do not report the feature location]" \
         "-o[output table file (specifying `-` will force standard output)]" \
         "--output[output table file (specifying `-` will force standard output)]" \
         "--source[include the source feature(s)]" \
@@ -158,6 +223,7 @@ function _gts_repair {
         "--version[print the version number]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
@@ -170,6 +236,7 @@ function _gts_reverse {
         "--version[print the version number]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
@@ -182,6 +249,7 @@ function _gts_rotate {
         "--version[print the version number]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
@@ -198,6 +266,7 @@ function _gts_search {
         "--format[output file format (defaults to same as input)]" \
         "-k[key for the reported oligomer region features]" \
         "--key[key for the reported oligomer region features]" \
+        "--no-cache[do not use or create cache]" \
         "--no-complement[do not match the complement strand]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
@@ -213,6 +282,7 @@ function _gts_select {
         "--version[print the version number]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "-v[select features that do not match the given criteria]" \
@@ -227,6 +297,7 @@ function _gts_sort {
         "--version[print the version number]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "-r[reverse the sort order]" \
@@ -241,6 +312,7 @@ function _gts_split {
         "--version[print the version number]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
         "*::files:_files"
@@ -253,6 +325,7 @@ function _gts_summary {
         "--version[print the version number]" \
         "-F[suppress feature summary]" \
         "--no-feature[suppress feature summary]" \
+        "--no-cache[do not use or create cache]" \
         "-o[output file (specifying `-` will force standard output)]" \
         "--output[output file (specifying `-` will force standard output)]" \
         "-Q[suppress qualifier summary]" \
@@ -267,6 +340,7 @@ function _gts {
         local -a commands
         commands=(
             'annotate:merge features from a feature list file into a sequence'
+            'cache:manage gts cache files'
             'clear:remove all features from the sequence (excluding source features)'
             'complement:compute the complement of the given sequence'
             'define:define a new feature'
@@ -298,6 +372,7 @@ function _gts {
 
     case $line[1] in
         annotate)   _gts_annotate ;;
+        cache)      _gts_cache ;;
         clear)      _gts_clear ;;
         complement) _gts_complement ;;
         define)     _gts_define ;;
