@@ -250,14 +250,12 @@ func Erase(seq Sequence, offset, length int) Sequence {
 // overlapping with the sliced region will be left in the sliced sequence.
 func Slice(seq Sequence, start, end int) Sequence {
 	if end < start {
-		seq = Erase(seq, end, start-end)
-		return Rotate(seq, -end)
+		seq = Rotate(seq, end)
+		return Slice(seq, 0, start-end)
 	}
 
 	info := seq.Info()
 	info = trySlice(info, start, end)
-
-	seq = WithInfo(seq, info)
 
 	ff := seq.Features().Filter(Overlap(start, end))
 
@@ -269,11 +267,11 @@ func Slice(seq Sequence, start, end int) Sequence {
 		ff[i].Location = loc
 	}
 
-	seq = WithFeatures(seq, ff)
-
 	p := make([]byte, end-start)
 	copy(p, seq.Bytes()[start:end])
 
+	seq = WithInfo(seq, info)
+	seq = WithFeatures(seq, ff)
 	seq = WithBytes(seq, p)
 	seq = WithTopology(seq, Linear)
 
@@ -343,10 +341,12 @@ func Rotate(seq Sequence, n int) Sequence {
 		loc := f.Location.Expand(0, n).Normalize(Len(seq))
 		ff = ff.Insert(Feature{f.Key, loc, f.Qualifiers, f.Order})
 	}
-	seq = WithFeatures(seq, ff)
 
+	m := Len(seq) - n
 	p := seq.Bytes()
-	p = append(p[n:], p[:n]...)
+	p = append(p[m:], p[:m]...)
+
+	seq = WithFeatures(seq, ff)
 	seq = WithBytes(seq, p)
 
 	return seq

@@ -324,7 +324,7 @@ func TestReverse(t *testing.T) {
 }
 
 func TestRotate(t *testing.T) {
-	p, q := []byte("atgcatgc"), []byte("gcatgcat")
+	p, q := []byte("aattggcc"), []byte("ccaattgg")
 	qfs := Values{}
 	qfs.Add("organism", "Genus species")
 	qfs.Add("mol_type", "Genomic DNA")
@@ -336,13 +336,24 @@ func TestRotate(t *testing.T) {
 	in, exp := New(info, ff, p), New(info, gg, q)
 	out := Rotate(in, -6)
 	if !reflect.DeepEqual(out.Info(), exp.Info()) {
-		t.Errorf("Rotate(in, 2).Info() = %v, want %v", out.Info(), exp.Info())
+		t.Errorf("Rotate(in, -6).Info() = %v, want %v", out.Info(), exp.Info())
 	}
 	if !featuresEqual(out.Features(), exp.Features()) {
-		t.Errorf("Rotate(in, 2).Features() = %v, want %v", out.Features(), exp.Features())
+		t.Errorf("Rotate(in, -6).Features() = %v, want %v", out.Features(), exp.Features())
 	}
 	if !bytesEqual(out.Bytes(), exp.Bytes()) {
-		t.Errorf("Rotate(in, 2).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+		t.Errorf("Rotate(in, -6).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
+	}
+
+	out = Rotate(in, 10)
+	if !reflect.DeepEqual(out.Info(), exp.Info()) {
+		t.Errorf("Rotate(in, 10).Info() = %v, want %v", out.Info(), exp.Info())
+	}
+	if !featuresEqual(out.Features(), exp.Features()) {
+		t.Errorf("Rotate(in, 10).Features() = %v, want %v", out.Features(), exp.Features())
+	}
+	if !bytesEqual(out.Bytes(), exp.Bytes()) {
+		t.Errorf("Rotate(in, 10).Bytes() = %v, want %v", out.Bytes(), exp.Bytes())
 	}
 }
 

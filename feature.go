@@ -293,11 +293,15 @@ type FeatureTable []Feature
 // Filter returns a FeatureTable containing the features that match the given
 // Filter within this FeatureTable.
 func (ff FeatureTable) Filter(filter Filter) FeatureTable {
-	gg := FeatureTable{}
-	for _, f := range ff {
+	indices := make([]int, 0, len(ff))
+	for i, f := range ff {
 		if filter(f) {
-			gg = append(gg, f)
+			indices = append(indices, i)
 		}
+	}
+	gg := make(FeatureTable, len(indices))
+	for i, index := range indices {
+		gg[i] = ff[index]
 	}
 	return gg
 }
