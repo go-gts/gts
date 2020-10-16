@@ -250,8 +250,9 @@ func Erase(seq Sequence, offset, length int) Sequence {
 // overlapping with the sliced region will be left in the sliced sequence.
 func Slice(seq Sequence, start, end int) Sequence {
 	if end < start {
-		seq = Rotate(seq, end)
-		return Slice(seq, 0, start-end)
+		length := Len(seq) - start + end
+		seq = Rotate(seq, -start)
+		return Slice(seq, 0, length)
 	}
 
 	info := seq.Info()
