@@ -127,9 +127,7 @@ func splitFunc(ctx *flags.Context) error {
 
 			for i, tail := range splits[1:] {
 				head := splits[i]
-				fmt.Fprintln(os.Stderr, head, tail)
 				sub := gts.Slice(seq, head, tail)
-				fmt.Fprintln(os.Stderr, gts.Len(sub))
 				sub = gts.WithTopology(sub, gts.Linear)
 				formatter := seqio.NewFormatter(sub, filetype)
 				if _, err := formatter.WriteTo(w); err != nil {
