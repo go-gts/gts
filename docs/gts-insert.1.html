@@ -3,7 +3,7 @@
 <head>
   <meta http-equiv='content-type' value='text/html;charset=utf8'>
   <meta name='generator' value='Ronn/v0.7.3 (http://github.com/rtomayko/ronn/tree/0.7.3)'>
-  <title>gts-insert(1) - insert a sequence into another sequence(s)</title>
+  <title>gts-insert(1) - insert guest sequence(s) into the input sequence(s)</title>
   <style type='text/css' media='all'>
   /* style: man */
   body#manpage {margin:0}
@@ -71,24 +71,27 @@
 
   <h2 id="NAME">NAME</h2>
 <p class="man-name">
-  <code>gts-insert</code> - <span class="man-whatis">insert a sequence into another sequence(s)</span>
+  <code>gts-insert</code> - <span class="man-whatis">insert guest sequence(s) into the input sequence(s)</span>
 </p>
 
 <h2 id="SYNOPSIS">SYNOPSIS</h2>
 
-<p>gts-insert [--version] [-h | --help] [<var>args</var>] <var>locator</var> <var>guest</var> <var>host</var></p>
+<p>gts-insert [--version] [-h | --help] [<var>args</var>] <var>locator</var> <var>guest</var> <var>seqin</var></p>
 
 <h2 id="DESCRIPTION">DESCRIPTION</h2>
 
-<p><strong>gts-insert</strong> takes two sequence inputs and inserts the contents of the first
-<em>guest</em> sequence into the specified locations of the second <em>host</em> sequence.
-The point of insertion is specified using a <code>locator</code>. Each <em>guest</em> sequence
-will be inserted into all specified <code>locator</code> positions of each <em>host</em>
-sequence. A locator is a combination of one of <code>point location</code>,
-<code>range location</code>, or <code>selector</code>, and a <code>modifier</code> in the form
-<code>[selector|point|range][@modifier]</code>. See <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a> for a more in-depth
-explanation of a locator. Refer to the EXAMPLES for some examples to get
-started.</p>
+<p><strong>gts-insert</strong> takes the primary sequence input and inserts the sequences from
+the <em>guest</em> sequence input into the locations in the primary sequence input
+specified by the given <code>locator</code>. For each <em>guest</em> sequence, a copy of the
+primary sequence input is created, and the <em>guest</em> sequence is inserted into
+each location matching the given <code>locator</code> string. Therefore, executing
+<strong>gts-insert</strong> with <em>m</em> <em>guest</em> sequences on a primary sequence input with <em>n</em>
+sequences will result in a file containing <em>m*n</em> sequences.</p>
+
+<p>A locator is a combination of one of <code>point location</code>, <code>range location</code>, or
+<code>selector</code>, and a <code>modifier</code> in the form <code>[selector|point|range][@modifier]</code>.
+See <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a> for a more in-depth explanation of a locator. Refer to the
+EXAMPLES for some examples to get started.</p>
 
 <p>Features that were present at the point of insertion will be split to form
 a <code>join</code>ed location. Such features can be instead expanded if the <code>-e</code> or
@@ -96,15 +99,26 @@ a <code>join</code>ed location. Such features can be instead expanded if the <co
 will be transferred to the corresponding locations after being inesrted into
 the <em>host</em> sequence.</p>
 
+<p>There is also a similar command in <a class="man-ref" href="gts.1.html">gts<span class="s">(1)</span></a> designated <span class="man-ref">gts-infix<span class="s">(1)</span></span>. While
+<strong>gts-insert</strong> inserts <em>guest</em> sequences into the primary sequence input,
+<span class="man-ref">gts-infix<span class="s">(1)</span></span> inserts the primary sequence input into a <em>host</em> sequence. Use
+<strong>gts-insert</strong> when you want to insert into a sequence that you are working
+on in a pipeline, or to insert a literal sequence (which is not possible with
+<span class="man-ref">gts-infix<span class="s">(1)</span></span>), or when you simply want to use the command as a standalone tool.
+Also, note that all of the guest sequences will be read into memory when using
+<strong>gts-insert</strong>, and all of the host sequences will be read into memory when
+using <span class="man-ref">gts-infix<span class="s">(1)</span></span>. If memory availability may be an issue, make sure to use
+the command that will read in the smaller file.</p>
+
 <h2 id="OPTIONS">OPTIONS</h2>
 
 <dl>
-<dt><code>&lt;locator></code></dt><dd><p>A locator string ([selector|point|range][@modifier]). See <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a>
-for more details.</p></dd>
+<dt><code>&lt;locator></code></dt><dd><p>A locator string ([modifier|selector|point|range][@modifier]). See
+<a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a> for more details.</p></dd>
 <dt class="flush"><code>&lt;guest></code></dt><dd><p>Guest sequence file (will be interpreted literally if preceded with @).
 See <a class="man-ref" href="gts-seqin.7.html">gts-seqin<span class="s">(7)</span></a> for a list of currently supported list of sequence
 formats.</p></dd>
-<dt class="flush"><code>&lt;host></code></dt><dd><p>Host sequence file (may be omitted if standard input is provided). See
+<dt class="flush"><code>&lt;seqin></code></dt><dd><p>Input sequence file (may be omitted if standard input is provided). See
 <a class="man-ref" href="gts-seqin.7.html">gts-seqin<span class="s">(7)</span></a> for a list of currently supported list of sequence formats.</p></dd>
 <dt><code>-e</code>, <code>--embed</code></dt><dd><p>Extend existing feature locations when inserting instead of splitting them.</p></dd>
 <dt><code>-F &lt;format></code>, <code>--format=&lt;format></code></dt><dd><p>Output file format (defaults to same as input). See <a class="man-ref" href="gts-seqout.7.html">gts-seqout<span class="s">(7)</span></a> for a
@@ -140,8 +154,8 @@ is specified with the <code>-F</code> or <code>--format</code> option.</p></dd>
 
 <h2 id="SEE-ALSO">SEE ALSO</h2>
 
-<p><a class="man-ref" href="gts.1.html">gts<span class="s">(1)</span></a>, <a class="man-ref" href="gts-delete.1.html">gts-delete<span class="s">(1)</span></a>, <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a>, <a class="man-ref" href="gts-modifier.7.html">gts-modifier<span class="s">(7)</span></a>, <a class="man-ref" href="gts-selector.7.html">gts-selector<span class="s">(7)</span></a>,
-<a class="man-ref" href="gts-seqin.7.html">gts-seqin<span class="s">(7)</span></a>, <a class="man-ref" href="gts-seqout.7.html">gts-seqout<span class="s">(7)</span></a></p>
+<p><a class="man-ref" href="gts.1.html">gts<span class="s">(1)</span></a>, <span class="man-ref">gts-infix<span class="s">(1)</span></span>, <a class="man-ref" href="gts-delete.1.html">gts-delete<span class="s">(1)</span></a>, <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a>, <a class="man-ref" href="gts-modifier.7.html">gts-modifier<span class="s">(7)</span></a>,
+<a class="man-ref" href="gts-selector.7.html">gts-selector<span class="s">(7)</span></a>, <a class="man-ref" href="gts-seqin.7.html">gts-seqin<span class="s">(7)</span></a>, <a class="man-ref" href="gts-seqout.7.html">gts-seqout<span class="s">(7)</span></a></p>
 
 
   <ol class='man-decor man-foot man foot'>

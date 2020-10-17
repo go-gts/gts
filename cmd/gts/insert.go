@@ -14,7 +14,7 @@ import (
 )
 
 func init() {
-	flags.Register("insert", "insert a sequence into another sequence(s)", insertFunc)
+	flags.Register("insert", "insert guest sequence(s) into the input sequence(s)", insertFunc)
 }
 
 func insertFunc(ctx *flags.Context) error {
@@ -24,10 +24,10 @@ func insertFunc(ctx *flags.Context) error {
 	locstr := pos.String("locator", "a locator string ([modifier|selector|point|range][@modifier])")
 	guestPath := pos.String("guest", "guest sequence file (will be interpreted literally if preceded with @)")
 
-	hostPath := new(string)
-	*hostPath = "-"
+	seqinPath := new(string)
+	*seqinPath = "-"
 	if cmd.IsTerminal(os.Stdin.Fd()) {
-		hostPath = pos.String("host", "host sequence file (may be omitted if standard input is provided)")
+		seqinPath = pos.String("seqin", "input sequence file (may be omitted if standard input is provided)")
 	}
 
 	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
@@ -54,14 +54,14 @@ func insertFunc(ctx *flags.Context) error {
 		guest := gts.New(nil, nil, guestBytes[1:])
 		guests = append(guests, guest)
 	default:
-		guestFile, err := os.Open(*guestPath)
+		f, err := os.Open(*guestPath)
 		if err != nil {
 			return ctx.Raise(fmt.Errorf("failed to open file: %q: %v", *guestPath, err))
 		}
-		defer guestFile.Close()
+		defer f.Close()
 
 		h.Reset()
-		r := attach(h, guestFile)
+		r := attach(h, f)
 		scanner := seqio.NewAutoScanner(r)
 		for scanner.Scan() {
 			guests = append(guests, scanner.Value())
@@ -71,7 +71,7 @@ func insertFunc(ctx *flags.Context) error {
 		}
 	}
 
-	d, err := newIODelegate(h, *hostPath, *seqoutPath)
+	d, err := newIODelegate(h, *seqinPath, *seqoutPath)
 	if err != nil {
 		return ctx.Raise(err)
 	}
@@ -121,14 +121,15 @@ func insertFunc(ctx *flags.Context) error {
 			for _, index := range indices {
 				out = insert(out, index, guest)
 			}
+
 			formatter := seqio.NewFormatter(out, filetype)
 			if _, err := formatter.WriteTo(w); err != nil {
 				return ctx.Raise(err)
 			}
-		}
 
-		if err := w.Flush(); err != nil {
-			return ctx.Raise(err)
+			if err := w.Flush(); err != nil {
+				return ctx.Raise(err)
+			}
 		}
 	}
 

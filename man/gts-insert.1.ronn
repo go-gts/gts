@@ -1,20 +1,23 @@
-# gts-insert(1) -- insert a sequence into another sequence(s)
+# gts-insert(1) -- insert guest sequence(s) into the input sequence(s)
 
 ## SYNOPSIS
 
-gts-insert [--version] [-h | --help] [<args>] <locator> <guest> <host>
+gts-insert [--version] [-h | --help] [<args>] <locator> <guest> <seqin>
 
 ## DESCRIPTION
 
-**gts-insert** takes two sequence inputs and inserts the contents of the first
-_guest_ sequence into the specified locations of the second _host_ sequence.
-The point of insertion is specified using a `locator`. Each _guest_ sequence
-will be inserted into all specified `locator` positions of each _host_
-sequence. A locator is a combination of one of `point location`,
-`range location`, or `selector`, and a `modifier` in the form
-`[selector|point|range][@modifier]`. See gts-locator(7) for a more in-depth
-explanation of a locator. Refer to the EXAMPLES for some examples to get
-started.
+**gts-insert** takes the primary sequence input and inserts the sequences from
+the _guest_ sequence input into the locations in the primary sequence input
+specified by the given `locator`. For each _guest_ sequence, a copy of the
+primary sequence input is created, and the _guest_ sequence is inserted into
+each location matching the given `locator` string. Therefore, executing
+**gts-insert** with _m_ _guest_ sequences on a primary sequence input with _n_
+sequences will result in a file containing _m*n_ sequences.
+
+A locator is a combination of one of `point location`, `range location`, or
+`selector`, and a `modifier` in the form `[selector|point|range][@modifier]`.
+See gts-locator(7) for a more in-depth explanation of a locator. Refer to the
+EXAMPLES for some examples to get started.
 
 Features that were present at the point of insertion will be split to form
 a `join`ed location. Such features can be instead expanded if the `-e` or
@@ -22,19 +25,30 @@ a `join`ed location. Such features can be instead expanded if the `-e` or
 will be transferred to the corresponding locations after being inesrted into
 the _host_ sequence.
 
+There is also a similar command in gts(1) designated gts-infix(1). While
+**gts-insert** inserts _guest_ sequences into the primary sequence input,
+gts-infix(1) inserts the primary sequence input into a _host_ sequence. Use
+**gts-insert** when you want to insert into a sequence that you are working
+on in a pipeline, or to insert a literal sequence (which is not possible with
+gts-infix(1)), or when you simply want to use the command as a standalone tool.
+Also, note that all of the guest sequences will be read into memory when using
+**gts-insert**, and all of the host sequences will be read into memory when
+using gts-infix(1). If memory availability may be an issue, make sure to use
+the command that will read in the smaller file.
+
 ## OPTIONS
 
   * `<locator>`:
-    A locator string ([selector|point|range][@modifier]). See gts-locator(7)
-    for more details.
+    A locator string ([modifier|selector|point|range][@modifier]). See
+    gts-locator(7) for more details.
 
   * `<guest>`:
     Guest sequence file (will be interpreted literally if preceded with @).
     See gts-seqin(7) for a list of currently supported list of sequence
     formats.
 
-  * `<host>`:
-    Host sequence file (may be omitted if standard input is provided). See
+  * `<seqin>`:
+    Input sequence file (may be omitted if standard input is provided). See
     gts-seqin(7) for a list of currently supported list of sequence formats.
 
   * `-e`, `--embed`:
@@ -74,5 +88,5 @@ Insert a sequence 20 bases upstream of each CDS:
 
 ## SEE ALSO
 
-gts(1), gts-delete(1), gts-locator(7), gts-modifier(7), gts-selector(7),
-gts-seqin(7), gts-seqout(7)
+gts(1), gts-infix(1), gts-delete(1), gts-locator(7), gts-modifier(7),
+gts-selector(7), gts-seqin(7), gts-seqout(7)
