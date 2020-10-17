@@ -10,7 +10,7 @@
 gts\-extract [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIseqin\fR
 .
 .SH "DESCRIPTION"
-\fBgts\-extract\fR takes a single sequence input and return the sequences associated with each feature\. The range to be extracted can be modified with a \fImodifier\fR using the \fB\-m\fR or \fB\-\-range\fR option\. A \fImodifier\fR can take one of five forms: \fB^[(+|\-)n]\fR, \fB$[[(+|\-)m]]\fR, \fB^[(+|\-)n]\.\.$[(+|\-)m]\fR, \fB^[(+|\-)n]\.\.^[(+|\-)m]\fR, or \fB$[(+|\-)n]\.\.$[(+|\-)m]\fR\. See gts\-modifier(7) for more details\.
+\fBgts\-extract\fR takes a single sequence input and return the sequences associated with each feature\. If the sequence input is ommited, standard input will be read instead\. The range to be extracted can be modified with a \fImodifier\fR using the \fB\-m\fR or \fB\-\-range\fR option\. A \fImodifier\fR can take one of five forms: \fB^[(+|\-)n]\fR, \fB$[[(+|\-)m]]\fR, \fB^[(+|\-)n]\.\.$[(+|\-)m]\fR, \fB^[(+|\-)n]\.\.^[(+|\-)m]\fR, or \fB$[(+|\-)n]\.\.$[(+|\-)m]\fR\. See gts\-modifier(7) for more details\.
 .
 .P
 This command is best utilized in combination with the gts\-select(1) command\. Use gts\-select(1) to narrow down the sequence regions to be extracted, and then apply \fBgts\-extract\fR to retrieve the sequences\. See the EXAMPLES section for more insight\.

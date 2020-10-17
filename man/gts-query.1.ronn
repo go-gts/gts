@@ -7,10 +7,11 @@ gts-query [--version] [-h | --help] [<args>] <seqin>
 ## DESCRIPTION
 
 **gts-query** takes a single sequence input and reports various information
-about its features. By default, it will output the sequence ID (or a unique
-sequence number if there are no IDs available), a feature key, its location,
-and any qualifiers that are common to all of the features present. A single
-line represents a single feature entry.
+about its features. If the sequence input is ommited, standard input will be
+read instead. By default, it will output the sequence ID (or a unique sequence
+number if there are no IDs available), a feature key, its location, and any
+qualifiers that are common to all of the features present. A single line
+represents a single feature entry.
 
 This command is best utilized in combination with the gts-select(1) command.
 Use gts-select(1) to narrow down the features to be extracted, and then apply

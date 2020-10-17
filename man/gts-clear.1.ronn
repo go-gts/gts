@@ -7,7 +7,8 @@ gts-clear [--version] [-h | --help] [<args>] <seqin>
 ## DESCRIPTION
 
 **gts-clear** takes a single sequence file input and strips off all features
-except for the `source` features which are mandatory in GenBank. This command
+except for the `source` features which are mandatory in GenBank. If the
+sequence input is ommited, standard input will be read instead. This command
 is equivalent to running `gts select source <seqin>`.
 
 ## OPTIONS

@@ -8,19 +8,22 @@ gts-rotate [--version] [-h | --help] [<args>] <amount> <seqin>
 
 **gts-rotate** takes a single sequence input and shifts the sequence so that
 the position matching the location specified by the given `locator` comes to
-the start of the sequence file. A locator is a combination of one of
-`point location`, `range location`, or `selector`, and a `modifier` in the form
-`[selector|point|range][@modifier]`. See gts-locator(7) for a more in-depth
-explanation of a locator. Refer to the EXAMPLES for some examples to get
-started.
+the start of the sequence file. If the sequence input is ommited, standard
+input will be read instead. 
+
+A locator consists of a location specifier and a modifier. A location specifier
+may be a `modifier`, a `point location`, a `range location`, or a `selector`.
+The syntax for a locator is `[specifier][@modifier]`. See gts-locator(7) for a
+more in-depth explanation of a locator. Refer to the EXAMPLES for some examples
+to get started.
 
 The topology of a sequence that is rotated will be changed to circular.
 
 ## OPTIONS
 
   * `<locator>`:
-    A locator string ([selector|point|range][@modifier]). See gts-locator(7)
-    for more details.
+    A locator string (`[specifier][@modifier]`). See gts-locator(7) for more
+    details.
 
   * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See

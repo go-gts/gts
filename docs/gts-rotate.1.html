@@ -82,19 +82,22 @@
 
 <p><strong>gts-rotate</strong> takes a single sequence input and shifts the sequence so that
 the position matching the location specified by the given <code>locator</code> comes to
-the start of the sequence file. A locator is a combination of one of
-<code>point location</code>, <code>range location</code>, or <code>selector</code>, and a <code>modifier</code> in the form
-<code>[selector|point|range][@modifier]</code>. See <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a> for a more in-depth
-explanation of a locator. Refer to the EXAMPLES for some examples to get
-started.</p>
+the start of the sequence file. If the sequence input is ommited, standard
+input will be read instead.</p>
+
+<p>A locator consists of a location specifier and a modifier. A location specifier
+may be a <code>modifier</code>, a <code>point location</code>, a <code>range location</code>, or a <code>selector</code>.
+The syntax for a locator is <code>[specifier][@modifier]</code>. See <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a> for a
+more in-depth explanation of a locator. Refer to the EXAMPLES for some examples
+to get started.</p>
 
 <p>The topology of a sequence that is rotated will be changed to circular.</p>
 
 <h2 id="OPTIONS">OPTIONS</h2>
 
 <dl>
-<dt><code>&lt;locator></code></dt><dd><p>A locator string ([selector|point|range][@modifier]). See <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a>
-for more details.</p></dd>
+<dt><code>&lt;locator></code></dt><dd><p>A locator string (<code>[specifier][@modifier]</code>). See <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a> for more
+details.</p></dd>
 <dt class="flush"><code>&lt;seqin></code></dt><dd><p>Input sequence file (may be omitted if standard input is provided). See
 <a class="man-ref" href="gts-seqin.7.html">gts-seqin<span class="s">(7)</span></a> for a list of currently supported list of sequence formats.</p></dd>
 <dt><code>-F &lt;format></code>, <code>--format=&lt;format></code></dt><dd><p>Output file format (defaults to same as input). See <a class="man-ref" href="gts-seqout.7.html">gts-seqout<span class="s">(7)</span></a> for a

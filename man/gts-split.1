@@ -10,13 +10,16 @@
 gts\-split [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIlocator\fR \fIseqin\fR
 .
 .SH "DESCRIPTION"
-\fBgts\-split\fR takes a single sequence input and splits the sequences into fragments at the specified locations\. The location to be split is specified using a \fBlocator\fR\. A locator is a combination of one of \fBpoint location\fR, \fBrange location\fR, or \fBselector\fR, and a \fBmodifier\fR in the form \fB[selector|point|range][@modifier]\fR\. See gts\-locator(7) for a more in\-depth explanation of a locator\. Refer to the EXAMPLES for some examples to get started\.
+\fBgts\-split\fR takes a single sequence input and splits the sequences into fragments at the specified locations\. If the sequence input is ommited, standard input will be read instead\. The location to be split is specified using a \fBlocator\fR\.
+.
+.P
+A locator consists of a location specifier and a modifier\. A location specifier may be a \fBmodifier\fR, a \fBpoint location\fR, a \fBrange location\fR, or a \fBselector\fR\. The syntax for a locator is \fB[specifier][@modifier]\fR\. See gts\-locator(7) for a more in\-depth explanation of a locator\. Refer to the EXAMPLES for some examples to get started\.
 .
 .SH "OPTIONS"
 .
 .TP
 \fB<locator>\fR
-A locator string ([selector|point|range][@modifier])\. See gts\-locator(7) for more details\.
+A locator string (\fB[specifier][@modifier]\fR)\. See gts\-locator(7) for more details\.
 .
 .TP
 \fB<seqin>\fR

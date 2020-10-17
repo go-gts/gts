@@ -81,18 +81,21 @@
 <h2 id="DESCRIPTION">DESCRIPTION</h2>
 
 <p><strong>gts-split</strong> takes a single sequence input and splits the sequences into
-fragments at the specified locations. The location to be split is specified
-using a <code>locator</code>. A locator is a combination of one of <code>point location</code>,
-<code>range location</code>, or <code>selector</code>, and a <code>modifier</code> in the form
-<code>[selector|point|range][@modifier]</code>. See <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a> for a more in-depth
-explanation of a locator. Refer to the EXAMPLES for some examples to get
-started.</p>
+fragments at the specified locations. If the sequence input is ommited,
+standard input will be read instead. The location to be split is specified
+using a <code>locator</code>.</p>
+
+<p>A locator consists of a location specifier and a modifier. A location specifier
+may be a <code>modifier</code>, a <code>point location</code>, a <code>range location</code>, or a <code>selector</code>.
+The syntax for a locator is <code>[specifier][@modifier]</code>. See <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a> for a
+more in-depth explanation of a locator. Refer to the EXAMPLES for some examples
+to get started.</p>
 
 <h2 id="OPTIONS">OPTIONS</h2>
 
 <dl>
-<dt><code>&lt;locator></code></dt><dd><p>A locator string ([selector|point|range][@modifier]). See <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a>
-for more details.</p></dd>
+<dt><code>&lt;locator></code></dt><dd><p>A locator string (<code>[specifier][@modifier]</code>). See <a class="man-ref" href="gts-locator.7.html">gts-locator<span class="s">(7)</span></a> for more
+details.</p></dd>
 <dt class="flush"><code>&lt;seqin></code></dt><dd><p>Input sequence file (may be omitted if standard input is provided). See
 <a class="man-ref" href="gts-seqin.7.html">gts-seqin<span class="s">(7)</span></a> for a list of currently supported list of sequence formats.</p></dd>
 <dt><code>-F &lt;format></code>, <code>--format=&lt;format></code></dt><dd><p>Output file format (defaults to same as input). See <a class="man-ref" href="gts-seqout.7.html">gts-seqout<span class="s">(7)</span></a> for a

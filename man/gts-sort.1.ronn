@@ -6,9 +6,10 @@ gts-sort [--version] [-h | --help] [<args>] <seqin>
 
 ## DESCRIPTION
 
-**gts-sort** takes a single sequence input and sorts the sequences. By default,
-the sequences will be sorted from longest to shortest. It is advised against to
-use this command on files with large numbers of sequences.
+**gts-sort** takes a single sequence input and sorts the sequences. If the
+sequence input is ommited, standard input will be read instead. By default, the
+sequences will be sorted from longest to shortest. It is advised against to use
+this command on files with large numbers of sequences.
 
 ## OPTIONS
 

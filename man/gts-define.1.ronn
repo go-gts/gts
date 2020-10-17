@@ -7,7 +7,8 @@ gts-define [--version] [-h | --help] [<args>] <key> <location> <seqin>
 ## DESCRIPTION
 
 **gts-define** takes a single sequence input and defines a new feature with the
-given `key` and `location`. Qualifiers may be added by using the `-q` or
+given `key` and `location`. If the sequence input is ommited, standard input
+will be read instead. Feature qualifiers may be added by using the `-q` or
 `--qualifier` option, which may be given multiple times to add more than one
 qualifier to the feature.
 

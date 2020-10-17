@@ -7,11 +7,14 @@ gts-delete [--version] [-h | --help] [<args>] <locator> <seqin>
 ## DESCRIPTION
 
 **gts-delete** takes a single sequence input and deletes the specified region.
-The region to be deleted is specified using a `locator`. A locator is a
-combination of one of `point location`, `range location`, or `selector`, and a
-`modifier` in the form `[selector|point|range][@modifier]`. See gts-locator(7)
-for a more in-depth explanation of a locator. Refer to the EXAMPLES for some
-examples to get started.
+If the sequence input is ommited, standard input will be read instead. The
+region to be deleted is specified using a `locator`.
+
+A locator consists of a location specifier and a modifier. A location specifier
+may be a `modifier`, a `point location`, a `range location`, or a `selector`.
+The syntax for a locator is `[specifier][@modifier]`. See gts-locator(7) for a
+more in-depth explanation of a locator. Refer to the EXAMPLES for some examples
+to get started.
 
 Features that were present in the region being deleted will be shifted as being
 in between the bases at the deletion point. Such features can be completely
@@ -20,8 +23,8 @@ erased from the sequence if the `-e` or `--erase` option is provided.
 ## OPTIONS
 
   * `<locator>`:
-    A locator string ([selector|point|range][@modifier]). See gts-locator(7)
-    for more details.
+    A locator string (`[specifier][@modifier]`). See gts-locator(7) for more
+    details.
 
   * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See

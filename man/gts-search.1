@@ -10,7 +10,7 @@
 gts\-search [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIquery\fR \fIseqin\fR
 .
 .SH "DESCRIPTION"
-\fBgts\-search\fR takes a \fIquery\fR and a single input sequence, and marks the regions where the \fIquery\fR sequences were found\. If a file with a filename equivalent to the \fIquery\fR value exists, it will be opened and read by the command\. If it does not, the command will interpret the \fIquery\fR string as a sequence\. The \fIquery\fR sequence(s) will be treated as an oligomer\. In order to find perfect matches only, use the \fB\-e\fR or \fB\-\-exact\fR option\. By default, regions are marked as \fBmisc_feature\fRs without any qualifiers\. Use the \fB\-k\fR or \fB\-\-key\fR option and \fB\-q\fR or \fB\-\-qualifier\fR option so you can easily discover these features later on with gts\-select(1)\. See the EXAMPLES section for more insight\.
+\fBgts\-search\fR takes a \fIquery\fR and a single input sequence, and marks the regions where the \fIquery\fR sequences were found\. If the sequence input is ommited, standard input will be read instead\. If a file with a filename equivalent to the \fIquery\fR value exists, it will be opened and read by the command\. If it does not, the command will interpret the \fIquery\fR string as a sequence\. The \fIquery\fR sequence(s) will be treated as an oligomer\. In order to find perfect matches only, use the \fB\-e\fR or \fB\-\-exact\fR option\. By default, regions are marked as \fBmisc_feature\fRs without any qualifiers\. Use the \fB\-k\fR or \fB\-\-key\fR option and \fB\-q\fR or \fB\-\-qualifier\fR option so you can easily discover these features later on with gts\-select(1)\. See the EXAMPLES section for more insight\.
 .
 .SH "OPTIONS"
 .

@@ -7,32 +7,32 @@
 \fBgts\-insert\fR \- insert guest sequence(s) into the input sequence(s)
 .
 .SH "SYNOPSIS"
-gts\-insert [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIlocator\fR \fIguest\fR \fIseqin\fR
+gts\-insert [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIlocator\fR \fIguest\fR \fIhost\fR
 .
 .SH "DESCRIPTION"
-\fBgts\-insert\fR takes the primary sequence input and inserts the sequences from the \fIguest\fR sequence input into the locations in the primary sequence input specified by the given \fBlocator\fR\. For each \fIguest\fR sequence, a copy of the primary sequence input is created, and the \fIguest\fR sequence is inserted into each location matching the given \fBlocator\fR string\. Therefore, executing \fBgts\-insert\fR with \fIm\fR \fIguest\fR sequences on a primary sequence input with \fIn\fR sequences will result in a file containing \fIm*n\fR sequences\.
+\fBgts\-insert\fR takes two sequence inputs: a \fIguest\fR sequence input and a \fIhost\fR sequence input, and inserts the sequences contained in the \fIguest\fR sequence input into the sequences contained in the \fIhost\fR sequence input\. If the \fIhost\fR sequence input is omitted, standard input will be read instead\. For each sequence in the \fIguest\fR sequence input, a copy of each of the \fIhost\fR sequence input will be created\. Each \fIguest\fR sequence will then be inserted into the location(s) specified by the \fBlocator\fR in the \fIhost\fR sequence\.
 .
 .P
-A locator is a combination of one of \fBpoint location\fR, \fBrange location\fR, or \fBselector\fR, and a \fBmodifier\fR in the form \fB[selector|point|range][@modifier]\fR\. See gts\-locator(7) for a more in\-depth explanation of a locator\. Refer to the EXAMPLES for some examples to get started\.
+A locator consists of a location specifier and a modifier\. A location specifier may be a \fBmodifier\fR, a \fBpoint location\fR, a \fBrange location\fR, or a \fBselector\fR\. The syntax for a locator is \fB[specifier][@modifier]\fR\. See gts\-locator(7) for a more in\-depth explanation of a locator\. Refer to the EXAMPLES for some examples to get started\.
 .
 .P
 Features that were present at the point of insertion will be split to form a \fBjoin\fRed location\. Such features can be instead expanded if the \fB\-e\fR or \fB\-\-embed\fR option is provided\. Any features present in the \fIguest\fR sequence will be transferred to the corresponding locations after being inesrted into the \fIhost\fR sequence\.
 .
 .P
-There is also a similar command in gts(1) designated gts\-infix(1)\. While \fBgts\-insert\fR inserts \fIguest\fR sequences into the primary sequence input, gts\-infix(1) inserts the primary sequence input into a \fIhost\fR sequence\. Use \fBgts\-insert\fR when you want to insert into a sequence that you are working on in a pipeline, or to insert a literal sequence (which is not possible with gts\-infix(1)), or when you simply want to use the command as a standalone tool\. Also, note that all of the guest sequences will be read into memory when using \fBgts\-insert\fR, and all of the host sequences will be read into memory when using gts\-infix(1)\. If memory availability may be an issue, make sure to use the command that will read in the smaller file\.
+There is also a similar command in gts(1) designated gts\-infix(1)\. While \fBgts\-insert\fR inserts \fIguest\fR sequences into the primary sequence input, gts\-infix(1) inserts the primary sequence input into the \fIhost\fR sequences\. Use \fBgts\-insert\fR when you want to insert another sequence into the sequence that ou are working on in a pipeline\. Note that all of the \fIguest\fR sequences will be read into memory when using \fBgts\-insert\fR, and all of the \fIhost\fR sequences will be read into memory when using gts\-infix(1)\. If memory availability may be an issue, make sure to use the command that will read in the smaller file\.
 .
 .SH "OPTIONS"
 .
 .TP
 \fB<locator>\fR
-A locator string ([modifier|selector|point|range][@modifier])\. See gts\-locator(7) for more details\.
+A locator string (\fB[specifier][@modifier]\fR)\. See gts\-locator(7) for more details\.
 .
 .TP
 \fB<guest>\fR
 Guest sequence file (will be interpreted literally if preceded with @)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
 .
 .TP
-\fB<seqin>\fR
+\fB<host>\fR
 Input sequence file (may be omitted if standard input is provided)\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
 .
 .TP

@@ -81,8 +81,9 @@
 <h2 id="DESCRIPTION">DESCRIPTION</h2>
 
 <p><strong>gts-extract</strong> takes a single sequence input and return the sequences
-associated with each feature. The range to be extracted can be modified with
-a <em>modifier</em> using the <code>-m</code> or <code>--range</code> option.  A <em>modifier</em> can take one of
+associated with each feature. If the sequence input is ommited, standard input
+will be read instead. The range to be extracted can be modified with a
+<em>modifier</em> using the <code>-m</code> or <code>--range</code> option.  A <em>modifier</em> can take one of
 five forms: <code>^[(+|-)n]</code>, <code>$[[(+|-)m]]</code>, <code>^[(+|-)n]..$[(+|-)m]</code>,
 <code>^[(+|-)n]..^[(+|-)m]</code>, or <code>$[(+|-)n]..$[(+|-)m]</code>. See <a class="man-ref" href="gts-modifier.7.html">gts-modifier<span class="s">(7)</span></a> for more
 details.</p>

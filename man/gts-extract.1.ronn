@@ -7,8 +7,9 @@ gts-extract [--version] [-h | --help] [<args>] <seqin>
 ## DESCRIPTION
 
 **gts-extract** takes a single sequence input and return the sequences
-associated with each feature. The range to be extracted can be modified with
-a _modifier_ using the `-m` or `--range` option.  A _modifier_ can take one of
+associated with each feature. If the sequence input is ommited, standard input
+will be read instead. The range to be extracted can be modified with a
+_modifier_ using the `-m` or `--range` option.  A _modifier_ can take one of
 five forms: `^[(+|-)n]`, `$[[(+|-)m]]`, `^[(+|-)n]..$[(+|-)m]`,
 `^[(+|-)n]..^[(+|-)m]`, or `$[(+|-)n]..$[(+|-)m]`. See gts-modifier(7) for more
 details.

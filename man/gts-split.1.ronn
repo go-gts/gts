@@ -7,18 +7,21 @@ gts-split [--version] [-h | --help] [<args>] <locator> <seqin>
 ## DESCRIPTION
 
 **gts-split** takes a single sequence input and splits the sequences into
-fragments at the specified locations. The location to be split is specified
-using a `locator`. A locator is a combination of one of `point location`,
-`range location`, or `selector`, and a `modifier` in the form
-`[selector|point|range][@modifier]`. See gts-locator(7) for a more in-depth
-explanation of a locator. Refer to the EXAMPLES for some examples to get
-started.
+fragments at the specified locations. If the sequence input is ommited,
+standard input will be read instead. The location to be split is specified
+using a `locator`.
+
+A locator consists of a location specifier and a modifier. A location specifier
+may be a `modifier`, a `point location`, a `range location`, or a `selector`.
+The syntax for a locator is `[specifier][@modifier]`. See gts-locator(7) for a
+more in-depth explanation of a locator. Refer to the EXAMPLES for some examples
+to get started.
 
 ## OPTIONS
 
   * `<locator>`:
-    A locator string ([selector|point|range][@modifier]). See gts-locator(7)
-    for more details.
+    A locator string (`[specifier][@modifier]`). See gts-locator(7) for more
+    details.
 
   * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See

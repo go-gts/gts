@@ -1,0 +1,61 @@
+.\" generated with Ronn/v0.7.3
+.\" http://github.com/rtomayko/ronn/tree/0.7.3
+.
+.TH "GTS\-INFIX" "1" "October 2020" "" ""
+.
+.SH "NAME"
+\fBgts\-infix\fR \- infix input sequence(s) into the host sequence(s)
+.
+.SH "SYNOPSIS"
+gts\-infix [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIlocator\fR \fIhost\fR \fIguest\fR
+.
+.SH "DESCRIPTION"
+\fBgts\-infix\fR takes two sequence inputs: a \fIhost\fR sequence input and a \fIguest\fR sequence input, and inserts the sequences contained in the \fIhost\fR sequence input into the sequences contained in the \fIguest\fR sequence input\. If the \fIguest\fR sequence input is omitted, standard input will be read instead\. For each sequence in the \fIguest\fR sequence input, a copy of each of the \fIhost\fR sequence input will be created\. Each \fIguest\fR sequence will then be inserted into the location(s) specified by the \fBlocator\fR in the \fIhost\fR sequence\.
+.
+.P
+A locator consists of a location specifier and a modifier\. A location specifier may be a \fBmodifier\fR, a \fBpoint location\fR, a \fBrange location\fR, or a \fBselector\fR\. The syntax for a locator is \fB[specifier][@modifier]\fR\. See gts\-locator(7) for a more in\-depth explanation of a locator\. Refer to the EXAMPLES for some examples to get started\.
+.
+.P
+Features that were present at the point of insertion will be split to form a \fBjoin\fRed location\. Such features can be instead expanded if the \fB\-e\fR or \fB\-\-embed\fR option is provided\. Any features present in the \fIguest\fR sequence will be transferred to the corresponding locations after being inesrted into the \fIhost\fR sequence\.
+.
+.P
+There is also a similar command in gts(1) designated gts\-insert(1), While \fBgts\-infix\fR inserts the primary sequence input into the \fIhost\fR sequences, gts\-insert(1) inserts \fIguest\fR sequences into the primary sequence input\. Use \fBgts\-infix\fR when you want a insert the sequence that you are working on in a pipeline into another sequence\. Note that all of the \fIhost\fR sequences will be read into memory when using \fBgts\-infix\fR and all of the \fIguest\fR sequences will be read into memory when using gts\-insert(1)\. If memory availability may be an issue, make sure to use the command that will read in the smaller file\.
+.
+.SH "OPTIONS"
+.
+.TP
+\fB<locator>\fR
+A locator string (\fB[specifier][@modifier]\fR)\. See gts\-locator(7) for more details\.
+.
+.TP
+\fB<host>\fR
+Host sequence file\. See gts\-seqin(7) for a list of currently supported list of sequence formats\.
+.
+.TP
+\fB<seqin>\fR
+Input sequence file (may be omitted if standard input is provided)\.
+.
+.TP
+\fB\-e\fR, \fB\-\-embed\fR
+Extend existing feature locations when inserting instead of splitting them\.
+.
+.TP
+\fB\-F <format>\fR, \fB\-\-format=<format>\fR
+Output file format (defaults to same as input)\.
+.
+.TP
+\fB\-\-no\-cache\fR
+Do not use or create cache\.
+.
+.TP
+\fB\-o <output>\fR, \fB\-\-output=<output>\fR
+Output sequence file (specifying \fB\-\fR will force standard output)\.
+.
+.SH "BUGS"
+\fBgts\-infix\fR currently has no known bugs\.
+.
+.SH "AUTHORS"
+\fBgts\-infix\fR is written and maintained by @AUTHOR@\.
+.
+.SH "SEE ALSO"
+

@@ -7,9 +7,10 @@ gts-pick [--version] [-h | --help] [<args>] <list> <seqin>
 ## DESCRIPTION
 
 **gts-pick** takes a single sequence input and returns the sequences specified
-by the _list_ option. The _list_ option is equivalent to that of cut(1).
-Sequence numbering starts at 1. Specifying the `-f` or `--feature` option will
-output all sequences but pick the features matching the _list_ option.
+by the _list_ option. If the sequence input is ommited, standard input will be
+read instead. The _list_ option is equivalent to that of cut(1). Sequence
+numbering starts at 1. Specifying the `-f` or `--feature` option will output
+all sequences but pick the features matching the _list_ option.
 
 ## OPTIONS
 

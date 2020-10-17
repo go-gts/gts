@@ -81,10 +81,11 @@
 <h2 id="DESCRIPTION">DESCRIPTION</h2>
 
 <p><strong>gts-query</strong> takes a single sequence input and reports various information
-about its features. By default, it will output the sequence ID (or a unique
-sequence number if there are no IDs available), a feature key, its location,
-and any qualifiers that are common to all of the features present. A single
-line represents a single feature entry.</p>
+about its features. If the sequence input is ommited, standard input will be
+read instead. By default, it will output the sequence ID (or a unique sequence
+number if there are no IDs available), a feature key, its location, and any
+qualifiers that are common to all of the features present. A single line
+represents a single feature entry.</p>
 
 <p>This command is best utilized in combination with the <a class="man-ref" href="gts-select.1.html">gts-select<span class="s">(1)</span></a> command.
 Use <a class="man-ref" href="gts-select.1.html">gts-select<span class="s">(1)</span></a> to narrow down the features to be extracted, and then apply

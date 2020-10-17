@@ -7,8 +7,9 @@ gts-complement [--version] [-h | --help] [<args>] <seqin>
 ## DESCRIPTION
 
 **gts-complement** takes a single sequence input and return the complemented
-sequence as output. Any features present in the sequence will be relocated to
-the complement strand. This command _will not_ reverse the sequence. To obtain
+sequence as output. If the sequence input is ommited, standard input will be
+read instead. Any features present in the sequence will be relocated to the
+complement strand. This command _will not_ reverse the sequence. To obtain
 the reversed sequence, use **gts-reverse(1)**.
 
 ## OPTIONS

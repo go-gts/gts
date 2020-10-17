@@ -7,9 +7,10 @@ gts-join [--version] [-h | --help] [<args>] <seqin>
 ## DESCRIPTION
 
 **gts-join** takes a single input sequence and joins its contents into a single
-sequence. This command will make no attempt to restore features that originated
-from a single sequence which is fragmented across different entries. To repair
-such features, first run **gts-join** and pass the output to gts-repair(1).
+sequence. If the sequence input is ommited, standard input will be read instead.
+This command will make no attempt to restore features that originated from a
+single sequence which is fragmented across different entries. To repair such
+features, first run **gts-join** and pass the output to gts-repair(1).
 
 ## OPTIONS
 

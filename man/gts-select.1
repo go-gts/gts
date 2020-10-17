@@ -10,7 +10,7 @@
 gts\-select [\-\-version] [\-h | \-\-help] [\fIargs\fR] \fIselector\fR \fIseqin\fR
 .
 .SH "DESCRIPTION"
-\fBgts\-select\fR takes a \fIselector\fR and a single sequence input, and selects the features which satisfy the \fIselector\fR criteria\. A \fIselector\fR takes the form \fB[feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]\.\.\.\fR\. See gts\-selector(7) for more details\.
+\fBgts\-select\fR takes a \fIselector\fR and a single sequence input, and selects the features which satisfy the \fIselector\fR criteria\. If the sequence input is ommited, standard input will be read instead\. A \fIselector\fR takes the form \fB[feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]\.\.\.\fR\. See gts\-selector(7) for more details\.
 .
 .P
 \fBgts\-select\fR serves as a central command, allowing the user to filter out features for use in other commands like gts\-extract(1) and gts\-query(1)\. See the EXAMPLES section for more insight\.
@@ -100,4 +100,4 @@ $ gts select /=recombinase <seqin>
 \fBgts\-select\fR is written and maintained by Kotone Itaya\.
 .
 .SH "SEE ALSO"
-gts(1), gts\-query(1), gts\-locator(7), gts\-selector(7), gts\-seqin(7), gts\-seqout(7)
+gts(1), gts\-query(1), gts\-selector(7), gts\-seqin(7), gts\-seqout(7)

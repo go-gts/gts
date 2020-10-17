@@ -7,7 +7,8 @@ gts-select [--version] [-h | --help] [<args>] <selector> <seqin>
 ## DESCRIPTION
 
 **gts-select** takes a _selector_ and a single sequence input, and selects the
-features which satisfy the _selector_ criteria. A _selector_ takes the form
+features which satisfy the _selector_ criteria. If the sequence input is
+ommited, standard input will be read instead. A _selector_ takes the form
 `[feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]...`. See
 gts-selector(7) for more details.
 
@@ -71,5 +72,5 @@ Select all features with a qualifier value matching `recombinase`
 
 ## SEE ALSO
 
-gts(1), gts-query(1), gts-locator(7), gts-selector(7), gts-seqin(7),
+gts(1), gts-query(1), gts-selector(7), gts-seqin(7),
 gts-seqout(7)

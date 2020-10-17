@@ -7,7 +7,8 @@ gts-search [--version] [-h | --help] [<args>] <query> <seqin>
 ## DESCRIPTION
 
 **gts-search** takes a _query_ and a single input sequence, and marks the
-regions where the _query_ sequences were found. If a file with a filename
+regions where the _query_ sequences were found. If the sequence input is
+ommited, standard input will be read instead. If a file with a filename
 equivalent to the _query_ value exists, it will be opened and read by the
 command. If it does not, the command will interpret the _query_ string as a
 sequence. The _query_ sequence(s) will be treated as an oligomer. In order to
