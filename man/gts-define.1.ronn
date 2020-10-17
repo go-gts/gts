@@ -6,7 +6,10 @@ gts-define [--version] [-h | --help] [<args>] <key> <location> <seqin>
 
 ## DESCRIPTION
 
-Define a new feature.
+**gts-define** takes a single sequence input and defines a new feature with the
+given `key` and `location`. Qualifiers may be added by using the `-q` or
+`--qualifier` option, which may be given multiple times to add more than one
+qualifier to the feature.
 
 ## OPTIONS
 
@@ -47,3 +50,5 @@ Define a new feature.
 **gts-define** is written and maintained by Kotone Itaya.
 
 ## SEE ALSO
+
+gts(1), gts-annotate(1), gts-seqin(7), gts-seqout(7)

@@ -47,4 +47,4 @@ logical sense in the given sequence will be made.
 
 ## SEE ALSO
 
-gts(1), gts-seqin(7), gts-seqout(7)
+gts(1), gts-define(1), gts-seqin(7), gts-seqout(7)
