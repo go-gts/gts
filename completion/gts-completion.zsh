@@ -139,6 +139,21 @@ function _gts_extract {
         "*::files:_files"
 }
 
+function _gts_infix {
+    _arguments \
+        "-h[show help]" \
+        "--help[show help]" \
+        "--version[print the version number]" \
+        "-e[extend existing feature locations when inserting instead of splitting them]" \
+        "--embed[extend existing feature locations when inserting instead of splitting them]" \
+        "-F[output file format (defaults to same as input)]" \
+        "--format[output file format (defaults to same as input)]" \
+        "--no-cache[do not use or create cache]" \
+        "-o[output sequence file (specifying `-` will force standard output)]" \
+        "--output[output sequence file (specifying `-` will force standard output)]" \
+        "*::files:_files"
+}
+
 function _gts_insert {
     _arguments \
         "-h[show help]" \
@@ -205,9 +220,9 @@ function _gts_query {
         "--no-cache[do not use or create cache]" \
         "--no-header[do not print the header line]" \
         "--no-key[do not report the feature key]" \
+        "--no-location[do not report the feature location]" \
         "-n[qualifier name(s) to select]" \
         "--name[qualifier name(s) to select]" \
-        "--no-location[do not report the feature location]" \
         "-o[output table file (specifying `-` will force standard output)]" \
         "--output[output table file (specifying `-` will force standard output)]" \
         "--source[include the source feature(s)]" \
@@ -346,7 +361,8 @@ function _gts {
             'define:define a new feature'
             'delete:delete a region of the given sequence(s)'
             'extract:extract the sequences referenced by the features'
-            'insert:insert a sequence into another sequence(s)'
+            'infix:infix input sequence(s) into the host sequence(s)'
+            'insert:insert guest sequence(s) into the input sequence(s)'
             'join:join the sequences contained in the files'
             'length:report the length of the sequence(s)'
             'pick:pick sequence(s) from multiple sequences'
@@ -378,6 +394,7 @@ function _gts {
         define)     _gts_define ;;
         delete)     _gts_delete ;;
         extract)    _gts_extract ;;
+        infix)      _gts_infix ;;
         insert)     _gts_insert ;;
         join)       _gts_join ;;
         length)     _gts_length ;;

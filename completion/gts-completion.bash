@@ -245,6 +245,28 @@ _gts_extract()
     esac
 }
 
+_gts_infix()
+{
+    opts="-h --help --version -e --embed -F --format --no-cache -o --output"
+    local cur="${COMP_WORDS[$COMP_CWORD]}"
+    case "$cur" in
+        -*)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do
+                COMPREPLY+=("$line")
+            done < <(compgen -W "$opts" -- "$cur")
+            ;;
+        *)
+            COMPREPLY=()
+            while IFS='' read -r line
+            do 
+                COMPREPLY+=("$line")
+            done < <(compgen -f -- "$cur")
+            ;;
+    esac
+}
+
 _gts_insert()
 {
     opts="-h --help --version -e --embed -F --format --no-cache -o --output"
@@ -335,7 +357,7 @@ _gts_pick()
 
 _gts_query()
 {
-    opts="-h --help --version -d --delimiter --empty --no-header --no-key -n --name --no-cache --no-location -o --output --source -t --separator"
+    opts="-h --help --version -d --delimiter --empty --no-cache --no-header --no-key -n --name --no-location -o --output --source -t --separator"
     local cur="${COMP_WORDS[$COMP_CWORD]}"
     case "$cur" in
         -*)
@@ -533,7 +555,7 @@ _gts_summary()
 
 _gts()
 {
-    cmds="-h --help --version annotate cache clear complement define delete extract insert join length pick query repair reverse rotate search select sort split summary"
+    cmds="-h --help --version annotate cache clear complement define delete extract infix insert join length pick query repair reverse rotate search select sort split summary"
     local i=0 cmd
 
     while [[ "$i" -lt "$COMP_CWORD" ]]
@@ -580,6 +602,7 @@ _gts()
         define)     _gts_define ;;
         delete)     _gts_delete ;;
         extract)    _gts_extract ;;
+        infix)      _gts_infix ;;
         insert)     _gts_insert ;;
         join)       _gts_join ;;
         length)     _gts_length ;;
