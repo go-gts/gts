@@ -32,6 +32,9 @@ consists of a number of subcommands listed in the **COMMANDS** section.
   * `gts-extract(1)`:
     Extract the sequences referenced by the features.
 
+  * `gts-infix(1)`:
+    Infix input sequence(s) into the host sequence(s).
+
   * `gts-insert(1)`:
     Insert a sequence into another sequence(s).
 
