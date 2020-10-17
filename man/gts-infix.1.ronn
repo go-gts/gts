@@ -1,0 +1,69 @@
+# gts-infix(1) -- infix input sequence(s) into the host sequence(s)
+
+## SYNOPSIS
+
+gts-infix [--version] [-h | --help] [<args>] <locator> <host> <guest>
+
+## DESCRIPTION
+
+**gts-infix** takes two sequence inputs: a _host_ sequence input and a _guest_
+sequence input, and inserts the sequences contained in the _host_ sequence
+input into the sequences contained in the _guest_ sequence input. If the _guest_
+sequence input is omitted, standard input will be read instead. For each
+sequence in the _guest_ sequence input, a copy of each of the _host_ sequence
+input will be created. Each _guest_ sequence will then be inserted into the
+location(s) specified by the `locator` in the _host_ sequence.
+
+A locator consists of a location specifier and a modifier. A location specifier
+may be a `modifier`, a `point location`, a `range location`, or a `selector`.
+The syntax for a locator is `[specifier][@modifier]`. See gts-locator(7) for a
+more in-depth explanation of a locator. Refer to the EXAMPLES for some examples
+to get started.
+
+Features that were present at the point of insertion will be split to form
+a `join`ed location. Such features can be instead expanded if the `-e` or
+`--embed` option is provided. Any features present in the _guest_ sequence
+will be transferred to the corresponding locations after being inesrted into
+the _host_ sequence.
+
+There is also a similar command in gts(1) designated gts-insert(1), While
+**gts-infix** inserts the primary sequence input into the _host_ sequences,
+gts-insert(1) inserts _guest_ sequences into the primary sequence input. Use
+**gts-infix** when you want a insert the sequence that you are working on in a
+pipeline into another sequence. Note that all of the _host_ sequences will be
+read into memory when using **gts-infix** and all of the _guest_ sequences will
+be read into memory when using gts-insert(1). If memory availability may be an
+issue, make sure to use the command that will read in the smaller file.
+
+## OPTIONS
+
+  * `<locator>`:
+    A locator string ([modifier|selector|point|range][@modifier]).
+
+  * `<host>`:
+    Host sequence.
+
+  * `<seqin>`:
+    Input sequence file (may be omitted if standard input is provided).
+
+  * `-e`, `--embed`:
+    Extend existing feature locations when inserting instead of splitting them.
+
+  * `-F <format>`, `--format=<format>`:
+    Output file format (defaults to same as input).
+
+  * `--no-cache`:
+    Do not use or create cache.
+
+  * `-o <output>`, `--output=<output>`:
+    Output sequence file (specifying `-` will force standard output).
+
+## BUGS
+
+**gts-infix** currently has no known bugs.
+
+## AUTHORS
+
+**gts-infix** is written and maintained by @AUTHOR@.
+
+## SEE ALSO

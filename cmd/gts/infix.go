@@ -14,20 +14,20 @@ import (
 )
 
 func init() {
-	flags.Register("insert", "insert guest sequence(s) into the input sequence(s)", insertFunc)
+	flags.Register("infix", "infix input sequence(s) into the host sequence(s)", infixFunc)
 }
 
-func insertFunc(ctx *flags.Context) error {
+func infixFunc(ctx *flags.Context) error {
 	h := newHash()
 	pos, opt := flags.Flags()
 
-	locstr := pos.String("locator", "a locator string ([specifier][@modifier])")
-	guestPath := pos.String("guest", "guest sequence file (will be interpreted literally if preceded with @)")
+	locstr := pos.String("locator", "a locator string ([modifier|selector|point|range][@modifier])")
+	hostPath := pos.String("host", "host sequence")
 
-	hostPath := new(string)
-	*hostPath = "-"
+	guestPath := new(string)
+	*guestPath = "-"
 	if cmd.IsTerminal(os.Stdin.Fd()) {
-		hostPath = pos.String("host", "input sequence file (may be omitted if standard input is provided)")
+		guestPath = pos.String("guest", "input sequence file (may be omitted if standard input is provided)")
 	}
 
 	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
@@ -44,34 +44,26 @@ func insertFunc(ctx *flags.Context) error {
 		return ctx.Raise(err)
 	}
 
-	guests := []gts.Sequence{}
-	guestBytes := []byte(*guestPath)
-	guestSum := make([]byte, h.Size())
+	hosts := []gts.Sequence{}
 
-	switch guestBytes[0] {
-	case '@':
-		digest(h, guestSum, guestBytes)
-		guest := gts.New(nil, nil, guestBytes[1:])
-		guests = append(guests, guest)
-	default:
-		f, err := os.Open(*guestPath)
-		if err != nil {
-			return ctx.Raise(fmt.Errorf("failed to open file: %q: %v", *guestPath, err))
-		}
-		defer f.Close()
-
-		h.Reset()
-		r := attach(h, f)
-		scanner := seqio.NewAutoScanner(r)
-		for scanner.Scan() {
-			guests = append(guests, scanner.Value())
-		}
-		if len(guests) == 0 {
-			ctx.Raise(fmt.Errorf("guest sequence file %q does not contain a sequence", *guestPath))
-		}
+	f, err := os.Open(*hostPath)
+	if err != nil {
+		return ctx.Raise(fmt.Errorf("failed to open file: %q: %v", *hostPath, err))
 	}
+	defer f.Close()
 
-	d, err := newIODelegate(h, *hostPath, *seqoutPath)
+	h.Reset()
+	r := attach(h, f)
+	scanner := seqio.NewAutoScanner(r)
+	for scanner.Scan() {
+		hosts = append(hosts, scanner.Value())
+	}
+	if len(hosts) == 0 {
+		ctx.Raise(fmt.Errorf("host sequence file %q does not contain a sequence", *hostPath))
+	}
+	hostSum := h.Sum(nil)
+
+	d, err := newIODelegate(h, *guestPath, *seqoutPath)
 	if err != nil {
 		return ctx.Raise(err)
 	}
@@ -92,7 +84,7 @@ func insertFunc(ctx *flags.Context) error {
 			{"command", strings.Join(ctx.Name, "-")},
 			{"version", gts.Version.String()},
 			{"locator", *locstr},
-			{"guest", guestSum},
+			{"host", hostSum},
 			{"embed", *embed},
 			{"filetype", filetype},
 		})
@@ -105,21 +97,21 @@ func insertFunc(ctx *flags.Context) error {
 
 	w := bufio.NewWriter(d)
 
-	scanner := seqio.NewAutoScanner(d)
+	scanner = seqio.NewAutoScanner(d)
 	for scanner.Scan() {
-		host := scanner.Value()
+		seq := scanner.Value()
 
-		rr := locate(host)
-		indices := make([]int, len(rr))
-		for i, r := range rr {
-			indices[i] = r.Head()
-		}
-		sort.Sort(sort.Reverse(sort.IntSlice(indices)))
+		for _, host := range hosts {
+			rr := locate(host)
+			indices := make([]int, len(rr))
+			for i, r := range rr {
+				indices[i] = r.Head()
+			}
+			sort.Sort(sort.Reverse(sort.IntSlice(indices)))
 
-		for _, guest := range guests {
 			out := gts.Sequence(gts.Copy(host))
 			for _, index := range indices {
-				out = insert(out, index, guest)
+				out = insert(out, index, seq)
 			}
 
 			formatter := seqio.NewFormatter(out, filetype)
