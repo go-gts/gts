@@ -46,13 +46,14 @@ func insertFunc(ctx *flags.Context) error {
 
 	guests := []gts.Sequence{}
 	guestBytes := []byte(*guestPath)
-	guestSum := make([]byte, h.Size())
 
+	h.Reset()
 	switch guestBytes[0] {
 	case '@':
-		digest(h, guestSum, guestBytes)
+		h.Write(guestBytes)
 		guest := gts.New(nil, nil, guestBytes[1:])
 		guests = append(guests, guest)
+
 	default:
 		f, err := os.Open(*guestPath)
 		if err != nil {
@@ -60,7 +61,6 @@ func insertFunc(ctx *flags.Context) error {
 		}
 		defer f.Close()
 
-		h.Reset()
 		r := attach(h, f)
 		scanner := seqio.NewAutoScanner(r)
 		for scanner.Scan() {
@@ -70,8 +70,9 @@ func insertFunc(ctx *flags.Context) error {
 			ctx.Raise(fmt.Errorf("guest sequence file %q does not contain a sequence", *guestPath))
 		}
 	}
+	guestSum := h.Sum(nil)
 
-	d, err := newIODelegate(h, *hostPath, *seqoutPath)
+	d, err := newIODelegate(*hostPath, *seqoutPath)
 	if err != nil {
 		return ctx.Raise(err)
 	}
@@ -97,7 +98,7 @@ func insertFunc(ctx *flags.Context) error {
 			{"filetype", filetype},
 		})
 
-		ok, err := d.Cache(data)
+		ok, err := d.TryCache(h, data)
 		if ok || err != nil {
 			return ctx.Raise(err)
 		}

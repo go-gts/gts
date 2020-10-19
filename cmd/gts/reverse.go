@@ -34,7 +34,7 @@ func reverseFunc(ctx *flags.Context) error {
 		return err
 	}
 
-	d, err := newIODelegate(h, *seqinPath, *seqoutPath)
+	d, err := newIODelegate(*seqinPath, *seqoutPath)
 	if err != nil {
 		return ctx.Raise(err)
 	}
@@ -52,7 +52,7 @@ func reverseFunc(ctx *flags.Context) error {
 			{"filetype", filetype},
 		})
 
-		ok, err := d.Cache(data)
+		ok, err := d.TryCache(h, data)
 		if ok || err != nil {
 			return ctx.Raise(err)
 		}

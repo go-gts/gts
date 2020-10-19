@@ -49,7 +49,7 @@ func annotateFunc(ctx *flags.Context) error {
 	featin := result.Value.(gts.FeatureTable)
 	featsum := h.Sum(nil)
 
-	d, err := newIODelegate(h, *seqinPath, *seqoutPath)
+	d, err := newIODelegate(*seqinPath, *seqoutPath)
 	if err != nil {
 		return ctx.Raise(err)
 	}
@@ -68,7 +68,7 @@ func annotateFunc(ctx *flags.Context) error {
 			{"filetype", filetype},
 		})
 
-		ok, err := d.Cache(data)
+		ok, err := d.TryCache(h, data)
 		if ok || err != nil {
 			return ctx.Raise(err)
 		}

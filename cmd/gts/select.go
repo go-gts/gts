@@ -54,7 +54,7 @@ func selectFunc(ctx *flags.Context) error {
 	}
 	filter = gts.Or(gts.Key("source"), filter)
 
-	d, err := newIODelegate(h, *seqinPath, *seqoutPath)
+	d, err := newIODelegate(*seqinPath, *seqoutPath)
 	if err != nil {
 		return ctx.Raise(err)
 	}
@@ -74,7 +74,7 @@ func selectFunc(ctx *flags.Context) error {
 			{"filetype", filetype},
 		})
 
-		ok, err := d.Cache(data)
+		ok, err := d.TryCache(h, data)
 		if ok || err != nil {
 			return ctx.Raise(err)
 		}

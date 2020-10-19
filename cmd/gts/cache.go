@@ -1,12 +1,14 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
 
 	"github.com/dustin/go-humanize"
 	"github.com/go-gts/flags"
+	"github.com/go-gts/gts/cmd/cache"
 )
 
 func init() {
@@ -48,12 +50,19 @@ func cacheListFunc(ctx *flags.Context) error {
 		defer f.Close()
 
 		h := newHash()
-		if _, err := readCacheHeader(f, h); err != nil {
-			return err
-		}
+		hd, err := cache.ReadHeader(f, h.Size())
+
+		h.Reset()
+		h.Write(append(hd.RootSum, hd.DataSum...))
+		lsum := h.Sum(nil)
+		lhex := hex.EncodeToString(lsum)
 
 		base := filepath.Base(info.Name())
 		size := uint64(info.Size())
+
+		if lhex != base {
+			return fmt.Errorf("in cache %s: Leaf hash and filename mismatch", path)
+		}
 
 		total += size
 

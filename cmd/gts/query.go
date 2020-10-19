@@ -60,7 +60,7 @@ func queryFunc(ctx *flags.Context) error {
 		return err
 	}
 
-	d, err := newIODelegate(h, *seqinPath, *outPath)
+	d, err := newIODelegate(*seqinPath, *outPath)
 	if err != nil {
 		return ctx.Raise(err)
 	}
@@ -88,7 +88,7 @@ func queryFunc(ctx *flags.Context) error {
 			{"empty", *empty},
 		})
 
-		ok, err := d.Cache(data)
+		ok, err := d.TryCache(h, data)
 		if ok || err != nil {
 			return ctx.Raise(err)
 		}

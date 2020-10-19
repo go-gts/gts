@@ -20,7 +20,7 @@ func searchFunc(ctx *flags.Context) error {
 	h := newHash()
 	pos, opt := flags.Flags()
 
-	queryString := pos.String("query", "query sequence file (will be interpreted literally if preceded with @)")
+	queryPath := pos.String("query", "query sequence file (will be interpreted literally if preceded with @)")
 
 	seqinPath := new(string)
 	*seqinPath = "-"
@@ -41,30 +41,33 @@ func searchFunc(ctx *flags.Context) error {
 	}
 
 	queries := []gts.Sequence{}
-	queryBytes := []byte(*queryString)
-	querySum := make([]byte, h.Size())
+	queryBytes := []byte(*queryPath)
 
+	h.Reset()
 	switch queryBytes[0] {
 	case '@':
-		digest(h, querySum, queryBytes)
+		h.Write(queryBytes)
 		query := gts.New(nil, nil, queryBytes[1:])
 		queries = append(queries, query)
+
 	default:
-		queryFile, err := os.Open(*queryString)
+		queryFile, err := os.Open(*queryPath)
 		if err != nil {
 			return ctx.Raise(err)
 		}
 
-		h.Reset()
 		r := attach(h, queryFile)
 		scanner := seqio.NewAutoScanner(r)
 		for scanner.Scan() {
 			queries = append(queries, scanner.Value())
 		}
-		copy(querySum, h.Sum(nil))
+		if len(queries) == 0 {
+			ctx.Raise(fmt.Errorf("query sequence file %q does not contain a sequence", *queryPath))
+		}
 	}
+	querySum := h.Sum(nil)
 
-	d, err := newIODelegate(h, *seqinPath, *seqoutPath)
+	d, err := newIODelegate(*seqinPath, *seqoutPath)
 	if err != nil {
 		return ctx.Raise(err)
 	}
@@ -98,7 +101,7 @@ func searchFunc(ctx *flags.Context) error {
 			{"nocomplement", *nocomplement},
 		})
 
-		ok, err := d.Cache(data)
+		ok, err := d.TryCache(h, data)
 		if ok || err != nil {
 			return ctx.Raise(err)
 		}

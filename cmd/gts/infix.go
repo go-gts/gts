@@ -63,7 +63,7 @@ func infixFunc(ctx *flags.Context) error {
 	}
 	hostSum := h.Sum(nil)
 
-	d, err := newIODelegate(h, *guestPath, *seqoutPath)
+	d, err := newIODelegate(*guestPath, *seqoutPath)
 	if err != nil {
 		return ctx.Raise(err)
 	}
@@ -89,7 +89,7 @@ func infixFunc(ctx *flags.Context) error {
 			{"filetype", filetype},
 		})
 
-		ok, err := d.Cache(data)
+		ok, err := d.TryCache(h, data)
 		if ok || err != nil {
 			return ctx.Raise(err)
 		}
