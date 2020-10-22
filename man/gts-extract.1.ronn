@@ -8,11 +8,14 @@ gts-extract [--version] [-h | --help] [<args>] <seqin>
 
 **gts-extract** takes a single sequence input and return the sequences
 associated with each feature. If the sequence input is ommited, standard input
-will be read instead. The range to be extracted can be modified with a
-_modifier_ using the `-m` or `--range` option.  A _modifier_ can take one of
-five forms: `^[(+|-)n]`, `$[[(+|-)m]]`, `^[(+|-)n]..$[(+|-)m]`,
-`^[(+|-)n]..^[(+|-)m]`, or `$[(+|-)n]..$[(+|-)m]`. See gts-modifier(7) for more
-details.
+will be read instead. Additionally, if the `locator` argument is given, the
+regions associated with the `locator`s will be extracted.
+
+A locator consists of a location specifier and a modifier. A location specifier
+may be a `modifier`, a `point location`, a `range location`, or a `selector`.
+The syntax for a locator is `[specifier][@modifier]`. See gts-locator(7) for a
+more in-depth explanation of a locator. Refer to the EXAMPLES for some examples
+to get started.
 
 This command is best utilized in combination with the gts-select(1) command.
 Use gts-select(1) to narrow down the sequence regions to be extracted, and then
@@ -20,6 +23,10 @@ apply **gts-extract** to retrieve the sequences. See the EXAMPLES section for
 more insight.
 
 ## OPTIONS
+
+  * `<locator>...`:
+    A locator string ([specifier][@modifier]). See gts-locator(7) for more
+    details.
 
   * `<seqin>`:
     Input sequence file (may be omitted if standard input is provided). See
@@ -30,11 +37,6 @@ more insight.
     list of currently supported list of sequence formats. The format specified
     with this option will override the file type detection from the output
     filename.
-
-  * `-m <--range>`, `--range=<--range>`:
-    Location range modifier. A _modifier_ can take one of five forms:
-    `^[(+|-)n]`, `$[[(+|-)m]]`, `^[(+|-)n]..$[(+|-)m]`, `^[(+|-)n]..^[(+|-)m]`,
-    or `$[(+|-)n]..$[(+|-)m]`. See gts-modifier(7) for more details.
 
   * `--no-cache`:
     Do not use or create cache. See gts-cache(7) for details.
