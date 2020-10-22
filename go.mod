@@ -6,7 +6,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-ascii/ascii v1.0.3
 	github.com/go-flip/flip v1.1.0
-	github.com/go-gts/flags v0.0.10
+	github.com/go-gts/flags v0.0.11
 	github.com/go-pars/pars v1.1.6
 	github.com/go-test/deep v1.0.7
 	github.com/go-wrap/wrap v1.0.3
