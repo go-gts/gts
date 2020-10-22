@@ -58,7 +58,7 @@ func Match(seq Sequence, query Sequence) []Segment {
 	}
 
 	b := strings.Builder{}
-	for _, c := range query.Bytes() {
+	for _, c := range bytes.ToLower(query.Bytes()) {
 		switch c {
 		case 't', 'u':
 			b.WriteString("[tu]")
