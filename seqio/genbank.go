@@ -128,6 +128,10 @@ func (gbf GenBankFields) ID() string {
 
 // String satisifes the fmt.Stringer interface.
 func (gbf GenBankFields) String() string {
+	if seg, ok := gbf.Region.(gts.Segment); ok {
+		head, tail := gts.Unpack(seg)
+		return fmt.Sprintf("%s:%d-%d %s", gbf.Version, head+1, tail, gbf.Definition)
+	}
 	return fmt.Sprintf("%s %s", gbf.Version, gbf.Definition)
 }
 
@@ -216,8 +220,8 @@ func (gb GenBank) String() string {
 	b.WriteString("DEFINITION  " + definition + ".\n")
 	b.WriteString("ACCESSION   " + gb.Fields.Accession)
 	if seg, ok := gb.Fields.Region.(gts.Segment); ok {
-		head, tail := gts.Unpack(seg)
-		b.WriteString(fmt.Sprintf(" REGION: %s", gts.Range(head, tail)))
+		loc := gts.Range(gts.Unpack(seg))
+		b.WriteString(fmt.Sprintf(" REGION: %s", loc))
 	}
 	b.WriteByte('\n')
 	b.WriteString("VERSION     " + gb.Fields.Version + "\n")

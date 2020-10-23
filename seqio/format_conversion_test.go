@@ -46,3 +46,32 @@ func TestFormatConversion(t *testing.T) {
 	out := b.String()
 	testutils.DiffLine(t, strings.ToUpper(s2), strings.ToUpper(out))
 }
+
+func TestSliceToFasta(t *testing.T) {
+	in := testutils.ReadTestfile(t, "NC_001422.gb")
+	state := pars.FromString(in)
+	parser := pars.AsParser(GenBankParser)
+
+	exp := testutils.ReadTestfile(t, "NC_001422_part.fasta")
+
+	result, err := parser.Parse(state)
+	if err != nil {
+		t.Errorf("parser returned %v\nBuffer:\n%q", err, string(result.Token))
+	}
+
+	switch seq := result.Value.(type) {
+	case GenBank:
+		seq = gts.Slice(seq, 2379, 2512).(GenBank)
+		formatter := NewFormatter(seq, FastaFile)
+		b := &strings.Builder{}
+		n, err := formatter.WriteTo(b)
+		if int(n) != len(exp) || err != nil {
+			t.Errorf("formatter.WriteTo(builder) = (%d, %v), want (%d, nil)", n, err, len(exp))
+		}
+		out := b.String()
+		testutils.DiffLine(t, strings.ToUpper(exp), strings.ToUpper(out))
+
+	default:
+		t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
+	}
+}

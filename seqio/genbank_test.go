@@ -49,54 +49,6 @@ func TestGenBankFields(t *testing.T) {
 	}
 }
 
-/*
-func TestGenBank(t *testing.T) {
-	length := 100
-
-	info := GenBankFields{
-		"LOCUS_NAME",
-		"DNA",
-		gts.Linear,
-		"UNA",
-		FromTime(time.Now()),
-
-		"Sample sequence",
-		"ACCESSION",
-		"VERSION",
-		Dictionary{},
-		nil,
-		Organism{
-			Species: "Genus species",
-			Name:    "Name",
-			Taxon:   []string{"Kingdom", "Phylum", "Class", "Order", "Family", "Genus", "species"},
-		},
-		nil,
-		nil,
-		Contig{"", gts.Segment{}},
-		nil,
-	}
-
-	p := []byte(strings.Repeat("atgc", length))
-	qfs := gts.Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
-	loc := gts.Range(0, len(p))
-	ff := []gts.Feature{
-		{
-			Key:        "source",
-			Location:   loc,
-			Qualifiers: qfs,
-		},
-	}
-
-	gb := NewGenBank(info, ff, p)
-	in := gb.String()
-
-	seq := gts.New(info, ff, p)
-	formatGenBankHelper(t, seq, in)
-}
-*/
-
 func TestGenBankWithInterface(t *testing.T) {
 	length := 100
 
@@ -171,6 +123,7 @@ func TestGenBankSlice(t *testing.T) {
 		t.Errorf("result.Value.(type) = %T, want %T", seq, GenBank{})
 	}
 }
+
 func TestGenBankIO(t *testing.T) {
 	files := []string{
 		"NC_001422.gb",
