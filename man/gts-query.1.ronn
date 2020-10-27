@@ -32,22 +32,25 @@ insight. For a brief summary of a sequence, consider using gts-summary(1).
     Allow missing qualifiers to be reported. Unlink GFFs, these columns will be
     completely empty.
 
-  * `--no-cache`:
-    Do not use or create cache. See gts-cache(7) for details.
-
-  * `--no-header`:
+  * `-H`, `--no-header`:
     Do not print the header line.
 
-  * `--no-key`:
+  * `-I`, `--no-seqid`:
+    Do not report the sequence identifier.
+
+  * `-K`, `--no-key`:
     Do not report the feature key.
 
-  * `--no-location`:
+  * `-L`, `--no-location`:
     Do not report the feature location.
 
   * `-n <name>`, `--name=<name>`:
     Qualifier name(s) to select. Multiple values may be set by repeatedly
     passing this option to the command. If set, only qualifiers that have the
     given name will be reported.
+
+  * `--no-cache`:
+    Do not use or create cache. See gts-cache(7) for details.
 
   * `-o <output>`, `--output=<output>`:
     Output table file (specifying `-` will force standard output).

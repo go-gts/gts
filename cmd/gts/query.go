@@ -50,10 +50,11 @@ func queryFunc(ctx *flags.Context) error {
 	names := opt.StringSlice('n', "name", nil, "qualifier name(s) to select")
 	delim := opt.String('d', "delimiter", "\t", "string to insert between columns")
 	sepstr := opt.String('t', "separator", ",", "string to insert between qualifier values")
-	noheader := opt.Switch(0, "no-header", "do not print the header line")
+	noheader := opt.Switch('H', "no-header", "do not print the header line")
 	source := opt.Switch(0, "source", "include the source feature(s)")
-	nokey := opt.Switch(0, "no-key", "do not report the feature key")
-	noloc := opt.Switch(0, "no-location", "do not report the feature location")
+	noseqid := opt.Switch('I', "no-seqid", "do not report the sequence identifier")
+	nokey := opt.Switch('K', "no-key", "do not report the feature key")
+	noloc := opt.Switch('L', "no-location", "do not report the feature location")
 	empty := opt.Switch(0, "empty", "allow missing qualifiers to be reported")
 
 	if err := ctx.Parse(pos, opt); err != nil {
@@ -142,7 +143,9 @@ func queryFunc(ctx *flags.Context) error {
 
 	if !*noheader {
 		fields := []string{}
-		fields = append(fields, "seq")
+		if !*noseqid {
+			fields = append(fields, "seqid")
+		}
 		if !*nokey {
 			fields = append(fields, "feature")
 		}
@@ -167,8 +170,11 @@ func queryFunc(ctx *flags.Context) error {
 		}
 
 		for _, f := range ff {
-			cc := []string{id}
+			cc := []string{}
 
+			if !*noseqid {
+				cc = append(cc, id)
+			}
 			if !*nokey {
 				cc = append(cc, f.Key)
 			}

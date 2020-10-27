@@ -30,24 +30,28 @@ String to insert between columns\. The default delimiter is a tab \fB\et\fR char
 Allow missing qualifiers to be reported\. Unlink GFFs, these columns will be completely empty\.
 .
 .TP
-\fB\-\-no\-cache\fR
-Do not use or create cache\. See gts\-cache(7) for details\.
-.
-.TP
-\fB\-\-no\-header\fR
+\fB\-H\fR, \fB\-\-no\-header\fR
 Do not print the header line\.
 .
 .TP
-\fB\-\-no\-key\fR
+\fB\-I\fR, \fB\-\-no\-seqid\fR
+Do not report the sequence identifier\.
+.
+.TP
+\fB\-K\fR, \fB\-\-no\-key\fR
 Do not report the feature key\.
 .
 .TP
-\fB\-\-no\-location\fR
+\fB\-L\fR, \fB\-\-no\-location\fR
 Do not report the feature location\.
 .
 .TP
 \fB\-n <name>\fR, \fB\-\-name=<name>\fR
 Qualifier name(s) to select\. Multiple values may be set by repeatedly passing this option to the command\. If set, only qualifiers that have the given name will be reported\.
+.
+.TP
+\fB\-\-no\-cache\fR
+Do not use or create cache\. See gts\-cache(7) for details\.
 .
 .TP
 \fB\-o <output>\fR, \fB\-\-output=<output>\fR
