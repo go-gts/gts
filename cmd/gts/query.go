@@ -67,8 +67,6 @@ func queryFunc(ctx *flags.Context) error {
 	}
 	defer d.Close()
 
-	sort.Strings(*names)
-
 	sep := []rune(*sepstr)
 	if len(sep) > 1 {
 		return ctx.Raise(fmt.Errorf("separator must be a single character: got %q", *sepstr))
@@ -84,6 +82,7 @@ func queryFunc(ctx *flags.Context) error {
 			{"comma", comma},
 			{"noheader", *noheader},
 			{"source", *source},
+			{"noseqid", *noseqid},
 			{"nokey", *nokey},
 			{"noloc", *noloc},
 			{"empty", *empty},
