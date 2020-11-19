@@ -249,8 +249,19 @@ func Erase(seq Sequence, offset, length int) Sequence {
 // to end. The target sequence region is copied. Any features with locations
 // overlapping with the sliced region will be left in the sliced sequence.
 func Slice(seq Sequence, start, end int) Sequence {
+	seqlen := Len(seq)
+	for start < 0 {
+		start += seqlen
+	}
+	start %= seqlen
+
+	for end < 0 {
+		end += seqlen
+	}
+	end %= seqlen
+
 	if end < start {
-		length := Len(seq) - start + end
+		length := seqlen - start + end
 		seq = Rotate(seq, -start)
 		return Slice(seq, 0, length)
 	}
@@ -261,7 +272,7 @@ func Slice(seq Sequence, start, end int) Sequence {
 	ff := seq.Features().Filter(Overlap(start, end))
 
 	for i, f := range ff {
-		loc := f.Location.Expand(end, end-Len(seq)).Expand(0, -start)
+		loc := f.Location.Expand(end, end-seqlen).Expand(0, -start)
 		if f.Key == "source" {
 			loc = asComplete(loc)
 		}

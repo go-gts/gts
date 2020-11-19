@@ -20,6 +20,7 @@ var asLocatorTests = []struct {
 	{"exon/gene=INS", filterLocator(selectorFilter("exon"))},
 	{"/gene=INS", filterLocator(selectorFilter("/gene=INS"))},
 
+	{"@^-20..^", resizeLocator(allLocator, HeadHead{-20, 0})},
 	{"@^..$", resizeLocator(allLocator, HeadTail{0, 0})},
 	{"exon@^..$", resizeLocator(filterLocator(selectorFilter("exon")), HeadTail{0, 0})},
 }

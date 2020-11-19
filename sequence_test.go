@@ -267,6 +267,20 @@ func TestSlice(t *testing.T) {
 			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", 6, 2, out.Bytes(), exp.Bytes())
 		}
 	})
+
+	t.Run("Nevative", func(t *testing.T) {
+		gg := []Feature{{"source", Range(0, 4), qfs, nil}, {"gene", Range(1, 3), qfs, nil}}
+		out, exp := Slice(in, -6, -2), New(info, gg, p[2:6])
+		if !reflect.DeepEqual(out.Info(), exp.Info()) {
+			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", -6, -2, out.Info(), exp.Info())
+		}
+		if !featuresEqual(out.Features(), exp.Features()) {
+			t.Errorf("Slice(in, %d, %d).Features() = %v, want %v", -6, -2, out.Features(), exp.Features())
+		}
+		if !bytesEqual(out.Bytes(), exp.Bytes()) {
+			t.Errorf("Slice(in, %d, %d).Bytes() = %v, want %v", -6, -2, out.Bytes(), exp.Bytes())
+		}
+	})
 }
 
 func TestConcat(t *testing.T) {
