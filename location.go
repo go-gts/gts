@@ -122,6 +122,19 @@ func LocationLess(a, b Location) bool {
 	}
 }
 
+// Location represents a location in a sequence as defined by the INSDC feature
+// table definition.
+type Location interface {
+	fmt.Stringer
+	Len() int
+	Region() Region
+	Complement() Location
+	Reverse(length int) Location
+	Normalize(length int) Location
+	Shift(i, n int) Location
+	Expand(i, n int) Location
+}
+
 // LocationWithin tests if the given location is within the given bounds.
 func LocationWithin(loc Location, lower, upper int) bool {
 	switch v := loc.(type) {
@@ -166,19 +179,6 @@ func LocationOverlap(loc Location, lower, upper int) bool {
 	default:
 		return false
 	}
-}
-
-// Location represents a location in a sequence as defined by the INSDC feature
-// table definition.
-type Location interface {
-	fmt.Stringer
-	Len() int
-	Region() Region
-	Complement() Location
-	Reverse(length int) Location
-	Normalize(length int) Location
-	Shift(i, n int) Location
-	Expand(i, n int) Location
 }
 
 type contiguousLocation interface {
