@@ -48,37 +48,37 @@ $ conda install -c ktnyt gts-bio
 1. Download the deb package with the command of your choice.
 ```sh
 # 32 bit with wget
-$ wget https://github.com/go-gts/gts/releases/download/v0.26.11/gts_0.26.11_linux_386.deb
+$ wget https://github.com/go-gts/gts/releases/download/v0.26.12/gts_0.26.12_linux_386.deb
 # 32 bit with curl
-$ curl -LO https://github.com/go-gts/gts/releases/download/v0.26.11/gts_0.26.11_linux_386.deb
+$ curl -LO https://github.com/go-gts/gts/releases/download/v0.26.12/gts_0.26.12_linux_386.deb
 # 64 bit with wget
-$ wget https://github.com/go-gts/gts/releases/download/v0.26.11/gts_0.26.11_linux_amd64.deb
+$ wget https://github.com/go-gts/gts/releases/download/v0.26.12/gts_0.26.12_linux_amd64.deb
 # 64 bit with curl
-$ curl -LO https://github.com/go-gts/gts/releases/download/v0.26.11/gts_0.26.11_linux_amd64.deb
+$ curl -LO https://github.com/go-gts/gts/releases/download/v0.26.12/gts_0.26.12_linux_amd64.deb
 ```
 
 2. Install the deb package with dpkg.
 ```sh
 # 32 bit
-$ dpkg --install gts_0.26.11_linux_386.deb
+$ dpkg --install gts_0.26.12_linux_386.deb
 # 64 bit
-$ dpkg --install gts_0.26.11_linux_amd64.deb
+$ dpkg --install gts_0.26.12_linux_amd64.deb
 ```
 
 3. Remove the deb package file.
 ```sh
 # 32 bit
-$ rm gts_0.26.11_linux_386.deb
+$ rm gts_0.26.12_linux_386.deb
 # 64 bit
-$ rm gts_0.26.11_linux_amd64.deb
+$ rm gts_0.26.12_linux_amd64.deb
 ```
 
 #### With yum
 ```sh
 # 32 bit
-$ yum install -y https://github.com/go-gts/gts/releases/download/v0.26.11/gts_0.26.11_linux_386.rpm
+$ yum install -y https://github.com/go-gts/gts/releases/download/v0.26.12/gts_0.26.12_linux_386.rpm
 # 64 bit
-$ yum install -y https://github.com/go-gts/gts/releases/download/v0.26.11/gts_0.26.11_linux_amd64.rpm
+$ yum install -y https://github.com/go-gts/gts/releases/download/v0.26.12/gts_0.26.12_linux_amd64.rpm
 ```
 
 ## Shell Completions
@@ -86,8 +86,8 @@ GTS provides bash and zsh completion scripts for better usability. The bash comp
 
 If you want to set up completions manually, download them from the following URLs.
 
-- https://github.com/go-gts/gts/releases/download/v0.26.11/gts-completion.bash
-- https://github.com/go-gts/gts/releases/download/v0.26.11/gts-completion.zsh
+- https://github.com/go-gts/gts/releases/download/v0.26.12/gts-completion.bash
+- https://github.com/go-gts/gts/releases/download/v0.26.12/gts-completion.zsh
 
 ## Using the GTS library
 The GTS library requires the use of [Go Modules](https://blog.golang.org/using-go-modules). Therefore a Go distribution with version 1.13 or later is highly recommended. To use the GTS library in your project, initialize your module as per protocol and type the following command:
