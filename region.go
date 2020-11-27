@@ -1,8 +1,6 @@
 package gts
 
-import (
-	"sort"
-)
+import "sort"
 
 // Region represents a coordinate region which can be resized and used to
 // locate the subsequence within a given sequence corresponding to the region
