@@ -1,4 +1,4 @@
-{% set version = "0.26.9" %}
+{% set version = "0.26.12" %}
 
 package:
     name: gts-bio
@@ -6,13 +6,13 @@ package:
 
 source:
     url: https://github.com/go-gts/gts/releases/download/v{{ version }}/gts_{{ version }}_Darwin_x86_64.tar.gz # [osx]
-    sha256: e1074d25123aaefdaaa55e98b7f926c474d63a5a0934e13c4c10fcf71425adf2 # [osx]
+    sha256: 510d08ea9f8294f0d48490ad4ff803e0ebd959030bfc42b2623aaddb4ead3f22 # [osx]
 
     url: https://github.com/go-gts/gts/releases/download/v{{ version }}/gts_{{ version }}_Linux_x86_64.tar.gz # [linux64]
-    sha256: 46a1207ec8589c68f68f645bb517d99479c1b5c9a446d1c6bdf6172e5d366351 # [linux64]
+    sha256: cfa2062f082fb3beaaba06ca8c4d7a6b439b0d114082ffcb77115272fe90ceee # [linux64]
 
     url: https://github.com/go-gts/gts/releases/download/v{{ version }}/gts_{{ version }}_Linux_i386.tar.gz # [linux32]
-    sha256: 2ef55ee6680a3c38d91759719d45b209c6eb07dd2bbb9c50765aef952d251a4e # [linux32]
+    sha256: 7f0d5728ea5e36af3fc99f261d6fca48724570424c8260fd4fc6358636a3a01d # [linux32]
 
 build:
     number: 0
