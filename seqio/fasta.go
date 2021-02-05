@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/go-gts/gts"
 	"github.com/go-pars/pars"
@@ -41,7 +42,9 @@ type FastaFormatter struct {
 func (ff FastaFormatter) WriteTo(w io.Writer) (int64, error) {
 	switch seq := ff.seq.(type) {
 	case Fasta:
-		s := fmt.Sprintf(">%s\n%s\n", seq.Desc, wrap.Force(string(seq.Data), ff.wrap))
+		desc := strings.ReplaceAll(seq.Desc, "\n", " ")
+		data := wrap.Force(string(seq.Data), ff.wrap)
+		s := fmt.Sprintf(">%s\n%s\n", desc, data)
 		n, err := io.WriteString(w, s)
 		return int64(n), err
 	case *Fasta:
