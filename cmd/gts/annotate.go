@@ -46,6 +46,10 @@ func annotateFunc(ctx *flags.Context) error {
 	r := attach(h, featinFile)
 	state := pars.NewState(r)
 	result, err := gts.FeatureTableParser("").Parse(state)
+	if err != nil {
+		return ctx.Raise(err)
+	}
+
 	featin := result.Value.(gts.FeatureTable)
 	featsum := h.Sum(nil)
 
