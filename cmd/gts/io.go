@@ -66,7 +66,7 @@ func newIODelegate(inpath, outpath string) (*ioDelegate, error) {
 	}
 
 	if outpath != "-" {
-		if output, err = os.Open(outpath); err != nil {
+		if output, err = os.Create(outpath); err != nil {
 			return nil, err
 		}
 	}
@@ -137,14 +137,12 @@ func (d *ioDelegate) TryCache(h hash.Hash, data []byte) (bool, error) {
 	// Open a cache file, or create one if necessary.
 	f, err := cache.Open(dir, h, rsum, dsum)
 	if err != nil {
-		if d.outfile == os.Stdout {
-			f, err := cache.CreateLevel(dir, h, rsum, dsum, flate.BestSpeed)
-			if err != nil && f != nil {
-				os.Remove(f.Name())
-			}
-			d.cache = f
-			return false, nil
+		f, err := cache.CreateLevel(dir, h, rsum, dsum, flate.BestSpeed)
+		if err != nil && f != nil {
+			os.Remove(f.Name())
 		}
+		d.cache = f
+		return false, nil
 	}
 
 	defer f.Close()
