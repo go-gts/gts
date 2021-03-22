@@ -1025,6 +1025,9 @@ func parseRange(state *pars.State, result *pars.Result) error {
 	}
 	state.Advance()
 	c, err = pars.Next(state)
+	if err != nil {
+		return err
+	}
 	partial3 := false
 	if c == '>' {
 		partial3 = true

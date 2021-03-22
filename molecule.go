@@ -18,11 +18,11 @@ func (mol Molecule) Counter() string {
 // Molecule constants for DNA, RNA, and amino acid (AA).
 const (
 	DNA Molecule = "DNA"
-	RNA          = "RNA"
-	AA           = "AA"
+	RNA Molecule = "RNA"
+	AA  Molecule = "AA"
 
-	SingleStrandDNA = "ss-DNA"
-	DoubleStrandDNA = "ds-DNA"
+	SingleStrandDNA Molecule = "ss-DNA"
+	DoubleStrandDNA Molecule = "ds-DNA"
 )
 
 // AsMolecule attempts to convert a string into a Molecule object.
