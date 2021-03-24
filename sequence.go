@@ -49,7 +49,7 @@ func trySlice(info interface{}, start, end int) interface{} {
 // able to return its metadata, associated features, and byte representation.
 type Sequence interface {
 	Info() interface{}
-	Features() FeatureTable
+	Features() FeatureSlice
 	Bytes() []byte
 }
 
@@ -76,12 +76,12 @@ func Equal(a, b Sequence) bool {
 // BasicSequence represents the most basic Sequence object.
 type BasicSequence struct {
 	info  interface{}
-	table FeatureTable
+	table FeatureSlice
 	data  []byte
 }
 
 // New returns a new Sequence object with the given values.
-func New(info interface{}, table FeatureTable, p []byte) BasicSequence {
+func New(info interface{}, table FeatureSlice, p []byte) BasicSequence {
 	return BasicSequence{info, table, p}
 }
 
@@ -91,7 +91,7 @@ func (seq BasicSequence) Info() interface{} {
 }
 
 // Features returns the feature table of the sequence.
-func (seq BasicSequence) Features() FeatureTable {
+func (seq BasicSequence) Features() FeatureSlice {
 	return seq.table
 }
 
@@ -110,7 +110,7 @@ type hasWithInfo interface {
 }
 
 type hasWithFeatures interface {
-	WithFeatures(ff FeatureTable) Sequence
+	WithFeatures(ff []Feature) Sequence
 }
 
 type hasWithBytes interface {
@@ -131,7 +131,7 @@ func WithInfo(seq Sequence, info interface{}) Sequence {
 
 // WithFeatures creates a shallow copy of the given Sequence object and swaps
 // the feature table with the given features. If the sequence implements the
-// `WithFeatures(ff FeatureTable) Sequence` method, it will be called instead.
+// `WithFeatures(ff FeatureSlice) Sequence` method, it will be called instead.
 func WithFeatures(seq Sequence, ff []Feature) Sequence {
 	switch v := seq.(type) {
 	case hasWithFeatures:
@@ -165,13 +165,13 @@ func Insert(host Sequence, index int, guest Sequence) Sequence {
 	info = tryShift(info, index, Len(guest))
 	host = WithInfo(host, info)
 
-	var ff FeatureTable
+	var ff FeatureSlice
 	for _, f := range host.Features() {
-		f.Location = f.Location.Shift(index, Len(guest))
+		f = WithLocation(f, f.Location().Shift(index, Len(guest)))
 		ff = ff.Insert(f)
 	}
 	for _, f := range guest.Features() {
-		f.Location = f.Location.Expand(0, index)
+		f = WithLocation(f, f.Location().Expand(0, index))
 		ff = ff.Insert(f)
 	}
 	host = WithFeatures(host, ff)
@@ -190,13 +190,13 @@ func Embed(host Sequence, index int, guest Sequence) Sequence {
 	info = tryExpand(info, index, Len(guest))
 	host = WithInfo(host, info)
 
-	var ff FeatureTable
+	var ff FeatureSlice
 	for _, f := range host.Features() {
-		f.Location = f.Location.Expand(index, Len(guest))
+		f = WithLocation(f, f.Location().Expand(index, Len(guest)))
 		ff = ff.Insert(f)
 	}
 	for _, f := range guest.Features() {
-		f.Location = f.Location.Expand(0, index)
+		f = WithLocation(f, f.Location().Expand(0, index))
 		ff = ff.Insert(f)
 	}
 	host = WithFeatures(host, ff)
@@ -219,9 +219,7 @@ func Delete(seq Sequence, offset, length int) Sequence {
 
 	ff := make([]Feature, len(seq.Features()))
 	for i, f := range seq.Features() {
-		ff[i].Key = f.Key
-		ff[i].Location = f.Location.Expand(offset, -length)
-		ff[i].Qualifiers = f.Qualifiers
+		ff[i] = WithLocation(f, f.Location().Expand(offset, -length))
 	}
 	seq = WithFeatures(seq, ff)
 
@@ -270,11 +268,11 @@ func Slice(seq Sequence, start, end int) Sequence {
 	ff := seq.Features().Filter(Overlap(start, end))
 
 	for i, f := range ff {
-		loc := f.Location.Expand(end, end-seqlen).Expand(0, -start)
-		if f.Key == "source" {
+		loc := f.Location().Expand(end, end-seqlen).Expand(0, -start)
+		if f.Key() == "source" {
 			loc = asComplete(loc)
 		}
-		ff[i].Location = loc
+		ff[i] = WithLocation(f, loc)
 	}
 
 	p := make([]byte, end-start)
@@ -302,7 +300,7 @@ func Concat(ss ...Sequence) Sequence {
 
 		for _, seq := range tail {
 			for _, f := range seq.Features() {
-				f.Location = f.Location.Expand(0, len(p))
+				f = WithLocation(f, f.Location().Expand(0, len(p)))
 				ff = ff.Insert(f)
 			}
 			p = append(p, seq.Bytes()...)
@@ -318,14 +316,10 @@ func Concat(ss ...Sequence) Sequence {
 // Reverse returns a Sequence object with the byte representation in the
 // reversed order. The feature locations will be reversed accordingly.
 func Reverse(seq Sequence) Sequence {
-	var ff FeatureTable
+	var ff FeatureSlice
 	for _, f := range seq.Features() {
-		ff = ff.Insert(Feature{
-			f.Key,
-			f.Location.Reverse(Len(seq)),
-			f.Qualifiers,
-			f.Order,
-		})
+		loc := f.Location().Reverse(Len(seq))
+		ff = ff.Insert(WithLocation(f, loc))
 	}
 	seq = WithFeatures(seq, ff)
 
@@ -346,10 +340,10 @@ func Rotate(seq Sequence, n int) Sequence {
 	}
 	n %= Len(seq)
 
-	var ff FeatureTable
+	var ff FeatureSlice
 	for _, f := range seq.Features() {
-		loc := f.Location.Expand(0, n).Normalize(Len(seq))
-		ff = ff.Insert(Feature{f.Key, loc, f.Qualifiers, f.Order})
+		loc := f.Location().Expand(0, n).Normalize(Len(seq))
+		ff = ff.Insert(WithLocation(f, loc))
 	}
 
 	m := Len(seq) - n

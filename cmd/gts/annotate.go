@@ -45,12 +45,12 @@ func annotateFunc(ctx *flags.Context) error {
 	h.Reset()
 	r := attach(h, featinFile)
 	state := pars.NewState(r)
-	result, err := gts.FeatureTableParser("").Parse(state)
+	result, err := seqio.INSDCTableParser("").Parse(state)
 	if err != nil {
 		return ctx.Raise(err)
 	}
 
-	featin := result.Value.(gts.FeatureTable)
+	featin := result.Value.([]gts.Feature)
 	featsum := h.Sum(nil)
 
 	d, err := newIODelegate(*seqinPath, *seqoutPath)

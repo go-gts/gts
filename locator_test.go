@@ -3,7 +3,6 @@ package gts
 import (
 	"testing"
 
-	"github.com/go-pars/pars"
 	"github.com/go-test/deep"
 )
 
@@ -33,12 +32,7 @@ var asLocatorFailTests = []string{
 }
 
 func TestAsLocator(t *testing.T) {
-	result, err := FeatureTableParser("").Parse(pars.FromString(featureIOTests[0]))
-	if err != nil {
-		t.Errorf("failed to parse feature table: %v", err)
-		return
-	}
-	ff := result.Value.(FeatureTable)
+	ff := testFeatureTable
 	seq := New(nil, ff, []byte(""+
 		"AGCCCTCCAGGACAGGCTGCATCAGAAGAGGCCATCAAGCAGATCACTGTCCTTCTGCCATGGCCCTGTG"+
 		"GATGCGCCTCCTGCCCCTGCTGGCGCTGCTGGCCCTCTGGGGACCTGACCCAGCCGCAGCCTTTGTGAAC"+

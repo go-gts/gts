@@ -31,9 +31,7 @@ func Complement(seq Sequence) Sequence {
 	)
 	ff := make([]Feature, len(seq.Features()))
 	for i, f := range seq.Features() {
-		ff[i].Key = f.Key
-		ff[i].Location = f.Location.Complement()
-		ff[i].Qualifiers = f.Qualifiers
+		ff[i] = WithLocation(f, f.Location().Complement())
 	}
 	return WithBytes(WithFeatures(seq, ff), p)
 }

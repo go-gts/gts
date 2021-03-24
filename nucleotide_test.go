@@ -8,11 +8,19 @@ import (
 
 func TestComplement(t *testing.T) {
 	p, q := []byte("ACGTURYKMWSBDHVacgturykmwsbdhv."), []byte("TGCAAYRMKSWVHDBtgcaayrmkswvhdb.")
-	qfs := Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
-	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(2, 4), qfs, nil}, {"misc_feature", Ambiguous{5, 7}, qfs, nil}}
-	gg := []Feature{{"source", Range(0, len(p)).Complement(), qfs, nil}, {"gene", Range(2, 4).Complement(), qfs, nil}, {"misc_feature", Ambiguous{5, 7}, qfs, nil}}
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
+	ff := []Feature{
+		NewFeature("source", Range(0, len(p)), props),
+		NewFeature("gene", Range(2, 4), props),
+		NewFeature("misc_feature", Ambiguous{5, 7}, props),
+	}
+	gg := []Feature{
+		NewFeature("source", Range(0, len(p)).Complement(), props),
+		NewFeature("gene", Range(2, 4).Complement(), props),
+		NewFeature("misc_feature", Ambiguous{5, 7}, props),
+	}
 	in := New(nil, ff, p)
 	exp := New(nil, gg, q)
 	out := Complement(in)

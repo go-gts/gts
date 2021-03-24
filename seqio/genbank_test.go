@@ -70,17 +70,11 @@ func TestGenBankWithInterface(t *testing.T) {
 	}
 
 	p := []byte(strings.Repeat("atgc", length))
-	qfs := gts.Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
+	props := gts.Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
 	loc := gts.Range(0, len(p))
-	ff := []gts.Feature{
-		{
-			Key:        "source",
-			Location:   loc,
-			Qualifiers: qfs,
-		},
-	}
+	ff := []gts.Feature{gts.NewFeature("source", loc, props)}
 
 	in := GenBank{GenBankFields{}, nil, NewOrigin(nil)}
 	out := gts.WithInfo(in, info)

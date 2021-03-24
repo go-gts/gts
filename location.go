@@ -1052,13 +1052,13 @@ func parseRange(state *pars.State, result *pars.Result) error {
 
 func multipleLocationParser(state *pars.State, result *pars.Result) error {
 	state.Push()
-	if err := parseLocation(state, result); err != nil {
+	if err := ParseLocation(state, result); err != nil {
 		state.Pop()
 		return err
 	}
 	locs := []Location{result.Value.(Location)}
 	for locationDelimiter(state, result) {
-		if err := parseLocation(state, result); err != nil {
+		if err := ParseLocation(state, result); err != nil {
 			state.Pop()
 			return err
 		}
@@ -1194,13 +1194,14 @@ func parseComplement(q interface{}) pars.Parser {
 	}
 }
 
-var parseComplementDefault = parseComplement(&parseLocation)
+// ParseLocation parses a single location.
+var ParseLocation pars.Parser
 
-var parseLocation pars.Parser
+var parseComplementDefault = parseComplement(&ParseLocation)
 
 // AsLocation interprets the given string as a Location.
 func AsLocation(s string) (Location, error) {
-	result, err := parseLocation.Parse(pars.FromString(s))
+	result, err := ParseLocation.Parse(pars.FromString(s))
 	if err != nil {
 		return nil, err
 	}
@@ -1208,7 +1209,7 @@ func AsLocation(s string) (Location, error) {
 }
 
 func init() {
-	parseLocation = pars.Any(
+	ParseLocation = pars.Any(
 		parseRange,
 		parseBetween,
 		parseAmbiguous,

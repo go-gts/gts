@@ -23,7 +23,7 @@ func (f Fasta) Info() interface{} {
 }
 
 // Features returns the feature table of the sequence.
-func (f Fasta) Features() gts.FeatureTable {
+func (f Fasta) Features() gts.FeatureSlice {
 	return nil
 }
 

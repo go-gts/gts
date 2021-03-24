@@ -1,13 +1,15 @@
-package gts
+package seqio
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"sort"
 	"strings"
 
 	"github.com/go-ascii/ascii"
+	"github.com/go-gts/gts"
 	"github.com/go-pars/pars"
 )
 
@@ -314,6 +316,165 @@ func QualifierParser(prefix string) pars.Parser {
 
 		value := string(result.Token)
 		result.SetValue(QualifierIO{name, value})
+		return nil
+	}
+}
+
+// INSDCFormatter formats a Feature object with the given prefix and depth.
+type INSDCFormatter struct {
+	Table  []gts.Feature
+	Prefix string
+	Depth  int
+}
+
+// String satisfies the fmt.Stringer interface.
+func (fmtr INSDCFormatter) String() string {
+	b := strings.Builder{}
+	for i, f := range fmtr.Table {
+		if i != 0 {
+			b.WriteByte('\n')
+		}
+		b.WriteString(fmtr.Prefix)
+		b.WriteString(f.Key())
+		length := len(fmtr.Prefix) + len(f.Key())
+
+		padding := strings.Repeat(" ", fmtr.Depth-length)
+		prefix := fmtr.Prefix + strings.Repeat(" ", fmtr.Depth-len(fmtr.Prefix))
+
+		b.WriteString(padding)
+		b.WriteString(f.Location().String())
+
+		for _, key := range f.Values().Keys() {
+			for _, value := range f.Values().Get(key) {
+				q := QualifierIO{key, value}
+				b.WriteByte('\n')
+				b.WriteString(q.Format(prefix).String())
+
+			}
+		}
+	}
+	return b.String()
+}
+
+// WriteTo satisfies the io.WriteTo interface.
+func (fmtr INSDCFormatter) WriteTo(w io.Writer) (int64, error) {
+	n, err := io.WriteString(w, fmtr.String())
+	return int64(n), err
+}
+
+var errFeatureKey = errors.New("expected feature key")
+
+type keyline struct {
+	pre int
+	key string
+	pst int
+	loc gts.Location
+}
+
+func featureKeylineParser(prefix string, depth int) pars.Parser {
+	word := pars.Word(ascii.IsSnake).Error(errFeatureKey)
+	p := []byte(prefix)
+	return func(state *pars.State, result *pars.Result) error {
+		if err := state.Request(len(p)); err != nil {
+			return err
+		}
+		if !bytes.Equal(state.Buffer(), p) {
+			return pars.NewError(fmt.Sprintf("expected %q", prefix), state.Position())
+		}
+		state.Advance()
+		if err := word(state, result); err != nil {
+			return err
+		}
+		key := string(result.Token)
+		for i := 0; i < depth-len(prefix+key); i++ {
+			c, err := pars.Next(state)
+			if err != nil {
+				return err
+			}
+			if c != ' ' {
+				return pars.NewError("wanted indent", state.Position())
+			}
+			state.Advance()
+		}
+		if err := gts.ParseLocation(state, result); err != nil {
+			return err
+		}
+		loc := result.Value.(gts.Location)
+		if err := pars.EOL(state, result); err != nil {
+			return err
+		}
+		result.SetValue(keyline{0, key, 0, loc})
+		return nil
+	}
+}
+
+// INSDCTableParser attempts to match an INSDC feature table.
+func INSDCTableParser(prefix string) pars.Parser {
+	firstParser := pars.Seq(
+		prefix, pars.Spaces,
+		pars.Word(ascii.IsSnake).Error(errFeatureKey), pars.Spaces,
+		gts.ParseLocation, pars.EOL,
+	).Map(func(result *pars.Result) error {
+		children := result.Children
+		pre := len(children[1].Token)
+		key := string(children[2].Token)
+		pst := len(children[3].Token)
+		loc := children[4].Value.(gts.Location)
+		result.SetValue(keyline{pre, key, pst, loc})
+		return nil
+	})
+
+	return func(state *pars.State, result *pars.Result) error {
+		if err := firstParser(state, result); err != nil {
+			return err
+		}
+		tmp := result.Value.(keyline)
+		pre, key, pst, loc := tmp.pre, tmp.key, tmp.pst, tmp.loc
+		depth := pre + len(key) + pst
+
+		keylineParser := featureKeylineParser(prefix+strings.Repeat(" ", pre), depth)
+
+		qualifierParser := QualifierParser(prefix + strings.Repeat(" ", depth))
+		qualifiersParser := pars.Many(qualifierParser)
+
+		// Does not return error by definition.
+		qualifiersParser(state, result)
+
+		props := gts.Props{}
+		order := make(map[string]int)
+
+		for _, child := range result.Children {
+			name, value := child.Value.(QualifierIO).Unpack()
+			props.Add(name, value)
+			if _, ok := order[name]; name != "translation" && !ok {
+				order[name] = len(order)
+			}
+		}
+
+		ff := []gts.Feature{gts.NewFeature(key, loc, props)}
+
+		for keylineParser(state, result) == nil {
+			tmp := result.Value.(keyline)
+			key, loc := tmp.key, tmp.loc
+
+			// Does not return error by definition.
+			qualifiersParser(state, result)
+
+			props := gts.Props{}
+			order := make(map[string]int)
+
+			for _, child := range result.Children {
+				name, value := child.Value.(QualifierIO).Unpack()
+				props.Add(name, value)
+				if _, ok := order[name]; name != "translation" && !ok {
+					order[name] = len(order)
+				}
+			}
+
+			ff = append(ff, gts.NewFeature(key, loc, props))
+		}
+
+		result.SetValue(ff)
 		return nil
 	}
 }

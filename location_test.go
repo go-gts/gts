@@ -909,6 +909,7 @@ var locationParserFailTests = []struct {
 	{parseRange, "?"},
 	{parseRange, "1"},
 	{parseRange, "1??"},
+	{parseRange, "1.."},
 	{parseRange, "1..?"},
 
 	{parseComplementDefault, ""},
@@ -986,7 +987,7 @@ var locationParserTests = []struct {
 
 func TestLocationParser(t *testing.T) {
 	for _, tt := range locationParserTests {
-		res, err := parseLocation.Parse(pars.FromString(tt.in))
+		res, err := ParseLocation.Parse(pars.FromString(tt.in))
 		if err != nil {
 			t.Errorf("failed to parse %q: %v", tt.in, err)
 			continue

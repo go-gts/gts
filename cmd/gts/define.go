@@ -32,7 +32,7 @@ func defineFunc(ctx *flags.Context) error {
 	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
-	qfstrs := opt.StringSlice('q', "qualifier", nil, "qualifier key-value pairs (syntax: key=value))")
+	propstrs := opt.StringSlice('q', "qualifier", nil, "qualifier key-value pairs (syntax: key=value))")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -54,23 +54,16 @@ func defineFunc(ctx *flags.Context) error {
 		filetype = seqio.ToFileType(*format)
 	}
 
-	order := make(map[string]int)
-	qfs := gts.Values{}
-	for _, s := range *qfstrs {
+	props := gts.Props{}
+	for _, s := range *propstrs {
 		name, value := s, ""
 		if i := strings.IndexByte(s, '='); i >= 0 {
 			name, value = s[:i], s[i+1:]
 		}
-		qfs.Add(name, value)
-		order[name] = len(order)
+		props.Add(name, value)
 	}
 
-	f := gts.Feature{
-		Key:        *key,
-		Location:   loc,
-		Qualifiers: qfs,
-		Order:      order,
-	}
+	f := gts.NewFeature(*key, loc, props)
 
 	if !*nocache {
 		data := encodePayload([]tuple{
@@ -78,7 +71,7 @@ func defineFunc(ctx *flags.Context) error {
 			{"version", gts.Version.String()},
 			{"key", *key},
 			{"location", loc.String()},
-			{"qualifiers", *qfstrs},
+			{"qualifiers", *propstrs},
 			{"filetype", filetype},
 		})
 

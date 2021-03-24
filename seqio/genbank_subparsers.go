@@ -316,7 +316,7 @@ func genbankCommentParser(gb *GenBank, depth int) pars.Parser {
 
 func genbankFeatureParser(gb *GenBank, depth int) pars.Parser {
 	fieldNameParser := pars.String("FEATURES")
-	fieldBodyParser := gts.FeatureTableParser("")
+	fieldBodyParser := INSDCTableParser("")
 	return func(state *pars.State, result *pars.Result) error {
 		if err := fieldNameParser(state, result); err != nil {
 			return err
@@ -326,7 +326,7 @@ func genbankFeatureParser(gb *GenBank, depth int) pars.Parser {
 		if err := fieldBodyParser(state, result); err != nil {
 			return err
 		}
-		gb.Table = result.Value.(gts.FeatureTable)
+		gb.Table = result.Value.([]gts.Feature)
 		return nil
 	}
 }

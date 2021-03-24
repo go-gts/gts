@@ -138,7 +138,7 @@ func (gbf GenBankFields) String() string {
 // GenBank represents a GenBank sequence record.
 type GenBank struct {
 	Fields GenBankFields
-	Table  gts.FeatureTable
+	Table  gts.FeatureSlice
 	Origin *Origin
 }
 
@@ -153,7 +153,7 @@ func (gb GenBank) Info() interface{} {
 }
 
 // Features returns the feature table of the sequence.
-func (gb GenBank) Features() gts.FeatureTable {
+func (gb GenBank) Features() gts.FeatureSlice {
 	return gb.Table
 }
 
@@ -180,7 +180,7 @@ func (gb GenBank) WithInfo(info interface{}) gts.Sequence {
 
 // WithFeatures creates a shallow copy of the given Sequence object and swaps
 // the feature table with the given features.
-func (gb GenBank) WithFeatures(ff gts.FeatureTable) gts.Sequence {
+func (gb GenBank) WithFeatures(ff []gts.Feature) gts.Sequence {
 	return GenBank{gb.Fields, ff, gb.Origin}
 }
 
@@ -290,7 +290,8 @@ func (gb GenBank) String() string {
 	}
 
 	b.WriteString("FEATURES             Location/Qualifiers\n")
-	gb.Table.Format("     ", 21).WriteTo(&b)
+	fmtr := INSDCFormatter{gb.Table, "     ", 21}
+	fmtr.WriteTo(&b)
 	b.WriteByte('\n')
 
 	if gb.Fields.Contig.String() != "" {

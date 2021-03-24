@@ -3,184 +3,104 @@ package gts
 import (
 	"bytes"
 	"sort"
-	"strings"
 	"testing"
 
 	"github.com/go-gts/gts/internal/testutils"
-	"github.com/go-pars/pars"
 	"github.com/go-test/deep"
 )
 
-var featureIOTests = []string{
-	`     source          1..465
-                     /organism="Homo sapiens"
-                     /mol_type="mRNA"
-                     /db_xref="taxon:9606"
-                     /chromosome="11"
-                     /map="11p15.5"
-     gene            1..465
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /note="insulin"
-                     /db_xref="GeneID:3630"
-                     /db_xref="HGNC:HGNC:6081"
-                     /db_xref="MIM:176730"
-     exon            1..42
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /inference="alignment:Splign:2.1.0"
-     exon            43..246
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /inference="alignment:Splign:2.1.0"
-     CDS             60..392
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /note="proinsulin; preproinsulin"
-                     /codon_start=1
-                     /product="insulin preproprotein"
-                     /protein_id="NP_000198.1"
-                     /db_xref="CCDS:CCDS7729.1"
-                     /db_xref="GeneID:3630"
-                     /db_xref="HGNC:HGNC:6081"
-                     /db_xref="MIM:176730"
-                     /translation="MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEALYLVCG
-                     ERGFFYTPKTRREAEDLQVGQVELGGGPGAGSLQPLALEGSLQKRGIVEQCCTSICSL
-                     YQLENYCN"
-     sig_peptide     60..131
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /inference="COORDINATES: ab initio prediction:SignalP:4.0"
-     proprotein      132..389
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /product="proinsulin"
-     mat_peptide     132..221
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /product="insulin B chain"
-     mat_peptide     228..320
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /product="C-peptide"
-     mat_peptide     327..389
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /product="insulin A chain"
-     exon            247..465
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /inference="alignment:Splign:2.1.0"`,
-	`     tRNA            complement(3838377..3838450)
-                     /gene="TRI-GAT1-1"
-                     /product="tRNA-Ile"
-                     /inference="COORDINATES: profile:tRNAscan-SE:1.23"
-                     /note="tRNA-Ile (anticodon GAT) 1-1; Derived by automated
-                     computational analysis using gene prediction method:
-                     tRNAscan-SE."
-                     /anticodon=(pos:complement(3838414..3838416),aa:Ile,
-                     seq:gat)
-                     /db_xref="GeneID:100189132"
-                     /db_xref="HGNC:HGNC:34694"`,
-}
-
-func TestFeatureKeylineParser(t *testing.T) {
-	parser := pars.Exact(featureKeylineParser("     ", 21))
-	for _, in := range []string{
-		"     source          ",
-		"    source          ",
-		"     ",
-		"     source",
-		"     source 1..39",
-		"     source          1..39 ",
-	} {
-		state := pars.FromString(in)
-		if _, err := parser.Parse(state); err == nil {
-			t.Errorf("while parsing`\n%s\n`: expected error", in)
-		}
-	}
-}
-
-func TestFeatureIO(t *testing.T) {
-	parser := pars.Exact(FeatureTableParser(""))
-	for _, in := range featureIOTests {
-		state := pars.FromString(in)
-		result, err := parser.Parse(state)
-		if err != nil {
-			t.Errorf("while parsing`\n%s\n`: %v", in, err)
-			return
-		}
-		switch ff := result.Value.(type) {
-		case FeatureTable:
-			b := strings.Builder{}
-			n, err := ff.Format("     ", 21).WriteTo(&b)
-			if err != nil {
-				t.Errorf("f.WriteTo(w) = %d, %v, want %d, nil", n, err, n)
-			}
-			out := b.String()
-			if out != in {
-				t.Errorf("f.Format(%q, 21) = %q, want %q", "     ", out, in)
-			}
-		default:
-			t.Errorf("result.Value.(type) = %T, want %T", ff, FeatureTable{})
-		}
-	}
-
-	if err := parser(pars.FromString(""), pars.Void); err == nil {
-		t.Error("while parsing empty string: expected error")
-	}
-}
-
-func TestFeature(t *testing.T) {
-	key := "gene"
-	loc := Range(1, 465)
-	qfs := Values{}
-	qfs.Set("gene", "INS")
-	qfs.Set("db_xref", "GeneID:3630", "HGNC:HGNC:6081", "MIM:176730")
-	f := Feature{key, loc, qfs, map[string]int{"gene": 0, "note": 1}}
-	qq := listQualifiers(f)
-	out := []QualifierIO{
-		{"gene", "INS"},
-		{"db_xref", "GeneID:3630"},
-		{"db_xref", "HGNC:HGNC:6081"},
-		{"db_xref", "MIM:176730"},
-	}
-	testutils.Equals(t, qq, out)
+var testFeatureTable = []Feature{
+	NewFeature("source", Range(0, 465), Props{
+		[]string{"chromosome", "11"},
+		[]string{"db_xref", "taxon:9606"},
+		[]string{"map", "11p15.5"},
+		[]string{"mol_type", "mRNA"},
+		[]string{"organism", "Homo sapiens"},
+	}),
+	NewFeature("gene", Range(0, 465), Props{
+		[]string{"db_xref", "GeneID:3630", "HGNC:HGNC:6081", "MIM:176730"},
+		[]string{"gene", "INS"},
+		[]string{"gene_synonym", "IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"},
+		[]string{"note", "insulin"},
+	}),
+	NewFeature("exon", Range(0, 42), Props{
+		[]string{"gene", "INS"},
+		[]string{"gene_synonym", "IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"},
+		[]string{"inference", "alignment:Splign:2.1.0"},
+	}),
+	NewFeature("exon", Range(42, 246), Props{
+		[]string{"gene", "INS"},
+		[]string{"gene_synonym", "IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"},
+		[]string{"inference", "alignment:Splign:2.1.0"},
+	}),
+	NewFeature("CDS", Range(59, 392), Props{
+		[]string{"codon_start", "1"},
+		[]string{"db_xref", "CCDS:CCDS7729.1", "GeneID:3630", "HGNC:HGNC:6081", "MIM:176730"},
+		[]string{"gene", "INS"},
+		[]string{"gene_synonym", "IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"},
+		[]string{"note", "proinsulin; preproinsulin"},
+		[]string{"product", "insulin preproprotein"},
+		[]string{"protein_id", "NP_000198.1"},
+		[]string{"translation", "MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEALYLVCG\nERGFFYTPKTRREAEDLQVGQVELGGGPGAGSLQPLALEGSLQKRGIVEQCCTSICSL\nYQLENYCN"},
+	}),
+	NewFeature("sig_peptide", Range(59, 131), Props{
+		[]string{"gene", "INS"},
+		[]string{"gene_synonym", "IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"},
+		[]string{"inference", "COORDINATES: ab initio prediction:SignalP:4.0"},
+	}),
+	NewFeature("proprotein", Range(131, 389), Props{
+		[]string{"gene", "INS"},
+		[]string{"gene_synonym", "IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"},
+		[]string{"product", "proinsulin"},
+	}),
+	NewFeature("mat_peptide", Range(131, 221), Props{
+		[]string{"gene", "INS"},
+		[]string{"gene_synonym", "IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"},
+		[]string{"product", "insulin B chain"},
+	}),
+	NewFeature("mat_peptide", Range(227, 320), Props{
+		[]string{"gene", "INS"},
+		[]string{"gene_synonym", "IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"},
+		[]string{"product", "C-peptide"},
+	}),
+	NewFeature("mat_peptide", Range(326, 389), Props{
+		[]string{"gene", "INS"},
+		[]string{"gene_synonym", "IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"},
+		[]string{"product", "insulin A chain"},
+	}),
+	NewFeature("exon", Range(246, 465), Props{
+		[]string{"gene", "INS"},
+		[]string{"gene_synonym", "IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"},
+		[]string{"inference", "alignment:Splign:2.1.0"},
+	}),
 }
 
 func TestFeatureRepair(t *testing.T) {
-	state := pars.FromString(featureIOTests[0])
-	parser := pars.Exact(FeatureTableParser(""))
-	result, err := parser.Parse(state)
-	if err != nil {
-		t.Errorf("while parsing`\n%s\n`: %v", featureIOTests[0], err)
-		return
-	}
 	m, n := 200, 465
-	exp := result.Value.(FeatureTable)
+	exp := testFeatureTable
 	seq := Sequence(New(nil, exp, bytes.Repeat([]byte("a"), n)))
 	left, right := Slice(seq, 0, m), Slice(seq, m, n)
 	seq = Concat(left, right)
 
 	in := seq.Features()
-	out := FeatureTable(Repair(in))
+	out := Repair(in)
 
-	sort.Sort(out)
-	sort.Sort(exp)
+	sort.Sort(FeatureSlice(out))
+	sort.Sort(FeatureSlice(exp))
 
 	if !featuresEqual(out, exp) {
-		sin := in.Format("     ", 21).String()
-		sout := out.Format("     ", 21).String()
-		sexp := exp.Format("     ", 21).String()
+		sin := jsonify(in)
+		sout := jsonify(out)
+		sexp := jsonify(exp)
 		t.Errorf("Repair: \n%s\nDiff:", sin)
 		testutils.DiffLine(t, sout, sexp)
 	}
 }
 
-var sampleSourceFeature = Feature{"source", Range(0, 5386), Values{"mol_type": []string{"Genomic DNA"}}, nil}
-var sampleGeneFeature = Feature{"gene", Range(51, 221), Values{"locus_tag": []string{"phiX174p04"}}, nil}
-var sampleCDSFeature = Feature{"CDS", Range(133, 393), Values{"locus_tag": []string{"phiX174p05"}}, nil}
-var sampleFeatureTable = FeatureTable{
+var sampleSourceFeature = NewFeature("source", Range(0, 5386), Props{[]string{"mol_type", "Genomic DNA"}})
+var sampleGeneFeature = NewFeature("gene", Range(51, 221), Props{[]string{"locus_tag", "phiX174p04"}})
+var sampleCDSFeature = NewFeature("CDS", Range(133, 393), Props{[]string{"locus_tag", "phiX174p05"}})
+var sampleFeatureTable = FeatureSlice{
 	sampleSourceFeature,
 	sampleGeneFeature,
 }
@@ -203,23 +123,23 @@ func selectorFilter(sel string) Filter {
 
 var featureFilterTests = []struct {
 	f   Filter
-	out FeatureTable
+	out FeatureSlice
 }{
 	{TrueFilter, sampleFeatureTable},
-	{FalseFilter, FeatureTable{}},
+	{FalseFilter, FeatureSlice{}},
 	{Key(""), sampleFeatureTable},
-	{Key("source"), FeatureTable{sampleSourceFeature}},
-	{Key("gene"), FeatureTable{sampleGeneFeature}},
-	{qualifierFilter("mol_type", "DNA"), FeatureTable{sampleSourceFeature}},
-	{qualifierFilter("", "DNA"), FeatureTable{sampleSourceFeature}},
-	{And(Key("source"), Key("gene")), FeatureTable{}},
-	{And(Key("source"), qualifierFilter("mol_type", "DNA")), FeatureTable{sampleSourceFeature}},
+	{Key("source"), FeatureSlice{sampleSourceFeature}},
+	{Key("gene"), FeatureSlice{sampleGeneFeature}},
+	{qualifierFilter("mol_type", "DNA"), FeatureSlice{sampleSourceFeature}},
+	{qualifierFilter("", "DNA"), FeatureSlice{sampleSourceFeature}},
+	{And(Key("source"), Key("gene")), FeatureSlice{}},
+	{And(Key("source"), qualifierFilter("mol_type", "DNA")), FeatureSlice{sampleSourceFeature}},
 	{Or(Key("source"), Key("gene")), sampleFeatureTable},
-	{Or(Key("foo"), Key("bar")), FeatureTable{}},
-	{Not(Key("source")), FeatureTable{sampleGeneFeature}},
-	{selectorFilter("source/mol_type=DNA"), FeatureTable{sampleSourceFeature}},
-	{selectorFilter("source/mol_type"), FeatureTable{sampleSourceFeature}},
-	{selectorFilter("source/mol_type=\\/"), FeatureTable{}},
+	{Or(Key("foo"), Key("bar")), FeatureSlice{}},
+	{Not(Key("source")), FeatureSlice{sampleGeneFeature}},
+	{selectorFilter("source/mol_type=DNA"), FeatureSlice{sampleSourceFeature}},
+	{selectorFilter("source/mol_type"), FeatureSlice{sampleSourceFeature}},
+	{selectorFilter("source/mol_type=\\/"), FeatureSlice{}},
 }
 
 func TestFeatureFilter(t *testing.T) {
@@ -239,41 +159,88 @@ func TestFeatureQualifierFilter(t *testing.T) {
 		selectorFilter("/mol_type=[")
 	})
 }
+func TestFeatureSliceSort(t *testing.T) {
+	in := testFeatureTable
+	out := make([]Feature, len(in))
+	exp := make([]Feature, len(in))
 
-func TestFeatureTableSort(t *testing.T) {
-	state := pars.FromString(featureIOTests[0])
-	parser := pars.Exact(FeatureTableParser(""))
-	result, err := parser.Parse(state)
-	if err != nil {
-		t.Errorf("while parsing`\n%s\n`: %v", featureIOTests[0], err)
-		return
-	}
-
-	in := result.Value.(FeatureTable)
-	out := make(FeatureTable, len(in))
-	exp := make(FeatureTable, len(in))
-
-	sort.Sort(in)
+	sort.Sort(FeatureSlice(in))
 	copy(exp, in)
-	sort.Sort(sort.Reverse(in))
+	sort.Sort(sort.Reverse(FeatureSlice(in)))
 	copy(out, in)
-	sort.Sort(out)
+	sort.Sort(FeatureSlice(out))
 
 	if !featuresEqual(out, exp) {
-		sin := in.Format("     ", 21).String()
-		sout := out.Format("     ", 21).String()
-		sexp := exp.Format("     ", 21).String()
-		t.Errorf("Repair: \n%s\nDiff:", sin)
-		testutils.DiffLine(t, sout, sexp)
+		t.Error("sorted slices differ")
 	}
 }
 
 func TestFeatureInsert(t *testing.T) {
-	ff := FeatureTable{}
+	ff := FeatureSlice{}
 	ff = ff.Insert(sampleCDSFeature)
-	testutils.Equals(t, ff, FeatureTable{sampleCDSFeature})
+	testutils.Equals(t, ff, FeatureSlice{sampleCDSFeature})
 	ff = ff.Insert(sampleSourceFeature)
-	testutils.Equals(t, ff, FeatureTable{sampleSourceFeature, sampleCDSFeature})
+	testutils.Equals(t, ff, FeatureSlice{sampleSourceFeature, sampleCDSFeature})
 	ff = ff.Insert(sampleGeneFeature)
-	testutils.Equals(t, ff, FeatureTable{sampleSourceFeature, sampleGeneFeature, sampleCDSFeature})
+	testutils.Equals(t, ff, FeatureSlice{sampleSourceFeature, sampleGeneFeature, sampleCDSFeature})
+}
+
+func TestFeatureWith(t *testing.T) {
+	length := 100
+
+	key := "source"
+	loc := Range(0, length)
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
+
+	in := NewFeature("", Between(0), nil)
+	out := WithKey(in, key)
+	testutils.Equals(t, out, NewFeature(key, Between(0), nil))
+
+	out = WithLocation(in, loc)
+	testutils.Equals(t, out, NewFeature(key, loc, nil))
+
+	out = WithValues(in, props)
+	testutils.Equals(t, out, NewFeature(key, loc, props))
+}
+
+type featWithTest struct {
+	Feature
+}
+
+func newFeatureWithTest(key string, loc Location, values Props) featWithTest {
+	return featWithTest{NewFeature(key, loc, values)}
+}
+
+func (wt featWithTest) WithKey(key string) Feature {
+	return newFeatureWithTest(key, wt.Location(), wt.Values())
+}
+
+func (wt featWithTest) WithLocation(loc Location) Feature {
+	return newFeatureWithTest(wt.Key(), loc, wt.Values())
+}
+
+func (wt featWithTest) WithValues(values Props) Feature {
+	return newFeatureWithTest(wt.Key(), wt.Location(), values)
+}
+
+func TestFeatureWithInterface(t *testing.T) {
+	length := 100
+
+	key := "source"
+	loc := Range(0, length)
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
+
+	in := newFeatureWithTest("", Between(0), nil)
+	out := WithKey(in, key)
+	testutils.Equals(t, out, newFeatureWithTest(key, Between(0), nil))
+
+	out = WithLocation(in, loc)
+	testutils.Equals(t, out, newFeatureWithTest(key, loc, nil))
+
+	out = WithValues(in, props)
+	testutils.Equals(t, out, newFeatureWithTest(key, loc, props))
 }

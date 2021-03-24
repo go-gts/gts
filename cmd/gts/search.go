@@ -32,7 +32,7 @@ func searchFunc(ctx *flags.Context) error {
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 	featureKey := opt.String('k', "key", "misc_feature", "key for the reported oligomer region features")
-	qfstrs := opt.StringSlice('q', "qualifier", nil, "qualifier key-value pairs (syntax: key=value))")
+	propstrs := opt.StringSlice('q', "qualifier", nil, "qualifier key-value pairs (syntax: key=value))")
 	exact := opt.Switch('e', "exact", "match the exact pattern even for ambiguous letters")
 	nocomplement := opt.Switch(0, "no-complement", "do not match the complement strand")
 
@@ -79,13 +79,13 @@ func searchFunc(ctx *flags.Context) error {
 	}
 
 	order := make(map[string]int)
-	qfs := gts.Values{}
-	for _, s := range *qfstrs {
+	props := gts.Props{}
+	for _, s := range *propstrs {
 		name, value := s, ""
 		if i := strings.IndexByte(s, '='); i >= 0 {
 			name, value = s[:i], s[i+1:]
 		}
-		qfs.Add(name, value)
+		props.Add(name, value)
 		order[name] = len(order)
 	}
 
@@ -96,7 +96,7 @@ func searchFunc(ctx *flags.Context) error {
 			{"query", encodeToString(querySum)},
 			{"filetype", filetype},
 			{"featureKey", *featureKey},
-			{"qfstrs", *qfstrs},
+			{"propstrs", *propstrs},
 			{"exact", *exact},
 			{"nocomplement", *nocomplement},
 		})
@@ -123,12 +123,8 @@ func searchFunc(ctx *flags.Context) error {
 			fwd := match(seq, query)
 			for _, segment := range append(fwd) {
 				head, tail := gts.Unpack(segment)
-				ff = ff.Insert(gts.Feature{
-					Key:        *featureKey,
-					Location:   gts.Range(head, tail),
-					Qualifiers: qfs,
-					Order:      order,
-				})
+				f := gts.NewFeature(*featureKey, gts.Range(head, tail), props)
+				ff = ff.Insert(f)
 			}
 			if !*nocomplement {
 				bwd := match(cmp, query)
@@ -136,11 +132,8 @@ func searchFunc(ctx *flags.Context) error {
 					head, tail := gts.Unpack(segment)
 					loc := gts.Range(head, tail)
 					loc = loc.Reverse(gts.Len(seq)).(gts.Ranged)
-					ff = ff.Insert(gts.Feature{
-						Key:        *featureKey,
-						Location:   loc.Complement(),
-						Qualifiers: qfs,
-					})
+					f := gts.NewFeature(*featureKey, loc.Complement(), props)
+					ff = ff.Insert(f)
 				}
 			}
 		}

@@ -35,7 +35,7 @@ func TestTopologyFail(t *testing.T) {
 	}
 }
 
-func (wt withTest) WithTopology(t Topology) Sequence {
+func (wt seqWithTest) WithTopology(t Topology) Sequence {
 	if _, ok := wt.info.(Topology); ok {
 		return wt.WithInfo(t)
 	}
@@ -47,8 +47,8 @@ var withTopologyTests = []struct {
 	out Sequence
 }{
 	{New(nil, nil, nil), New(nil, nil, nil)},
-	{newWithTest(nil, nil, nil), newWithTest(nil, nil, nil)},
-	{newWithTest(Linear, nil, nil), newWithTest(Circular, nil, nil)},
+	{newSeqWithTest(nil, nil, nil), newSeqWithTest(nil, nil, nil)},
+	{newSeqWithTest(Linear, nil, nil), newSeqWithTest(Circular, nil, nil)},
 }
 
 func TestWithTopology(t *testing.T) {

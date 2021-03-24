@@ -84,7 +84,7 @@ func (obj LenObj) Info() interface{} {
 	return nil
 }
 
-func (obj LenObj) Features() FeatureTable {
+func (obj LenObj) Features() FeatureSlice {
 	return nil
 }
 
@@ -116,18 +116,18 @@ func TestSequence(t *testing.T) {
 
 func TestInsert(t *testing.T) {
 	p := []byte("atgcatgc")
-	qfs := Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
-	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
+	ff := []Feature{NewFeature("source", Range(0, len(p)), props)}
 	info := "info"
 	in := New(info, ff, p)
 	out := Insert(in, 2, in)
 
 	q := []byte("atatgcatgcgcatgc")
 	gg := []Feature{
-		{"source", Join(Range(0, 2), Range(2+len(p), len(q))), qfs, nil},
-		{"source", Range(2, 2+len(p)), qfs, nil},
+		NewFeature("source", Join(Range(0, 2), Range(2+len(p), len(q))), props),
+		NewFeature("source", Range(2, 2+len(p)), props),
 	}
 	exp := New(info, gg, q)
 
@@ -144,18 +144,18 @@ func TestInsert(t *testing.T) {
 
 func TestEmbed(t *testing.T) {
 	p := []byte("atgcatgc")
-	qfs := Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
-	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
+	ff := []Feature{NewFeature("source", Range(0, len(p)), props)}
 	info := "info"
 	in := New(info, ff, p)
 	out := Embed(in, 2, in)
 
 	q := []byte("atatgcatgcgcatgc")
 	gg := []Feature{
-		{"source", Range(0, len(q)), qfs, nil},
-		{"source", Range(2, 2+len(p)), qfs, nil},
+		NewFeature("source", Range(0, len(q)), props),
+		NewFeature("source", Range(2, 2+len(p)), props),
 	}
 	exp := New(info, gg, q)
 
@@ -172,12 +172,12 @@ func TestEmbed(t *testing.T) {
 
 func TestDelete(t *testing.T) {
 	p := []byte("atgcatgc")
-	qfs := Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
 	ff := []Feature{
-		{"source", Range(0, len(p)), qfs, nil},
-		{"gene", Range(4, 5), qfs, nil},
+		NewFeature("source", Range(0, len(p)), props),
+		NewFeature("gene", Range(4, 5), props),
 	}
 	info := "info"
 	in := New(info, ff, p)
@@ -185,8 +185,8 @@ func TestDelete(t *testing.T) {
 
 	q := []byte("atgc")
 	gg := []Feature{
-		{"source", Range(0, len(q)), qfs, nil},
-		{"gene", Between(3), qfs, nil},
+		NewFeature("source", Range(0, len(q)), props),
+		NewFeature("gene", Between(3), props),
 	}
 	exp := New(info, gg, q)
 
@@ -203,12 +203,12 @@ func TestDelete(t *testing.T) {
 
 func TestErase(t *testing.T) {
 	p := []byte("atgcatgc")
-	qfs := Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
 	ff := []Feature{
-		{"source", Range(0, len(p)), qfs, nil},
-		{"gene", Range(4, 5), qfs, nil},
+		NewFeature("source", Range(0, len(p)), props),
+		NewFeature("gene", Range(4, 5), props),
 	}
 	info := "info"
 	in := New(info, ff, p)
@@ -216,7 +216,7 @@ func TestErase(t *testing.T) {
 
 	q := []byte("atgc")
 	gg := []Feature{
-		{"source", Range(0, len(q)), qfs, nil},
+		NewFeature("source", Range(0, len(q)), props),
 	}
 	exp := New(info, gg, q)
 
@@ -233,15 +233,21 @@ func TestErase(t *testing.T) {
 
 func TestSlice(t *testing.T) {
 	p := []byte("atgcatgc")
-	qfs := Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
-	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(3, 5), qfs, nil}}
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
+	ff := []Feature{
+		NewFeature("source", Range(0, len(p)), props),
+		NewFeature("gene", Range(3, 5), props),
+	}
 	info := "info"
 	in := New(info, ff, p)
 
 	t.Run("Forward", func(t *testing.T) {
-		gg := []Feature{{"source", Range(0, 4), qfs, nil}, {"gene", Range(1, 3), qfs, nil}}
+		gg := []Feature{
+			NewFeature("source", Range(0, 4), props),
+			NewFeature("gene", Range(1, 3), props),
+		}
 		out, exp := Slice(in, 2, 6), New(info, gg, p[2:6])
 		if !reflect.DeepEqual(out.Info(), exp.Info()) {
 			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 2, 6, out.Info(), exp.Info())
@@ -255,7 +261,7 @@ func TestSlice(t *testing.T) {
 	})
 
 	t.Run("Backward", func(t *testing.T) {
-		gg := []Feature{{"source", Range(0, 4), qfs, nil}}
+		gg := []Feature{NewFeature("source", Range(0, 4), props)}
 		out, exp := Slice(in, 6, 2), New(info, gg, append(p[6:], p[:2]...))
 		if !reflect.DeepEqual(out.Info(), exp.Info()) {
 			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", 6, 2, out.Info(), exp.Info())
@@ -268,8 +274,11 @@ func TestSlice(t *testing.T) {
 		}
 	})
 
-	t.Run("Nevative", func(t *testing.T) {
-		gg := []Feature{{"source", Range(0, 4), qfs, nil}, {"gene", Range(1, 3), qfs, nil}}
+	t.Run("Negative", func(t *testing.T) {
+		gg := []Feature{
+			NewFeature("source", Range(0, 4), props),
+			NewFeature("gene", Range(1, 3), props),
+		}
 		out, exp := Slice(in, -6, -2), New(info, gg, p[2:6])
 		if !reflect.DeepEqual(out.Info(), exp.Info()) {
 			t.Errorf("Slice(in, %d, %d).Info() = %v, want %v", -6, -2, out.Info(), exp.Info())
@@ -291,10 +300,10 @@ func TestConcat(t *testing.T) {
 	}
 
 	p := []byte("atgcatgc")
-	qfs := Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
-	f := Feature{"source", Range(0, len(p)), qfs, nil}
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
+	f := NewFeature("source", Range(0, len(p)), props)
 
 	ff := []Feature{f}
 	info := "info"
@@ -307,7 +316,7 @@ func TestConcat(t *testing.T) {
 	}
 
 	out = Concat(seq, seq)
-	g := Feature{f.Key, f.Location.Shift(0, Len(seq)), qfs, f.Order}
+	g := WithLocation(f, f.Location().Shift(0, Len(seq)))
 	exp = New(info, append(ff, g), append(p, p...))
 	if !Equal(out, exp) {
 		t.Errorf("Concat() = %v, want %v", out, exp)
@@ -316,11 +325,17 @@ func TestConcat(t *testing.T) {
 
 func TestReverse(t *testing.T) {
 	p, q := []byte("atgcatgc"), []byte("cgtacgta")
-	qfs := Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
-	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(2, 4), qfs, nil}}
-	gg := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(4, 6), qfs, nil}}
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
+	ff := []Feature{
+		NewFeature("source", Range(0, len(p)), props),
+		NewFeature("gene", Range(2, 4), props),
+	}
+	gg := []Feature{
+		NewFeature("source", Range(0, len(p)), props),
+		NewFeature("gene", Range(4, 6), props),
+	}
 
 	info := "info"
 
@@ -339,11 +354,17 @@ func TestReverse(t *testing.T) {
 
 func TestRotate(t *testing.T) {
 	p, q := []byte("aattggcc"), []byte("ccaattgg")
-	qfs := Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
-	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(2, 4), qfs, nil}}
-	gg := []Feature{{"source", Range(0, len(p)), qfs, nil}, {"gene", Range(4, 6), qfs, nil}}
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
+	ff := []Feature{
+		NewFeature("source", Range(0, len(p)), props),
+		NewFeature("gene", Range(2, 4), props),
+	}
+	gg := []Feature{
+		NewFeature("source", Range(0, len(p)), props),
+		NewFeature("gene", Range(4, 6), props),
+	}
 
 	info := "info"
 
@@ -371,12 +392,12 @@ func TestRotate(t *testing.T) {
 	}
 }
 
-func TestWith(t *testing.T) {
+func TestSeqWith(t *testing.T) {
 	p := []byte(strings.Repeat("atgc", 100))
-	qfs := Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
-	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
+	ff := []Feature{NewFeature("source", Range(0, len(p)), props)}
 
 	info := "info"
 
@@ -391,57 +412,57 @@ func TestWith(t *testing.T) {
 	testutils.Equals(t, out, New(nil, nil, p))
 }
 
-type withTest struct {
+type seqWithTest struct {
 	info  interface{}
-	table FeatureTable
+	feats FeatureSlice
 	data  []byte
 }
 
-func newWithTest(info interface{}, table FeatureTable, p []byte) withTest {
-	return withTest{info, table, p}
+func newSeqWithTest(info interface{}, ff FeatureSlice, p []byte) seqWithTest {
+	return seqWithTest{info, ff, p}
 }
 
-func (wt withTest) Info() interface{} {
+func (wt seqWithTest) Info() interface{} {
 	return wt.info
 }
 
-func (wt withTest) Features() FeatureTable {
-	return wt.table
+func (wt seqWithTest) Features() FeatureSlice {
+	return wt.feats
 }
 
-func (wt withTest) Bytes() []byte {
+func (wt seqWithTest) Bytes() []byte {
 	return wt.data
 }
 
-func (wt withTest) WithInfo(info interface{}) Sequence {
-	return withTest{info, wt.table, wt.data}
+func (wt seqWithTest) WithInfo(info interface{}) Sequence {
+	return seqWithTest{info, wt.feats, wt.data}
 }
 
-func (wt withTest) WithFeatures(ff FeatureTable) Sequence {
-	return withTest{wt.info, ff, wt.data}
+func (wt seqWithTest) WithFeatures(ff []Feature) Sequence {
+	return seqWithTest{wt.info, ff, wt.data}
 }
 
-func (wt withTest) WithBytes(p []byte) Sequence {
-	return withTest{wt.info, wt.table, p}
+func (wt seqWithTest) WithBytes(p []byte) Sequence {
+	return seqWithTest{wt.info, wt.feats, p}
 }
 
-func TestWithInterface(t *testing.T) {
+func TestSeqWithInterface(t *testing.T) {
 	p := []byte(strings.Repeat("atgc", 100))
-	qfs := Values{}
-	qfs.Add("organism", "Genus species")
-	qfs.Add("mol_type", "Genomic DNA")
-	ff := []Feature{{"source", Range(0, len(p)), qfs, nil}}
+	props := Props{}
+	props.Add("organism", "Genus species")
+	props.Add("mol_type", "Genomic DNA")
+	ff := []Feature{NewFeature("source", Range(0, len(p)), props)}
 	info := "info"
 
-	in := newWithTest(nil, nil, nil)
+	in := newSeqWithTest(nil, nil, nil)
 	out := WithInfo(in, info)
-	testutils.Equals(t, out, newWithTest(info, nil, nil))
+	testutils.Equals(t, out, newSeqWithTest(info, nil, nil))
 
 	out = WithFeatures(in, ff)
-	testutils.Equals(t, out, newWithTest(nil, ff, nil))
+	testutils.Equals(t, out, newSeqWithTest(nil, ff, nil))
 
 	out = WithBytes(in, p)
-	testutils.Equals(t, out, newWithTest(nil, nil, p))
+	testutils.Equals(t, out, newSeqWithTest(nil, nil, p))
 }
 
 var searchTests = []struct {

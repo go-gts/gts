@@ -120,11 +120,12 @@ func summaryFunc(ctx *flags.Context) error {
 
 		ff := seq.Features()
 		keymap := make(map[string]int)
-		qfsmap := make(map[string]int)
+		propsmap := make(map[string]int)
 		for _, f := range ff {
-			keymap[f.Key]++
-			for name, values := range f.Qualifiers {
-				qfsmap[name] += len(values)
+			keymap[f.Key()]++
+			for _, name := range f.Values().Keys() {
+				values := f.Values().Get(name)
+				propsmap[name] += len(values)
 			}
 		}
 
@@ -134,11 +135,11 @@ func summaryFunc(ctx *flags.Context) error {
 		}
 		sort.Sort(byValue(keys))
 
-		qfs := []pairStringInt{}
-		for key, value := range qfsmap {
-			qfs = append(qfs, pairStringInt{key, value})
+		props := []pairStringInt{}
+		for key, value := range propsmap {
+			props = append(props, pairStringInt{key, value})
 		}
-		sort.Sort(byValue(qfs))
+		sort.Sort(byValue(props))
 
 		longest := 0
 		for _, p := range bases {
@@ -151,7 +152,7 @@ func summaryFunc(ctx *flags.Context) error {
 				longest = n
 			}
 		}
-		for _, p := range qfs {
+		for _, p := range props {
 			if n := len(p.Key); n > longest {
 				longest = n
 			}
@@ -175,7 +176,7 @@ func summaryFunc(ctx *flags.Context) error {
 
 		if !*noqualifier {
 			b.WriteString("Qualifier Summary\n")
-			for _, p := range qfs {
+			for _, p := range props {
 				b.WriteString(fmt.Sprintf(format, p.Key, humanize.Comma(int64(p.Value))))
 			}
 			b.WriteString("//\n")
