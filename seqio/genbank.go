@@ -142,11 +142,6 @@ type GenBank struct {
 	Origin *Origin
 }
 
-// NewGenBank creates a new GenBank object.
-func NewGenBank(info GenBankFields, ff []gts.Feature, p []byte) GenBank {
-	return GenBank{info, ff, NewOrigin(p)}
-}
-
 // Info returns the metadata of the sequence.
 func (gb GenBank) Info() interface{} {
 	return gb.Fields
@@ -329,7 +324,7 @@ func (gf GenBankFormatter) WriteTo(w io.Writer) (int64, error) {
 	default:
 		switch info := seq.Info().(type) {
 		case GenBankFields:
-			gb := NewGenBank(info, seq.Features(), seq.Bytes())
+			gb := GenBank{info, seq.Features(), NewOrigin(seq.Bytes())}
 			return GenBankFormatter{gb}.WriteTo(w)
 		default:
 			return 0, fmt.Errorf("gts does not know how to format a sequence with metadata of type `%T` as GenBank", info)
