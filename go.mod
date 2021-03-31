@@ -3,7 +3,6 @@ module github.com/go-gts/gts
 go 1.15
 
 require (
-	github.com/axw/gocov v1.0.0 // indirect
 	github.com/dustin/go-humanize v1.0.0
 	github.com/go-ascii/ascii v1.0.3
 	github.com/go-flip/flip v1.1.0
