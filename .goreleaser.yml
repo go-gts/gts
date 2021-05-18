@@ -14,7 +14,7 @@ builds:
     env:
       - CGO_ENABLED=0
     binary: gts
-    flags: '-v'
+    flags: "-v"
     goos:
       - linux
       - darwin
@@ -23,13 +23,13 @@ builds:
     env:
       - CGO_ENABLED=0
     binary: togo
-    flags: '-v'
+    flags: "-v"
     goos:
       - linux
       - darwin
 archives:
   - replacements:
-      '386': i386
+      "386": i386
       darwin: Darwin
       linux: Linux
       windows: Windows
@@ -43,30 +43,34 @@ archives:
 checksum:
   name_template: checksums.txt
 snapshot:
-  name_template: '{{ .Tag }}-next'
+  name_template: "{{ .Tag }}-next"
 changelog:
   sort: asc
   filters:
     exclude:
-      - '^docs:'
-      - '^test:'
+      - "^docs:"
+      - "^test:"
 nfpms:
   - id: gts-bio-nfpms
     builds:
       - gts-bio
       - gts-togo
-    homepage: 'https://github.com/go-gts/gts'
-    maintainer: 'Kotone Itaya <kotone [at] sfc.keio.ac.jp>'
-    description: 'GTS: Genome Transformation Subprograms'
+    homepage: "https://github.com/go-gts/gts"
+    maintainer: "Kotone Itaya <kotone [at] sfc.keio.ac.jp>"
+    description: "GTS: Genome Transformation Subprograms"
     license: MIT
     formats:
       - deb
       - rpm
-    files:
-      ./man/gts*.1: /usr/share/man/man1
-      ./man/gts*.7: /usr/share/man/man7
-      ./completion/gts-completion.bash: /etc/bash_completion.d/gts-completion.bash
-      ./completion/gts-completion.zsh: /usr/local/share/zsh/site-functions/_gts
+    contents:
+      - src: ./man/gts*.1
+        dst: /usr/share/man/man1
+      - src: ./man/gts*.7
+        dst: /usr/share/man/man7
+      - src: ./completion/gts-completion.bash
+        dst: /etc/bash_completion.d/gts-completion.bash
+      - src: ./completion/gts-completion.zsh
+        dst: /usr/local/share/zsh/site-functions/_gts
     epoch: 1
 brews:
   - name: gts-bio
@@ -74,8 +78,8 @@ brews:
       owner: go-gts
       name: homebrew-gts
     folder: Formula
-    homepage: 'https://github.com/go-gts/gts'
-    description: 'GTS: Genome Transformation Subprograms'
+    homepage: "https://github.com/go-gts/gts"
+    description: "GTS: Genome Transformation Subprograms"
     install: |
       bin.install "gts"
       bin.install "togo"
