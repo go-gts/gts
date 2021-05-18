@@ -960,6 +960,50 @@ func (complement Complemented) Expand(i, n int) Location {
 	return Complemented{complement.Location.Expand(i, n)}
 }
 
+type Strand int
+
+const (
+	StrandBoth Strand = iota
+	StrandForward
+	StrandReverse
+)
+
+func checkStrand(ll []Location) Strand {
+	f, r := 0, 0
+	for _, l := range ll {
+		switch CheckStrand(l) {
+		case StrandForward:
+			f++
+		case StrandReverse:
+			r++
+		default:
+			f++
+			r++
+		}
+	}
+	switch {
+	case r == 0:
+		return StrandForward
+	case f == 0:
+		return StrandReverse
+	default:
+		return StrandBoth
+	}
+}
+
+func CheckStrand(loc Location) Strand {
+	switch v := loc.(type) {
+	case Joined:
+		return checkStrand(v)
+	case Ordered:
+		return checkStrand(v)
+	case Complemented:
+		return StrandReverse
+	default:
+		return StrandForward
+	}
+}
+
 func parseBetween(state *pars.State, result *pars.Result) error {
 	state.Push()
 	if err := pars.Int(state, result); err != nil {

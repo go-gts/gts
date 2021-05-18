@@ -32,6 +32,7 @@ func selectFunc(ctx *flags.Context) error {
 	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
+	strand := opt.String('s', "strand", "both", "strand to select features from (`both`, `forward`, or `reverse`)")
 	invert := opt.Switch('v', "invert-match", "select features that do not match the given criteria")
 
 	if err := ctx.Parse(pos, opt); err != nil {
@@ -42,17 +43,24 @@ func selectFunc(ctx *flags.Context) error {
 
 	filters := make([]gts.Filter, len(*selectors))
 	for i, selector := range *selectors {
-		filter, err := gts.Selector(selector)
+		f, err := gts.Selector(selector)
 		if err != nil {
 			return ctx.Raise(fmt.Errorf("invalid selector syntax: %v", err))
 		}
-		filters[i] = filter
+		filters[i] = f
 	}
 	filter := gts.Or(filters...)
 	if *invert {
 		filter = gts.Not(filter)
 	}
 	filter = gts.Or(gts.Key("source"), filter)
+
+	switch *strand {
+	case "forward":
+		filter = gts.And(filter, gts.ForwardStrand)
+	case "reverse":
+		filter = gts.And(filter, gts.ReverseStrand)
+	}
 
 	d, err := newIODelegate(*seqinPath, *seqoutPath)
 	if err != nil {
@@ -70,6 +78,7 @@ func selectFunc(ctx *flags.Context) error {
 			{"command", strings.Join(ctx.Name, "-")},
 			{"version", gts.Version.String()},
 			{"selectors", *selectors},
+			{"strand", *strand},
 			{"invert", *invert},
 			{"filetype", filetype},
 		})

@@ -1,7 +1,7 @@
 .\" generated with Ronn/v0.7.3
 .\" http://github.com/rtomayko/ronn/tree/0.7.3
 .
-.TH "GTS\-SELECT" "1" "October 2020" "" ""
+.TH "GTS\-SELECT" "1" "May 2021" "" ""
 .
 .SH "NAME"
 \fBgts\-select\fR \- select features using the given feature selector(s)
@@ -36,6 +36,10 @@ Do not use or create cache\. See gts\-cache(7) for details\.
 .TP
 \fB\-o <output>\fR, \fB\-\-output=<output>\fR
 Output sequence file (specifying \fB\-\fR will force standard output)\. The output file format will be automatically detected from the filename if none is specified with the \fB\-F\fR or \fB\-\-format\fR option\.
+.
+.TP
+\fB\-s <strand>\fR, \fB\-\-strand=<strand>\fR
+Strand to select features from (\fBboth\fR, \fBforward\fR, or \fBreverse\fR)\. If \fBforward\fR is specified, only features that reside strictly on the forward strand (features with non\-complement locations or join/order locations whose locations are all non\-complement)\. The inverse is true for \fBreverse\fR\.
 .
 .TP
 \fB\-v\fR, \fB\-\-invert\-match\fR

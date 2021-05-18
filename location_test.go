@@ -873,6 +873,30 @@ func TestLocationReduction(t *testing.T) {
 	}
 }
 
+var locationStrandTests = []struct {
+	in  Location
+	out Strand
+}{
+	{Range(3, 6), StrandForward},
+	{Complemented{Range(3, 6)}, StrandReverse},
+	{Joined{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, StrandForward},
+	{Ordered{Ranged{3, 6, Complete}, Ranged{13, 16, Complete}}, StrandForward},
+	{Joined{Complemented{Ranged{3, 6, Complete}}, Complemented{Ranged{13, 16, Complete}}}, StrandReverse},
+	{Ordered{Complemented{Ranged{3, 6, Complete}}, Complemented{Ranged{13, 16, Complete}}}, StrandReverse},
+	{Joined{Complemented{Ranged{3, 6, Complete}}, Ranged{13, 16, Complete}}, StrandBoth},
+	{Ordered{Complemented{Ranged{3, 6, Complete}}, Ranged{13, 16, Complete}}, StrandBoth},
+	{Joined{Ranged{3, 6, Complete}, Complemented{Ranged{13, 16, Complete}}}, StrandBoth},
+	{Ordered{Ranged{3, 6, Complete}, Complemented{Ranged{13, 16, Complete}}}, StrandBoth},
+	{Joined{Joined{Ranged{3, 6, Complete}, Complemented{Ranged{13, 16, Complete}}}}, StrandBoth},
+}
+
+func TestLocationStrand(t *testing.T) {
+	for _, tt := range locationStrandTests {
+		out := CheckStrand(tt.in)
+		testutils.Equals(t, out, tt.out)
+	}
+}
+
 var locationParserPassTests = []struct {
 	prs pars.Parser
 	loc Location

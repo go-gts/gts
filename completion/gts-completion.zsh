@@ -131,8 +131,6 @@ function _gts_extract {
         "--version[print the version number]" \
         "-F[output file format (defaults to same as input)]" \
         "--format[output file format (defaults to same as input)]" \
-        "-m[location range modifier]" \
-        "--range[location range modifier]" \
         "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
@@ -217,10 +215,15 @@ function _gts_query {
         "-d[string to insert between columns]" \
         "--delimiter[string to insert between columns]" \
         "--empty[allow missing qualifiers to be reported]" \
-        "--no-cache[do not use or create cache]" \
+        "-H[do not print the header line]" \
         "--no-header[do not print the header line]" \
+        "-I[do not report the sequence identifier]" \
+        "--no-seqid[do not report the sequence identifier]" \
+        "-K[do not report the feature key]" \
         "--no-key[do not report the feature key]" \
+        "-L[do not report the feature location]" \
         "--no-location[do not report the feature location]" \
+        "--no-cache[do not use or create cache]" \
         "-n[qualifier name(s) to select]" \
         "--name[qualifier name(s) to select]" \
         "-o[output table file (specifying `-` will force standard output)]" \
@@ -300,6 +303,8 @@ function _gts_select {
         "--no-cache[do not use or create cache]" \
         "-o[output sequence file (specifying `-` will force standard output)]" \
         "--output[output sequence file (specifying `-` will force standard output)]" \
+        "-s[strand to select features from (`both`, `forward`, or `reverse`)]" \
+        "--strand[strand to select features from (`both`, `forward`, or `reverse`)]" \
         "-v[select features that do not match the given criteria]" \
         "--invert-match[select features that do not match the given criteria]" \
         "*::files:_files"

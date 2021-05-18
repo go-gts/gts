@@ -138,6 +138,9 @@ type Filter func(f Feature) bool
 // And generates a new Filter which will only return true if all of the given
 // filters return true for a given Feature object.
 func And(filters ...Filter) Filter {
+	if len(filters) == 0 {
+		return TrueFilter
+	}
 	return func(f Feature) bool {
 		for _, filter := range filters {
 			if !filter(f) {
@@ -151,6 +154,9 @@ func And(filters ...Filter) Filter {
 // Or generates a new Filter which will return true if any one of the given
 // filters return true for a given Feature object.
 func Or(filters ...Filter) Filter {
+	if len(filters) == 0 {
+		return TrueFilter
+	}
 	return func(f Feature) bool {
 		for _, filter := range filters {
 			if filter(f) {
@@ -284,6 +290,18 @@ func Selector(sel string) (Filter, error) {
 		filter = And(filter, props)
 	}
 	return filter, nil
+}
+
+// ForwardStrand returns true if the feature strictly resides on the forward
+// strand.
+func ForwardStrand(f Feature) bool {
+	return CheckStrand(f.Location()) == StrandForward
+}
+
+// ReverseStrand returns true if the feature strictly resides on the reverse
+// strand.
+func ReverseStrand(f Feature) bool {
+	return CheckStrand(f.Location()) == StrandReverse
 }
 
 // FeatureSlice represents a slice of Features.

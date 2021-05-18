@@ -225,7 +225,7 @@ _gts_delete()
 
 _gts_extract()
 {
-    opts="-h --help --version -F --format -m --range --no-cache -o --output"
+    opts="-h --help --version -F --format --no-cache -o --output"
     local cur="${COMP_WORDS[$COMP_CWORD]}"
     case "$cur" in
         -*)
@@ -357,7 +357,7 @@ _gts_pick()
 
 _gts_query()
 {
-    opts="-h --help --version -d --delimiter --empty --no-cache --no-header --no-key -n --name --no-location -o --output --source -t --separator"
+    opts="-h --help --version -d --delimiter --empty -H --no-header -I --no-seqid -K --no-key -L --no-location --no-cache -n --name -o --output --source -t --separator"
     local cur="${COMP_WORDS[$COMP_CWORD]}"
     case "$cur" in
         -*)
@@ -467,7 +467,7 @@ _gts_search()
 
 _gts_select()
 {
-    opts="-h --help --version -F --format --no-cache -o --output -v --invert-match"
+    opts="-h --help --version -F --format --no-cache -o --output -s --strand -v --invert-match"
     local cur="${COMP_WORDS[$COMP_CWORD]}"
     case "$cur" in
         -*)

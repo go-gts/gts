@@ -132,14 +132,18 @@ var featureFilterTests = []struct {
 	{Key("gene"), FeatureSlice{sampleGeneFeature}},
 	{qualifierFilter("mol_type", "DNA"), FeatureSlice{sampleSourceFeature}},
 	{qualifierFilter("", "DNA"), FeatureSlice{sampleSourceFeature}},
+	{And(), sampleFeatureTable},
 	{And(Key("source"), Key("gene")), FeatureSlice{}},
 	{And(Key("source"), qualifierFilter("mol_type", "DNA")), FeatureSlice{sampleSourceFeature}},
+	{Or(), sampleFeatureTable},
 	{Or(Key("source"), Key("gene")), sampleFeatureTable},
 	{Or(Key("foo"), Key("bar")), FeatureSlice{}},
 	{Not(Key("source")), FeatureSlice{sampleGeneFeature}},
 	{selectorFilter("source/mol_type=DNA"), FeatureSlice{sampleSourceFeature}},
 	{selectorFilter("source/mol_type"), FeatureSlice{sampleSourceFeature}},
 	{selectorFilter("source/mol_type=\\/"), FeatureSlice{}},
+	{ForwardStrand, sampleFeatureTable},
+	{ReverseStrand, FeatureSlice{}},
 }
 
 func TestFeatureFilter(t *testing.T) {

@@ -41,6 +41,12 @@ the EXAMPLES section for more insight.
     output file format will be automatically detected from the filename if none
     is specified with the `-F` or `--format` option.
 
+  * `-s <strand>`, `--strand=<strand>`:
+    Strand to select features from (`both`, `forward`, or `reverse`). If
+    `forward` is specified, only features that reside strictly on the forward
+    strand (features with non-complement locations or join/order locations whose
+    locations are all non-complement). The inverse is true for `reverse`.
+
   * `-v`, `--invert-match`:
     Select features that do not match the given criteria.
 
