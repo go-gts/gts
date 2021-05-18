@@ -108,10 +108,14 @@ See <a class="man-ref" href="gts-selector.7.html">gts-selector<span class="s">(7
 list of currently supported list of sequence formats. The format specified
 with this option will override the file type detection from the output
 filename.</p></dd>
-<dt><code>--no-cache</code></dt><dd><p>Do not use or create cache. See <a class="man-ref" href="gts-cache.7.html">gts-cache<span class="s">(7)</span></a> for details.</p></dd>
+<dt><code>--no-cache</code></dt><dd><p>Do not use or create cache. See <span class="man-ref">gts-cache<span class="s">(7)</span></span> for details.</p></dd>
 <dt><code>-o &lt;output></code>, <code>--output=&lt;output></code></dt><dd><p>Output sequence file (specifying <code>-</code> will force standard output). The
 output file format will be automatically detected from the filename if none
 is specified with the <code>-F</code> or <code>--format</code> option.</p></dd>
+<dt><code>-s &lt;strand></code>, <code>--strand=&lt;strand></code></dt><dd><p>Strand to select features from (<code>both</code>, <code>forward</code>, or <code>reverse</code>). If
+<code>forward</code> is specified, only features that reside strictly on the forward
+strand (features with non-complement locations or join/order locations whose
+locations are all non-complement). The inverse is true for <code>reverse</code>.</p></dd>
 <dt><code>-v</code>, <code>--invert-match</code></dt><dd><p>Select features that do not match the given criteria.</p></dd>
 </dl>
 
@@ -154,7 +158,7 @@ is specified with the <code>-F</code> or <code>--format</code> option.</p></dd>
 
   <ol class='man-decor man-foot man foot'>
     <li class='tl'></li>
-    <li class='tc'>October 2020</li>
+    <li class='tc'>May 2021</li>
     <li class='tr'>gts-select(1)</li>
   </ol>
 
