@@ -1,6 +1,8 @@
 package gts
 
-import "sort"
+import (
+	"sort"
+)
 
 // Region represents a coordinate region which can be resized and used to
 // locate the subsequence within a given sequence corresponding to the region
@@ -223,4 +225,39 @@ func Minimize(arg Region) []Segment {
 		}
 	}
 	return ss
+}
+
+func invertSegments(ss []Segment, n int) []Segment {
+	rr := make([]Segment, 0, len(ss)+1)
+	start := 0
+	for _, s := range ss {
+		if start != s[0] {
+			rr = append(rr, Segment{start, s[0]})
+		}
+		start = s[1]
+	}
+	if start != n {
+		rr = append(rr, Segment{start, n})
+	}
+	return rr
+}
+
+func InvertLinear(r Region, n int) []Region {
+	ss := Minimize(r)
+	ss = invertSegments(ss, n)
+	rr := make([]Region, len(ss))
+	for i, s := range ss {
+		rr[i] = s
+	}
+	return rr
+}
+
+func InvertCircular(r Region, n int) []Region {
+	ss := Minimize(r)
+	rr := InvertLinear(r, n)
+	if ss[0][0] == 0 || ss[len(ss)-1][1] == n {
+		return rr
+	}
+	rr[0] = Regions{rr[len(rr)-1], rr[0]}
+	return rr[:len(rr)-1]
 }

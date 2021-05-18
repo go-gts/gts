@@ -222,3 +222,39 @@ func TestMinimize(t *testing.T) {
 		t.Errorf("Minimize(%#v) = %#v, want %#v", in, out, exp)
 	}
 }
+
+var regionInvertLinearTests = []struct {
+	in  Region
+	n   int
+	out []Region
+}{
+	{Segment{3, 5}, 7, []Region{Segment{0, 3}, Segment{5, 7}}},
+}
+
+func TestRegionInvertLinear(t *testing.T) {
+	for _, tt := range regionInvertLinearTests {
+		out := InvertLinear(tt.in, tt.n)
+		if !reflect.DeepEqual(out, tt.out) {
+			t.Errorf("InvertLinear(%#v) = %#v, want %#v", tt.in, out, tt.out)
+		}
+	}
+}
+
+var regionInvertCircularTests = []struct {
+	in  Region
+	n   int
+	out []Region
+}{
+	{Segment{3, 5}, 7, []Region{Regions{Segment{5, 7}, Segment{0, 3}}}},
+	{Segment{0, 3}, 7, []Region{Segment{3, 7}}},
+	{Segment{5, 7}, 7, []Region{Segment{0, 5}}},
+}
+
+func TestRegionInvertCircular(t *testing.T) {
+	for _, tt := range regionInvertCircularTests {
+		out := InvertCircular(tt.in, tt.n)
+		if !reflect.DeepEqual(out, tt.out) {
+			t.Errorf("InvertCircular(%#v) = %#v, want %#v", tt.in, out, tt.out)
+		}
+	}
+}

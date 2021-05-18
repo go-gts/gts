@@ -41,6 +41,7 @@ func extractFunc(ctx *flags.Context) error {
 	nocache := opt.Switch(0, "no-cache", "do not use or create cache")
 	format := opt.String('F', "format", "", "output file format (defaults to same as input)")
 	seqoutPath := opt.String('o', "output", "-", "output sequence file (specifying `-` will force standard output)")
+	invert := opt.Switch('v', "invert-region", "extract the sequences that are not referenced by the features")
 
 	if err := ctx.Parse(pos, opt); err != nil {
 		return err
@@ -98,6 +99,11 @@ func extractFunc(ctx *flags.Context) error {
 					rr = append(rr, r)
 				}
 			}
+		}
+
+		if *invert {
+			// Support linear inversion only as topology is not well defined.
+			rr = gts.InvertLinear(gts.Regions(rr), gts.Len(seq))
 		}
 
 		for _, region := range rr {
