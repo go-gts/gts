@@ -335,17 +335,17 @@ func (fmtr INSDCFormatter) String() string {
 			b.WriteByte('\n')
 		}
 		b.WriteString(fmtr.Prefix)
-		b.WriteString(f.Key())
-		length := len(fmtr.Prefix) + len(f.Key())
+		b.WriteString(f.Key)
+		length := len(fmtr.Prefix) + len(f.Key)
 
 		padding := strings.Repeat(" ", fmtr.Depth-length)
 		prefix := fmtr.Prefix + strings.Repeat(" ", fmtr.Depth-len(fmtr.Prefix))
 
 		b.WriteString(padding)
-		b.WriteString(f.Location().String())
+		b.WriteString(f.Loc.String())
 
-		for _, key := range f.Values().Keys() {
-			for _, value := range f.Values().Get(key) {
+		for _, key := range f.Props.Keys() {
+			for _, value := range f.Props.Get(key) {
 				q := QualifierIO{key, value}
 				b.WriteByte('\n')
 				b.WriteString(q.Format(prefix).String())

@@ -73,3 +73,12 @@ func (props *Props) Del(key string) {
 		*props = append((*props)[:i], (*props)[i+1:]...)
 	}
 }
+
+func (props Props) Clone() Props {
+	ret := make([][]string, len(props))
+	for i, prop := range props {
+		ret[i] = make([]string, len(prop))
+		copy(ret[i], prop)
+	}
+	return ret
+}

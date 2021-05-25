@@ -167,11 +167,11 @@ func Insert(host Sequence, index int, guest Sequence) Sequence {
 
 	var ff FeatureSlice
 	for _, f := range host.Features() {
-		f = WithLocation(f, f.Location().Shift(index, Len(guest)))
+		f.Loc = f.Loc.Shift(index, Len(guest))
 		ff = ff.Insert(f)
 	}
 	for _, f := range guest.Features() {
-		f = WithLocation(f, f.Location().Expand(0, index))
+		f.Loc = f.Loc.Expand(0, index)
 		ff = ff.Insert(f)
 	}
 	host = WithFeatures(host, ff)
@@ -192,11 +192,11 @@ func Embed(host Sequence, index int, guest Sequence) Sequence {
 
 	var ff FeatureSlice
 	for _, f := range host.Features() {
-		f = WithLocation(f, f.Location().Expand(index, Len(guest)))
+		f.Loc = f.Loc.Expand(index, Len(guest))
 		ff = ff.Insert(f)
 	}
 	for _, f := range guest.Features() {
-		f = WithLocation(f, f.Location().Expand(0, index))
+		f.Loc = f.Loc.Expand(0, index)
 		ff = ff.Insert(f)
 	}
 	host = WithFeatures(host, ff)
@@ -217,9 +217,9 @@ func Delete(seq Sequence, offset, length int) Sequence {
 	info = tryExpand(info, offset, -length)
 	seq = WithInfo(seq, info)
 
-	ff := make([]Feature, len(seq.Features()))
-	for i, f := range seq.Features() {
-		ff[i] = WithLocation(f, f.Location().Expand(offset, -length))
+	ff := seq.Features()
+	for i, f := range ff {
+		ff[i].Loc = f.Loc.Expand(offset, -length)
 	}
 	seq = WithFeatures(seq, ff)
 
@@ -268,11 +268,11 @@ func Slice(seq Sequence, start, end int) Sequence {
 	ff := seq.Features().Filter(Overlap(start, end))
 
 	for i, f := range ff {
-		loc := f.Location().Expand(end, end-seqlen).Expand(0, -start)
-		if f.Key() == "source" {
+		loc := f.Loc.Expand(end, end-seqlen).Expand(0, -start)
+		if f.Key == "source" {
 			loc = asComplete(loc)
 		}
-		ff[i] = WithLocation(f, loc)
+		ff[i].Loc = loc
 	}
 
 	p := make([]byte, end-start)
@@ -300,7 +300,7 @@ func Concat(ss ...Sequence) Sequence {
 
 		for _, seq := range tail {
 			for _, f := range seq.Features() {
-				f = WithLocation(f, f.Location().Expand(0, len(p)))
+				f.Loc = f.Loc.Expand(0, len(p))
 				ff = ff.Insert(f)
 			}
 			p = append(p, seq.Bytes()...)
@@ -318,8 +318,8 @@ func Concat(ss ...Sequence) Sequence {
 func Reverse(seq Sequence) Sequence {
 	var ff FeatureSlice
 	for _, f := range seq.Features() {
-		loc := f.Location().Reverse(Len(seq))
-		ff = ff.Insert(WithLocation(f, loc))
+		f.Loc = f.Loc.Reverse(Len(seq))
+		ff = ff.Insert(f)
 	}
 	seq = WithFeatures(seq, ff)
 
@@ -342,8 +342,8 @@ func Rotate(seq Sequence, n int) Sequence {
 
 	var ff FeatureSlice
 	for _, f := range seq.Features() {
-		loc := f.Location().Expand(0, n).Normalize(Len(seq))
-		ff = ff.Insert(WithLocation(f, loc))
+		f.Loc = f.Loc.Expand(0, n).Normalize(Len(seq))
+		ff = ff.Insert(f)
 	}
 
 	m := Len(seq) - n

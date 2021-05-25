@@ -51,6 +51,9 @@ func cacheListFunc(ctx *flags.Context) error {
 
 		h := newHash()
 		hd, err := cache.ReadHeader(f, h.Size())
+		if err != nil {
+			return err
+		}
 
 		h.Reset()
 		h.Write(append(hd.RootSum, hd.DataSum...))

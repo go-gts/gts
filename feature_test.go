@@ -3,6 +3,7 @@ package gts
 import (
 	"bytes"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/go-gts/gts/internal/testutils"
@@ -89,9 +90,25 @@ func TestFeatureRepair(t *testing.T) {
 	sort.Sort(FeatureSlice(exp))
 
 	if !featuresEqual(out, exp) {
-		sin := jsonify(in)
-		sout := jsonify(out)
-		sexp := jsonify(exp)
+		ssin := make([]string, len(in))
+		for i, f := range in {
+			ssin[i] = jsonify(f)
+		}
+
+		ssout := make([]string, len(out))
+		for i, f := range out {
+			ssout[i] = jsonify(f)
+		}
+
+		ssexp := make([]string, len(exp))
+		for i, f := range exp {
+			ssexp[i] = jsonify(f)
+		}
+
+		sin := strings.Join(ssin, "\n")
+		sout := strings.Join(ssout, "\n")
+		sexp := strings.Join(ssexp, "\n")
+
 		t.Errorf("Repair: \n%s\nDiff:", sin)
 		testutils.DiffLine(t, sout, sexp)
 	}
@@ -187,64 +204,4 @@ func TestFeatureInsert(t *testing.T) {
 	testutils.Equals(t, ff, FeatureSlice{sampleSourceFeature, sampleCDSFeature})
 	ff = ff.Insert(sampleGeneFeature)
 	testutils.Equals(t, ff, FeatureSlice{sampleSourceFeature, sampleGeneFeature, sampleCDSFeature})
-}
-
-func TestFeatureWith(t *testing.T) {
-	length := 100
-
-	key := "source"
-	loc := Range(0, length)
-	props := Props{}
-	props.Add("organism", "Genus species")
-	props.Add("mol_type", "Genomic DNA")
-
-	in := NewFeature("", Between(0), nil)
-	out := WithKey(in, key)
-	testutils.Equals(t, out, NewFeature(key, Between(0), nil))
-
-	out = WithLocation(in, loc)
-	testutils.Equals(t, out, NewFeature(key, loc, nil))
-
-	out = WithValues(in, props)
-	testutils.Equals(t, out, NewFeature(key, loc, props))
-}
-
-type featWithTest struct {
-	Feature
-}
-
-func newFeatureWithTest(key string, loc Location, values Props) featWithTest {
-	return featWithTest{NewFeature(key, loc, values)}
-}
-
-func (wt featWithTest) WithKey(key string) Feature {
-	return newFeatureWithTest(key, wt.Location(), wt.Values())
-}
-
-func (wt featWithTest) WithLocation(loc Location) Feature {
-	return newFeatureWithTest(wt.Key(), loc, wt.Values())
-}
-
-func (wt featWithTest) WithValues(values Props) Feature {
-	return newFeatureWithTest(wt.Key(), wt.Location(), values)
-}
-
-func TestFeatureWithInterface(t *testing.T) {
-	length := 100
-
-	key := "source"
-	loc := Range(0, length)
-	props := Props{}
-	props.Add("organism", "Genus species")
-	props.Add("mol_type", "Genomic DNA")
-
-	in := newFeatureWithTest("", Between(0), nil)
-	out := WithKey(in, key)
-	testutils.Equals(t, out, newFeatureWithTest(key, Between(0), nil))
-
-	out = WithLocation(in, loc)
-	testutils.Equals(t, out, newFeatureWithTest(key, loc, nil))
-
-	out = WithValues(in, props)
-	testutils.Equals(t, out, newFeatureWithTest(key, loc, props))
 }

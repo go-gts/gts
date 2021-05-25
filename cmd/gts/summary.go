@@ -122,9 +122,9 @@ func summaryFunc(ctx *flags.Context) error {
 		keymap := make(map[string]int)
 		propsmap := make(map[string]int)
 		for _, f := range ff {
-			keymap[f.Key()]++
-			for _, name := range f.Values().Keys() {
-				values := f.Values().Get(name)
+			keymap[f.Key]++
+			for _, name := range f.Props.Keys() {
+				values := f.Props.Get(name)
 				propsmap[name] += len(values)
 			}
 		}

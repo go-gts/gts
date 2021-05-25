@@ -121,14 +121,14 @@ func searchFunc(ctx *flags.Context) error {
 		ff := seq.Features()
 		for _, query := range queries {
 			fwd := match(seq, query)
-			for _, segment := range append(fwd) {
+			for _, segment := range fwd {
 				head, tail := gts.Unpack(segment)
 				f := gts.NewFeature(*featureKey, gts.Range(head, tail), props)
 				ff = ff.Insert(f)
 			}
 			if !*nocomplement {
 				bwd := match(cmp, query)
-				for _, segment := range append(bwd) {
+				for _, segment := range bwd {
 					head, tail := gts.Unpack(segment)
 					loc := gts.Range(head, tail)
 					loc = loc.Reverse(gts.Len(seq)).(gts.Ranged)

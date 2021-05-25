@@ -14,7 +14,7 @@ func allLocator(seq Sequence) Regions {
 	ff := seq.Features()
 	rr := make(Regions, len(ff))
 	for i, f := range ff {
-		rr[i] = f.Location().Region()
+		rr[i] = f.Loc.Region()
 	}
 	return rr
 }
@@ -48,7 +48,7 @@ func filterLocator(f Filter) Locator {
 		ff = ff.Filter(f)
 		rr := make(Regions, len(ff))
 		for i, f := range ff {
-			rr[i] = f.Location().Region()
+			rr[i] = f.Loc.Region()
 		}
 		return rr
 	}

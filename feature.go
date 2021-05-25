@@ -7,71 +7,14 @@ import (
 	"strings"
 )
 
-type Feature interface {
-	Key() string
-	Location() Location
-	Values() Props
+type Feature struct {
+	Key   string
+	Loc   Location
+	Props Props
 }
 
-type BasicFeature struct {
-	key  string
-	loc  Location
-	vals Props
-}
-
-func (f BasicFeature) Key() string {
-	return f.key
-}
-
-func (f BasicFeature) Location() Location {
-	return f.loc
-}
-
-func (f BasicFeature) Values() Props {
-	return f.vals
-}
-
-func NewFeature(key string, loc Location, values Props) BasicFeature {
-	return BasicFeature{key, loc, values}
-}
-
-type hasWithKey interface {
-	WithKey(key string) Feature
-}
-
-type hasWithLocation interface {
-	WithLocation(loc Location) Feature
-}
-
-type hasWithValues interface {
-	WithValues(values Props) Feature
-}
-
-func WithKey(f Feature, key string) Feature {
-	switch v := f.(type) {
-	case hasWithKey:
-		return v.WithKey(key)
-	default:
-		return NewFeature(key, f.Location(), f.Values())
-	}
-}
-
-func WithLocation(f Feature, loc Location) Feature {
-	switch v := f.(type) {
-	case hasWithLocation:
-		return v.WithLocation(loc)
-	default:
-		return NewFeature(f.Key(), loc, f.Values())
-	}
-}
-
-func WithValues(f Feature, values Props) Feature {
-	switch v := f.(type) {
-	case hasWithValues:
-		return v.WithValues(values)
-	default:
-		return NewFeature(f.Key(), f.Location(), values)
-	}
+func NewFeature(key string, loc Location, props Props) Feature {
+	return Feature{key, loc, props}
 }
 
 // Repair attempts to reconstruct features by joining features with identical
@@ -83,20 +26,20 @@ func Repair(ff []Feature) []Feature {
 	// Identify the features with similar keys and values.
 	index := make(map[string][]int)
 	for i, f := range gg {
-		key := fmt.Sprintf("%s:%v", f.Key(), f.Values())
+		key := fmt.Sprintf("%s:%v", f.Key, f.Props)
 		index[key] = append(index[key], i)
 	}
 
-	remove := []int{}
-	for _, ii := range index {
-		if len(ii) > 1 {
-			locs := make([]Location, len(ii))
-			for j, i := range ii {
-				locs[j] = gg[i].Location()
+	keep := make([]int, 0, len(gg))
+	for _, indices := range index {
+		if len(indices) > 0 {
+			locs := make([]Location, len(indices))
+			for j, i := range indices {
+				locs[j] = gg[i].Loc
 			}
 			sort.Sort(Locations(locs))
 
-			force := ff[ii[0]].Key() == "source"
+			force := ff[indices[0]].Key == "source"
 			list := LocationList{}
 			for _, loc := range locs {
 				list.Push(loc, force)
@@ -106,27 +49,23 @@ func Repair(ff []Feature) []Feature {
 			locs = list.Slice()
 
 			// Some locations were merged.
-			if len(locs) < len(ii) {
-				for j := range ii {
-					i := ii[j]
-					if j < len(locs) {
-						gg[i] = WithLocation(gg[i], locs[j])
-					} else {
-						// Remove the excess features.
-						remove = append(remove, i)
-					}
+			if len(locs) < len(indices) {
+				for i, loc := range locs {
+					gg[indices[i]].Loc = loc
 				}
 			}
+			keep = append(keep, indices[:len(locs)]...)
 		}
 	}
 
-	sort.Sort(sort.Reverse(sort.IntSlice(remove)))
+	sort.Sort(sort.IntSlice(keep))
 
-	for _, i := range remove {
-		copy(gg[i:], gg[i+1:])
-		gg[len(gg)-1] = nil
-		gg = gg[:len(gg)-1]
+	i := 0
+	for _, j := range keep {
+		gg[i] = gg[j]
+		i++
 	}
+	gg = gg[:len(keep)]
 
 	return gg
 }
@@ -185,7 +124,7 @@ func FalseFilter(f Feature) bool { return false }
 // bounds.
 func Within(lower, upper int) Filter {
 	return func(f Feature) bool {
-		return LocationWithin(f.Location(), lower, upper)
+		return LocationWithin(f.Loc, lower, upper)
 	}
 }
 
@@ -193,7 +132,7 @@ func Within(lower, upper int) Filter {
 // bounds.
 func Overlap(lower, upper int) Filter {
 	return func(f Feature) bool {
-		return LocationOverlap(f.Location(), lower, upper)
+		return LocationOverlap(f.Loc, lower, upper)
 	}
 }
 
@@ -203,7 +142,7 @@ func Key(key string) Filter {
 	if key == "" {
 		return TrueFilter
 	}
-	return func(f Feature) bool { return f.Key() == key }
+	return func(f Feature) bool { return f.Key == key }
 }
 
 // Qualifier tests if any of the values associated with the given qualifier
@@ -217,7 +156,7 @@ func Qualifier(name, query string) (Filter, error) {
 
 	if name == "" {
 		return func(f Feature) bool {
-			for _, vv := range f.Values() {
+			for _, vv := range f.Props {
 				for _, v := range vv {
 					if re.MatchString(v) {
 						return true
@@ -230,12 +169,12 @@ func Qualifier(name, query string) (Filter, error) {
 
 	if query == "" {
 		return func(f Feature) bool {
-			return f.Values().Has(name)
+			return f.Props.Has(name)
 		}, nil
 	}
 
 	return func(f Feature) bool {
-		if vv := f.Values().Get(name); vv != nil {
+		if vv := f.Props.Get(name); vv != nil {
 			for _, v := range vv {
 				if re.MatchString(v) {
 					return true
@@ -295,13 +234,13 @@ func Selector(sel string) (Filter, error) {
 // ForwardStrand returns true if the feature strictly resides on the forward
 // strand.
 func ForwardStrand(f Feature) bool {
-	return CheckStrand(f.Location()) == StrandForward
+	return CheckStrand(f.Loc) == StrandForward
 }
 
 // ReverseStrand returns true if the feature strictly resides on the reverse
 // strand.
 func ReverseStrand(f Feature) bool {
-	return CheckStrand(f.Location()) == StrandReverse
+	return CheckStrand(f.Loc) == StrandReverse
 }
 
 // FeatureSlice represents a slice of Features.
@@ -312,7 +251,7 @@ type FeatureSlice []Feature
 func (ff FeatureSlice) Filter(filter Filter) FeatureSlice {
 	indices := make([]int, 0, len(ff))
 	for i, f := range ff {
-		if filter(NewFeature(f.Key(), f.Location(), f.Values())) {
+		if filter(NewFeature(f.Key, f.Loc, f.Props)) {
 			indices = append(indices, i)
 		}
 	}
@@ -332,13 +271,13 @@ func (ff FeatureSlice) Len() int {
 // with index j.
 func (ff FeatureSlice) Less(i, j int) bool {
 	f, g := ff[i], ff[j]
-	if f.Key() == "source" && g.Key() != "source" {
+	if f.Key == "source" && g.Key != "source" {
 		return true
 	}
-	if f.Key() != "source" && g.Key() == "source" {
+	if f.Key != "source" && g.Key == "source" {
 		return false
 	}
-	return LocationLess(f.Location(), g.Location())
+	return LocationLess(f.Loc, g.Loc)
 }
 
 // Swap the elements with indexes i and j.
@@ -350,16 +289,16 @@ func (ff FeatureSlice) Swap(i, j int) {
 // the FeatureSlice.
 func (ff FeatureSlice) Insert(f Feature) FeatureSlice {
 	i := 0
-	for i < len(ff) && ff[i].Key() == "source" {
+	for i < len(ff) && ff[i].Key == "source" {
 		i++
 	}
-	if f.Key() != "source" {
+	if f.Key != "source" {
 		i += sort.Search(len(ff[i:]), func(j int) bool {
-			return LocationLess(f.Location(), ff[i+j].Location())
+			return LocationLess(f.Loc, ff[i+j].Loc)
 		})
 	}
 
-	ff = append(ff, nil)
+	ff = append(ff, Feature{})
 	copy(ff[i+1:], ff[i:])
 	ff[i] = f
 

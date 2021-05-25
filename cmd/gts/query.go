@@ -112,18 +112,16 @@ func queryFunc(ctx *flags.Context) error {
 		}
 		ff := seq.Features()
 		for _, f := range ff {
-			if !*source && f.Key() == "source" {
+			if !*source && f.Key == "source" {
 				continue
 			}
 			if common == nil {
-				for _, key := range f.Values().Keys() {
-					common = append(common, key)
-				}
+				common = append(common, f.Props.Keys()...)
 				sort.Strings(common)
 			}
 			indices := make([]int, 0, len(common))
 			for i := 0; i < len(common); i++ {
-				if f.Values().Has(common[i]) {
+				if f.Props.Has(common[i]) {
 					indices = append(indices, i)
 				}
 			}
@@ -175,16 +173,16 @@ func queryFunc(ctx *flags.Context) error {
 				cc = append(cc, id)
 			}
 			if !*nokey {
-				cc = append(cc, f.Key())
+				cc = append(cc, f.Key)
 			}
 			if !*noloc {
-				cc = append(cc, f.Location().String())
+				cc = append(cc, f.Loc.String())
 			}
 
-			ok := (*source || f.Key() != "source")
+			ok := (*source || f.Key != "source")
 
 			for _, name := range common {
-				vv := f.Values().Get(name)
+				vv := f.Props.Get(name)
 				if len(vv) == 0 && !*empty {
 					ok = false
 				}
