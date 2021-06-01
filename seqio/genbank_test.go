@@ -15,10 +15,9 @@ import (
 func formatGenBankHelper(t *testing.T, seq gts.Sequence, in string) {
 	t.Helper()
 	b := strings.Builder{}
-	f := GenBankFormatter{seq}
-	n, err := f.WriteTo(&b)
+	n, err := GenBankWriter{&b}.WriteSeq(seq)
 	if int(n) != len([]byte(in)) || err != nil {
-		t.Errorf("f.WriteTo(&b) = (%d, %v), want %d, nil", n, err, len(in))
+		t.Errorf("f.WriteSeq(seq) = (%d, %v), want %d, nil", n, err, len(in))
 	}
 	testutils.DiffLine(t, in, b.String())
 }
@@ -265,8 +264,8 @@ func TestGenBankIOFail(t *testing.T) {
 		}
 	}
 
-	w := bytes.Buffer{}
-	n, err := GenBankFormatter{gts.New(nil, nil, nil)}.WriteTo(&w)
+	b := bytes.Buffer{}
+	n, err := GenBankWriter{&b}.WriteSeq(gts.New(nil, nil, nil))
 	if n != 0 || err == nil {
 		t.Errorf("formatting an empty Sequence should return an error")
 		return

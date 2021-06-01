@@ -37,9 +37,8 @@ func TestFormatConversion(t *testing.T) {
 	}
 
 	testutils.Equals(t, bytes.ToUpper(seq1.Bytes()), bytes.ToUpper(seq2.Bytes()))
-	formatter := NewFormatter(seq1, FastaFile)
 	b := &strings.Builder{}
-	n, err := formatter.WriteTo(b)
+	n, err := NewWriter(b, FastaFile).WriteSeq(seq1)
 	if int(n) != len(s2) || err != nil {
 		t.Errorf("formatter.WriteTo(builder) = (%d, %v), want (%d, nil)", n, err, len(s2))
 	}
@@ -62,11 +61,10 @@ func TestSliceToFasta(t *testing.T) {
 	switch seq := result.Value.(type) {
 	case GenBank:
 		seq = gts.Slice(seq, 2379, 2512).(GenBank)
-		formatter := NewFormatter(seq, FastaFile)
 		b := &strings.Builder{}
-		n, err := formatter.WriteTo(b)
+		n, err := NewWriter(b, FastaFile).WriteSeq(seq)
 		if int(n) != len(exp) || err != nil {
-			t.Errorf("formatter.WriteTo(builder) = (%d, %v), want (%d, nil)", n, err, len(exp))
+			t.Errorf("writer.WriteSeq(seq) = (%d, %v), want (%d, nil)", n, err, len(exp))
 		}
 		out := b.String()
 		testutils.DiffLine(t, strings.ToUpper(exp), strings.ToUpper(out))

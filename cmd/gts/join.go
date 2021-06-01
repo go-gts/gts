@@ -72,8 +72,9 @@ func joinFunc(ctx *flags.Context) error {
 		seq = gts.WithTopology(seq, gts.Circular)
 	}
 
-	formatter := seqio.NewFormatter(seq, filetype)
-	if _, err := formatter.WriteTo(d); err != nil {
+	writer := seqio.NewWriter(d, filetype)
+
+	if _, err := writer.WriteSeq(seq); err != nil {
 		return ctx.Raise(err)
 	}
 

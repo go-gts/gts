@@ -95,19 +95,19 @@ func LocationLess(a, b Location) bool {
 		vp, up := 0, 0
 
 		if vok {
-			if v.Partial[0] {
+			if v.Partial.Partial5 {
 				vp++
 			}
-			if v.Partial[1] {
+			if v.Partial.Partial3 {
 				vp++
 			}
 		}
 
 		if uok {
-			if u.Partial[0] {
+			if u.Partial.Partial5 {
 				up++
 			}
-			if u.Partial[1] {
+			if u.Partial.Partial3 {
 				up++
 			}
 		}
@@ -322,14 +322,17 @@ func (point Point) Expand(i, n int) Location {
 }
 
 // Partial represents the partiality of a location range.
-type Partial [2]bool
+type Partial struct {
+	Partial5 bool
+	Partial3 bool
+}
 
 // Partiality values.
 var (
-	Complete    Partial = [2]bool{false, false}
-	Partial5    Partial = [2]bool{true, false}
-	Partial3    Partial = [2]bool{false, true}
-	PartialBoth Partial = [2]bool{true, true}
+	Complete    = Partial{false, false}
+	Partial5    = Partial{true, false}
+	Partial3    = Partial{false, true}
+	PartialBoth = Partial{true, true}
 )
 
 // Ranged represents a contiguous region of bases in a sequence. The starting
@@ -387,12 +390,12 @@ func (ranged Ranged) span() (int, int) {
 // String satisfies the fmt.Stringer interface.
 func (ranged Ranged) String() string {
 	b := strings.Builder{}
-	if ranged.Partial[0] {
+	if ranged.Partial.Partial5 {
 		b.WriteByte('<')
 	}
 	b.WriteString(strconv.Itoa(ranged.Start + 1))
 	b.WriteString("..")
-	if ranged.Partial[1] {
+	if ranged.Partial.Partial3 {
 		b.WriteByte('>')
 	}
 	b.WriteString(strconv.Itoa(ranged.End))
@@ -437,10 +440,10 @@ func (ranged Ranged) Normalize(length int) Location {
 		return PartialRange(start, end, ranged.Partial)
 	}
 	left, right := Range(start, length), Range(0, end)
-	if ranged.Partial[0] {
+	if ranged.Partial.Partial5 {
 		left.Partial = Partial5
 	}
-	if ranged.Partial[1] {
+	if ranged.Partial.Partial3 {
 		right.Partial = Partial3
 	}
 	return Join(left, right)
@@ -457,10 +460,10 @@ func (ranged Ranged) Shift(i, n int) Location {
 	start, end, partial := ranged.Start, ranged.End, ranged.Partial
 	if start < i && i < end {
 		left, right := Range(start, i), Range(i+n, end+n)
-		if partial[0] {
+		if partial.Partial5 {
 			left.Partial = Partial5
 		}
-		if partial[1] {
+		if partial.Partial3 {
 			right.Partial = Partial3
 		}
 		return Join(left, right)
@@ -483,10 +486,10 @@ func (ranged Ranged) Expand(i, n int) Location {
 	if n < 0 {
 		j := i - n
 		if i <= start && start < j {
-			partial[0] = true
+			partial.Partial5 = true
 		}
 		if i < end && end <= j {
-			partial[1] = true
+			partial.Partial3 = true
 		}
 	}
 	if (0 <= n && i <= start) || (n < 0 && i < start) {
@@ -502,11 +505,14 @@ func (ranged Ranged) Expand(i, n int) Location {
 }
 
 // Ambiguous represents a single base within a given range.
-type Ambiguous [2]int
+type Ambiguous struct {
+	Start int
+	End   int
+}
 
 // String satisfies the fmt.Stringer interface.
 func (ambiguous Ambiguous) String() string {
-	return fmt.Sprintf("%d.%d", ambiguous[0]+1, ambiguous[1])
+	return fmt.Sprintf("%d.%d", ambiguous.Start+1, ambiguous.End)
 }
 
 // Len returns the total length spanned by the location.
@@ -515,13 +521,12 @@ func (ambiguous Ambiguous) Len() int {
 }
 
 func (ambiguous Ambiguous) span() (int, int) {
-	return Unpack(ambiguous)
+	return ambiguous.Start, ambiguous.End
 }
 
 // Region returns the region pointed to by the location.
 func (ambiguous Ambiguous) Region() Region {
-	head, tail := Unpack(ambiguous)
-	return Segment{head, tail}
+	return Segment{ambiguous.Start, ambiguous.End}
 }
 
 // Complement returns the complement location.
@@ -531,12 +536,12 @@ func (ambiguous Ambiguous) Complement() Location {
 
 // Reverse returns the reversed location for the given length sequence.
 func (ambiguous Ambiguous) Reverse(length int) Location {
-	return Ambiguous{length - ambiguous[1], length - ambiguous[0]}
+	return Ambiguous{length - ambiguous.End, length - ambiguous.Start}
 }
 
 // Normalize returns a location normalized for the given length sequence.
 func (ambiguous Ambiguous) Normalize(length int) Location {
-	return Ambiguous{ambiguous[0] % length, ambiguous[1] % length}
+	return Ambiguous{ambiguous.Start % length, ambiguous.End % length}
 }
 
 // Shift the location beyond the given position i by n.
@@ -547,7 +552,7 @@ func (ambiguous Ambiguous) Shift(i, n int) Location {
 	if n < 0 {
 		return ambiguous.Expand(i, n)
 	}
-	start, end := Unpack(ambiguous)
+	start, end := ambiguous.Start, ambiguous.End
 	if start < i && i < end {
 		left, right := Ambiguous{start, i}, Ambiguous{i + n, end + n}
 		return Order(left, right)
@@ -566,7 +571,7 @@ func (ambiguous Ambiguous) Expand(i, n int) Location {
 	if n == 0 {
 		return ambiguous
 	}
-	start, end := Unpack(ambiguous)
+	start, end := ambiguous.Start, ambiguous.End
 	if (0 <= n && i <= start) || (n < 0 && i < start) {
 		start = Max(i, start+n)
 	}
@@ -675,8 +680,8 @@ func (ll *LocationList) Push(loc Location, force bool) {
 				return
 			}
 		case Ranged:
-			if ((v.Partial[1] && u.Partial[0]) || force) && v.End == u.Start {
-				partial := Partial{v.Partial[0], u.Partial[1]}
+			if ((v.Partial.Partial3 && u.Partial.Partial5) || force) && v.End == u.Start {
+				partial := Partial{v.Partial.Partial5, u.Partial.Partial3}
 				ll.Data = Ranged{v.Start, u.End, partial}
 				return
 			}
@@ -1089,7 +1094,7 @@ func parseRange(state *pars.State, result *pars.Result) error {
 		partial3 = true
 		state.Advance()
 	}
-	result.SetValue(Ranged{start, end, [2]bool{partial5, partial3}})
+	result.SetValue(Ranged{start, end, Partial{partial5, partial3}})
 	state.Drop()
 	return nil
 }

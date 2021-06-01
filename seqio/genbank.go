@@ -309,26 +309,26 @@ func (gb GenBank) WriteTo(w io.Writer) (int64, error) {
 	return int64(n), err
 }
 
-// GenBankFormatter implements the Formatter interface for GenBank files.
-type GenBankFormatter struct {
-	seq gts.Sequence
+// GenBankWriter writes a gts.Sequence to an io.Writer in GenBank format.
+type GenBankWriter struct {
+	w io.Writer
 }
 
-// WriteTo satisfies the io.WriterTo interface.
-func (gf GenBankFormatter) WriteTo(w io.Writer) (int64, error) {
-	switch seq := gf.seq.(type) {
+// WriteSeq satisfies the seqio.SeqWriter interface.
+func (w GenBankWriter) WriteSeq(seq gts.Sequence) (int, error) {
+	switch v := seq.(type) {
 	case GenBank:
-		return seq.WriteTo(w)
+		n, err := v.WriteTo(w.w)
+		return int(n), err
 	case *GenBank:
-		return GenBankFormatter{*seq}.WriteTo(w)
+		return w.WriteSeq(*v)
 	default:
-		switch info := seq.Info().(type) {
+		switch info := v.Info().(type) {
 		case GenBankFields:
-			gb := GenBank{info, seq.Features(), NewOrigin(seq.Bytes())}
-			return GenBankFormatter{gb}.WriteTo(w)
+			gb := GenBank{info, v.Features(), NewOrigin(v.Bytes())}
+			return w.WriteSeq(gb)
 		default:
 			return 0, fmt.Errorf("gts does not know how to format a sequence with metadata of type `%T` as GenBank", info)
-
 		}
 	}
 }

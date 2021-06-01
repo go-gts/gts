@@ -318,8 +318,7 @@ func Concat(ss ...Sequence) Sequence {
 func Reverse(seq Sequence) Sequence {
 	var ff FeatureSlice
 	for _, f := range seq.Features() {
-		f.Loc = f.Loc.Reverse(Len(seq))
-		ff = ff.Insert(f)
+		ff = ff.Insert(Feature{f.Key, f.Loc.Reverse(Len(seq)), f.Props.Clone()})
 	}
 	seq = WithFeatures(seq, ff)
 

@@ -48,6 +48,14 @@ func Equals(t *testing.T, a, b interface{}) {
 	}
 }
 
+// Differs checks the equality of two objects.
+func Differs(t *testing.T, a, b interface{}) {
+	t.Helper()
+	if diff := deep.Equal(a, b); diff == nil {
+		t.Errorf("expected %v != %v", a, b)
+	}
+}
+
 // Diff checks the equality of two strings and reports its diff if they differ.
 func Diff(t *testing.T, a, b string) {
 	t.Helper()

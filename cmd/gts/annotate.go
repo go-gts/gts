@@ -78,9 +78,10 @@ func annotateFunc(ctx *flags.Context) error {
 		}
 	}
 
-	w := bufio.NewWriter(d)
-
 	scanner := seqio.NewAutoScanner(d)
+	buffer := bufio.NewWriter(d)
+	writer := seqio.NewWriter(buffer, filetype)
+
 	for scanner.Scan() {
 		seq := scanner.Value()
 		ff := seq.Features()
@@ -88,12 +89,11 @@ func annotateFunc(ctx *flags.Context) error {
 			ff = ff.Insert(f)
 		}
 		seq = gts.WithFeatures(seq, ff)
-		formatter := seqio.NewFormatter(seq, filetype)
-		if _, err := formatter.WriteTo(w); err != nil {
+		if _, err := writer.WriteSeq(seq); err != nil {
 			return ctx.Raise(err)
 		}
 
-		if err := w.Flush(); err != nil {
+		if err := buffer.Flush(); err != nil {
 			return ctx.Raise(err)
 		}
 	}

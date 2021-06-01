@@ -32,31 +32,36 @@ func (f Fasta) Bytes() []byte {
 	return f.Data
 }
 
-// FastaFormatter implements the Formatter interface for FASTA files.
-type FastaFormatter struct {
-	seq  gts.Sequence
-	wrap int
+// WriteTo satisfies the io.WriterTo interface.
+func (f Fasta) WriteTo(w io.Writer) (int64, error) {
+	desc := strings.ReplaceAll(f.Desc, "\n", " ")
+	data := wrap.Force(string(f.Data), 70)
+	s := fmt.Sprintf(">%s\n%s\n", desc, data)
+	n, err := io.WriteString(w, s)
+	return int64(n), err
 }
 
-// WriteTo satisfies the io.WriterTo interface.
-func (ff FastaFormatter) WriteTo(w io.Writer) (int64, error) {
-	switch seq := ff.seq.(type) {
+// FastaWriter writes a gts.Sequence to an io.Writer in FASTA format.
+type FastaWriter struct {
+	w io.Writer
+}
+
+// WriteSeq satisfies the seqio.SeqWriter interface.
+func (w FastaWriter) WriteSeq(seq gts.Sequence) (int, error) {
+	switch v := seq.(type) {
 	case Fasta:
-		desc := strings.ReplaceAll(seq.Desc, "\n", " ")
-		data := wrap.Force(string(seq.Data), ff.wrap)
-		s := fmt.Sprintf(">%s\n%s\n", desc, data)
-		n, err := io.WriteString(w, s)
-		return int64(n), err
+		n, err := v.WriteTo(w.w)
+		return int(n), err
 	case *Fasta:
-		return FastaFormatter{*seq, ff.wrap}.WriteTo(w)
+		return w.WriteSeq(*v)
 	default:
-		switch info := seq.Info().(type) {
+		switch info := v.Info().(type) {
 		case string:
-			f := Fasta{info, seq.Bytes()}
-			return FastaFormatter{f, ff.wrap}.WriteTo(w)
+			f := Fasta{info, v.Bytes()}
+			return w.WriteSeq(f)
 		case fmt.Stringer:
-			f := Fasta{info.String(), seq.Bytes()}
-			return FastaFormatter{f, ff.wrap}.WriteTo(w)
+			f := Fasta{info.String(), v.Bytes()}
+			return w.WriteSeq(f)
 		default:
 			return 0, fmt.Errorf("gts does not know how to format a sequence with metadata type `%T` as FASTA", info)
 		}

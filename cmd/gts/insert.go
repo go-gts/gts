@@ -104,9 +104,10 @@ func insertFunc(ctx *flags.Context) error {
 		}
 	}
 
-	w := bufio.NewWriter(d)
-
 	scanner := seqio.NewAutoScanner(d)
+	buffer := bufio.NewWriter(d)
+	writer := seqio.NewWriter(buffer, filetype)
+
 	for scanner.Scan() {
 		host := scanner.Value()
 
@@ -123,12 +124,11 @@ func insertFunc(ctx *flags.Context) error {
 				out = insert(out, index, guest)
 			}
 
-			formatter := seqio.NewFormatter(out, filetype)
-			if _, err := formatter.WriteTo(w); err != nil {
+			if _, err := writer.WriteSeq(out); err != nil {
 				return ctx.Raise(err)
 			}
 
-			if err := w.Flush(); err != nil {
+			if err := buffer.Flush(); err != nil {
 				return ctx.Raise(err)
 			}
 		}

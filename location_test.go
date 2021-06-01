@@ -298,7 +298,7 @@ func locRep(loc Location) string {
 		}
 		return fmt.Sprintf("Joined(%s)", strings.Join(ss, ", "))
 	case Ambiguous:
-		return fmt.Sprintf("Ambiguous(%d, %d)", v[0], v[1])
+		return fmt.Sprintf("Ambiguous(%d, %d)", v.Start, v.End)
 	case Ordered:
 		ss := make([]string, len(v))
 		for i, u := range v {

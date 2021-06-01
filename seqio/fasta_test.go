@@ -33,10 +33,9 @@ func TestFastaIO(t *testing.T) {
 		}
 		t.Run("format from *Fasta", func(t *testing.T) {
 			b := strings.Builder{}
-			f := FastaFormatter{&seq, 70}
-			n, err := f.WriteTo(&b)
+			n, err := FastaWriter{&b}.WriteSeq(&seq)
 			if int(n) != len([]byte(in)) || err != nil {
-				t.Errorf("f.WriteTo(&b) = (%d, %v), want %d, nil", n, err, len(in))
+				t.Errorf("f.WriteSeq(seq) = (%d, %v), want %d, nil", n, err, len(in))
 				return
 			}
 			out := b.String()
@@ -44,10 +43,9 @@ func TestFastaIO(t *testing.T) {
 		})
 		t.Run("format from BasicSequence", func(t *testing.T) {
 			b := strings.Builder{}
-			f := FastaFormatter{gts.Copy(seq), 70}
-			n, err := f.WriteTo(&b)
+			n, err := FastaWriter{&b}.WriteSeq(gts.Copy(seq))
 			if int(n) != len([]byte(in)) || err != nil {
-				t.Errorf("f.WriteTo(&b) = (%d, %v), want %d, nil", n, err, len(in))
+				t.Errorf("f.WriteSeq(seq) = (%d, %v), want %d, nil", n, err, len(in))
 				return
 			}
 			out := b.String()
@@ -59,8 +57,8 @@ func TestFastaIO(t *testing.T) {
 }
 
 func TestFastaIOFail(t *testing.T) {
-	w := bytes.Buffer{}
-	n, err := FastaFormatter{gts.New(nil, nil, nil), 70}.WriteTo(&w)
+	b := bytes.Buffer{}
+	n, err := FastaWriter{&b}.WriteSeq(gts.New(nil, nil, nil))
 	if n != 0 || err == nil {
 		t.Errorf("formatting an empty Sequence should return an error")
 	}

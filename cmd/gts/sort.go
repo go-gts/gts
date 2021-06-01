@@ -88,15 +88,15 @@ func sortFunc(ctx *flags.Context) error {
 	}
 	sort.Sort(iface)
 
-	w := bufio.NewWriter(d)
+	buffer := bufio.NewWriter(d)
+	writer := seqio.NewWriter(buffer, filetype)
 
 	for _, seq := range seqs {
-		formatter := seqio.NewFormatter(seq, filetype)
-		if _, err := formatter.WriteTo(w); err != nil {
+		if _, err := writer.WriteSeq(seq); err != nil {
 			return ctx.Raise(err)
 		}
 
-		if err := w.Flush(); err != nil {
+		if err := buffer.Flush(); err != nil {
 			return ctx.Raise(err)
 		}
 	}
