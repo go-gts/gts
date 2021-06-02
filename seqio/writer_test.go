@@ -37,14 +37,12 @@ func TestWriter(t *testing.T) {
 
 		seq = gts.New(seq.Info(), seq.Features(), seq.Bytes())
 
-		t.Run("Scanned Object", func(t *testing.T) {
-			w := &strings.Builder{}
-			n, err := NewWriter(w, tt.filetype).WriteSeq(seq)
-			if n != len(in) || err != nil {
-				t.Errorf("writer.WriteSeq(seq) = (%d, %v), want (%d, nil)", n, err, len(in))
-			}
-			testutils.DiffLine(t, w.String(), in)
-		})
+		w.Reset()
+		n, err = NewWriter(w, tt.filetype).WriteSeq(seq)
+		if n != len(in) || err != nil {
+			t.Errorf("writer.WriteSeq(seq) = (%d, %v), want (%d, nil)", n, err, len(in))
+		}
+		testutils.DiffLine(t, w.String(), in)
 	}
 }
 
