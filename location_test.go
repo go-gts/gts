@@ -417,6 +417,7 @@ var locationNormalizeTest = []struct {
 	{Between(10), Between(0)},
 	{Point(10), Point(0)},
 	{Range(10, 13), Range(0, 3)},
+	{Range(8, 10), Range(8, 10)},
 	{Range(8, 12), Join(Range(8, 10), Range(0, 2))},
 	{PartialRange(8, 12, PartialBoth), Join(PartialRange(8, 10, Partial5), PartialRange(0, 2, Partial3))},
 	{Join(Range(10, 13), Range(5, 8)), Join(Range(0, 3), Range(5, 8))},

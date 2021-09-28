@@ -435,7 +435,7 @@ func (ranged Ranged) Normalize(length int) Location {
 	if ranged.Len() == length {
 		return ranged.Expand(0, -ranged.Start)
 	}
-	start, end := ranged.Start%length, ranged.End%length
+	start, end := ranged.Start%length, (ranged.End-1)%length+1
 	if start < end {
 		return PartialRange(start, end, ranged.Partial)
 	}
