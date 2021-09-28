@@ -5,8 +5,41 @@ import (
 	"testing"
 
 	"github.com/go-gts/gts"
+	"github.com/go-gts/gts/internal/testutils"
 	"github.com/go-pars/pars"
 )
+
+var insdcSplitJoinTests = []struct {
+	in  string
+	out []string
+}{
+	{".", nil},                            // case 1
+	{"foo; bar.", []string{"foo", "bar"}}, // case 2
+	{
+		"Viruses; Monodnaviria; Sangervirae; Phixviricota; Malgrandaviricetes; Petitvirales; Microviridae; Bullavirinae; Sinsheimervirus.",
+		[]string{
+			"Viruses",
+			"Monodnaviria",
+			"Sangervirae",
+			"Phixviricota",
+			"Malgrandaviricetes",
+			"Petitvirales",
+			"Microviridae",
+			"Bullavirinae",
+			"Sinsheimervirus",
+		},
+	},
+}
+
+func TestINSDCSplitJoin(t *testing.T) {
+	for _, tt := range insdcSplitJoinTests {
+		out := INSDCSplit(tt.in)
+		testutils.Equals(t, out, tt.out)
+
+		in := INSDCJoin(out)
+		testutils.Diff(t, in, tt.in)
+	}
+}
 
 var qualifierTests = []string{
 	"                     /allele=\"adh1-1\"",
@@ -278,76 +311,80 @@ func TestQualifierIO(t *testing.T) {
 }
 
 var featureIOTests = []string{
-	`     source          1..465
-                     /organism="Homo sapiens"
-                     /mol_type="mRNA"
-                     /db_xref="taxon:9606"
-                     /chromosome="11"
-                     /map="11p15.5"
-     gene            1..465
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /note="insulin"
-                     /db_xref="GeneID:3630"
-                     /db_xref="HGNC:HGNC:6081"
-                     /db_xref="MIM:176730"
-     exon            1..42
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /inference="alignment:Splign:2.1.0"
-     exon            43..246
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /inference="alignment:Splign:2.1.0"
-     CDS             60..392
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /note="proinsulin; preproinsulin"
-                     /codon_start=1
-                     /product="insulin preproprotein"
-                     /protein_id="NP_000198.1"
-                     /db_xref="CCDS:CCDS7729.1"
-                     /db_xref="GeneID:3630"
-                     /db_xref="HGNC:HGNC:6081"
-                     /db_xref="MIM:176730"
-                     /translation="MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEALYLVCG
-                     ERGFFYTPKTRREAEDLQVGQVELGGGPGAGSLQPLALEGSLQKRGIVEQCCTSICSL
-                     YQLENYCN"
-     sig_peptide     60..131
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /inference="COORDINATES: ab initio prediction:SignalP:4.0"
-     proprotein      132..389
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /product="proinsulin"
-     mat_peptide     132..221
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /product="insulin B chain"
-     mat_peptide     228..320
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /product="C-peptide"
-     mat_peptide     327..389
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /product="insulin A chain"
-     exon            247..465
-                     /gene="INS"
-                     /gene_synonym="IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10"
-                     /inference="alignment:Splign:2.1.0"`,
-	`     tRNA            complement(3838377..3838450)
-                     /gene="TRI-GAT1-1"
-                     /product="tRNA-Ile"
-                     /inference="COORDINATES: profile:tRNAscan-SE:1.23"
-                     /note="tRNA-Ile (anticodon GAT) 1-1; Derived by automated
-                     computational analysis using gene prediction method:
-                     tRNAscan-SE."
-                     /anticodon=(pos:complement(3838414..3838416),aa:Ile,
-                     seq:gat)
-                     /db_xref="GeneID:100189132"
-                     /db_xref="HGNC:HGNC:34694"`,
+	multiLineString(
+		"     source          1..465",
+		"                     /organism=\"Homo sapiens\"",
+		"                     /mol_type=\"mRNA\"",
+		"                     /db_xref=\"taxon:9606\"",
+		"                     /chromosome=\"11\"",
+		"                     /map=\"11p15.5\"",
+		"     gene            1..465",
+		"                     /gene=\"INS\"",
+		"                     /gene_synonym=\"IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10\"",
+		"                     /note=\"insulin\"",
+		"                     /db_xref=\"GeneID:3630\"",
+		"                     /db_xref=\"HGNC:HGNC:6081\"",
+		"                     /db_xref=\"MIM:176730\"",
+		"     exon            1..42",
+		"                     /gene=\"INS\"",
+		"                     /gene_synonym=\"IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10\"",
+		"                     /inference=\"alignment:Splign:2.1.0\"",
+		"     exon            43..246",
+		"                     /gene=\"INS\"",
+		"                     /gene_synonym=\"IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10\"",
+		"                     /inference=\"alignment:Splign:2.1.0\"",
+		"     CDS             60..392",
+		"                     /gene=\"INS\"",
+		"                     /gene_synonym=\"IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10\"",
+		"                     /note=\"proinsulin; preproinsulin\"",
+		"                     /codon_start=1",
+		"                     /product=\"insulin preproprotein\"",
+		"                     /protein_id=\"NP_000198.1\"",
+		"                     /db_xref=\"CCDS:CCDS7729.1\"",
+		"                     /db_xref=\"GeneID:3630\"",
+		"                     /db_xref=\"HGNC:HGNC:6081\"",
+		"                     /db_xref=\"MIM:176730\"",
+		"                     /translation=\"MALWMRLLPLLALLALWGPDPAAAFVNQHLCGSHLVEALYLVCG",
+		"                     ERGFFYTPKTRREAEDLQVGQVELGGGPGAGSLQPLALEGSLQKRGIVEQCCTSICSL",
+		"                     YQLENYCN\"",
+		"     sig_peptide     60..131",
+		"                     /gene=\"INS\"",
+		"                     /gene_synonym=\"IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10\"",
+		"                     /inference=\"COORDINATES: ab initio prediction:SignalP:4.0\"",
+		"     proprotein      132..389",
+		"                     /gene=\"INS\"",
+		"                     /gene_synonym=\"IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10\"",
+		"                     /product=\"proinsulin\"",
+		"     mat_peptide     132..221",
+		"                     /gene=\"INS\"",
+		"                     /gene_synonym=\"IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10\"",
+		"                     /product=\"insulin B chain\"",
+		"     mat_peptide     228..320",
+		"                     /gene=\"INS\"",
+		"                     /gene_synonym=\"IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10\"",
+		"                     /product=\"C-peptide\"",
+		"     mat_peptide     327..389",
+		"                     /gene=\"INS\"",
+		"                     /gene_synonym=\"IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10\"",
+		"                     /product=\"insulin A chain\"",
+		"     exon            247..465",
+		"                     /gene=\"INS\"",
+		"                     /gene_synonym=\"IDDM; IDDM1; IDDM2; ILPR; IRDN; MODY10\"",
+		"                     /inference=\"alignment:Splign:2.1.0\"",
+	),
+	multiLineString(
+		"     tRNA            complement(3838377..3838450)",
+		"                     /gene=\"TRI-GAT1-1\"",
+		"                     /product=\"tRNA-Ile\"",
+		"                     /inference=\"COORDINATES: profile:tRNAscan-SE:1.23\"",
+		"                     /note=\"tRNA-Ile (anticodon GAT) 1-1; Derived by automated",
+		"                     computational analysis using gene prediction method:",
+		"                     tRNAscan-SE.\"",
+		"                     /anticodon=(pos:complement(3838414..3838416),aa:Ile,",
+		"                     seq:gat)",
+		"                     /db_xref=\"GeneID:100189132\"",
+		"                     /db_xref=\"HGNC:HGNC:34694\"",
+	),
 }
 
 func TestFeatureKeylineParser(t *testing.T) {
@@ -377,7 +414,7 @@ func TestFeatureIO(t *testing.T) {
 			return
 		}
 		switch ff := result.Value.(type) {
-		case []gts.Feature:
+		case gts.Features:
 			b := strings.Builder{}
 			fmtr := INSDCFormatter{ff, "     ", 21}
 			n, err := fmtr.WriteTo(&b)

@@ -14,6 +14,7 @@ type Region interface {
 	Resize(mod Modifier) Region
 	Complement() Region
 	Locate(seq Sequence) Sequence
+	Crop(ff Features) Features
 }
 
 // Segment represents a contiguous region.
@@ -52,9 +53,28 @@ func (s Segment) Complement() Region {
 func (s Segment) Locate(seq Sequence) Sequence {
 	head, tail := Unpack(s)
 	if tail < head {
-		return Reverse(Complement(Slice(seq, tail, head)))
+		return Apply(seq, Slicer(tail, head), Reverse, Complement)
 	}
 	return Slice(seq, head, tail)
+}
+
+// Crop the features to the region.
+func (s Segment) Crop(ff Features) Features {
+	head, tail := Unpack(s)
+	if tail < head {
+		gg := make(Features, len(ff))
+		for i, f := range ff {
+			gg[i] = Feature{f.Key, f.Loc.Complement(), f.Props.Clone()}
+		}
+		return Segment{tail, head}.Crop(gg)
+	}
+	ff = ff.Filter(Overlap(head, tail))
+	gg := Features{}
+	for _, f := range ff {
+		loc := f.Loc.Expand(tail, intMin).Expand(0, -head)
+		gg = gg.Insert(NewFeature(f.Key, loc, f.Props.Clone()))
+	}
+	return gg
 }
 
 // Regions is a slice or Region objects.
@@ -153,6 +173,21 @@ func (rr Regions) Locate(seq Sequence) Sequence {
 		seqs[i] = r.Locate(seq)
 	}
 	return Concat(seqs...)
+}
+
+// Crop the features to the region.
+func (rr Regions) Crop(ff Features) Features {
+	gg := Features{}
+	ss := flattenRegion(rr)
+	offset := 0
+	for _, s := range ss {
+		for _, f := range s.Crop(ff) {
+			loc := f.Loc.Expand(0, offset)
+			gg = gg.Insert(NewFeature(f.Key, loc, f.Props.Clone()))
+		}
+		offset += s.Len()
+	}
+	return gg
 }
 
 // BySegment attaches the methods of sort.Interface to []Segment, sorting in

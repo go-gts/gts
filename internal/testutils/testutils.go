@@ -1,14 +1,22 @@
 package testutils
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/go-gts/gts/internal/diff"
 	"github.com/go-test/deep"
 )
+
+// RunCase wraps the test case with a subtest with the given index.
+func RunCase(t *testing.T, i int, f func(t *testing.T)) {
+	t.Helper()
+	t.Run(fmt.Sprintf("case %d", i+1), f)
+}
 
 // ReadGolden will attempt to read the golden file associated to the test.
 func ReadGolden(t *testing.T) string {
@@ -56,11 +64,16 @@ func Differs(t *testing.T, a, b interface{}) {
 	}
 }
 
+func escape(s string) string {
+	s = strconv.Quote(s)
+	return s[1 : len(s)-1]
+}
+
 // Diff checks the equality of two strings and reports its diff if they differ.
 func Diff(t *testing.T, a, b string) {
 	t.Helper()
 	if a != b {
-		ops := diff.Diff(a, b)
+		ops := diff.Diff(escape(a), escape(b))
 		ss := make([]string, len(ops))
 		for i, op := range ops {
 			ss[i] = op.String()

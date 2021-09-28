@@ -7,20 +7,22 @@ import (
 )
 
 var topologyTests = []Topology{
-	Linear,
-	Circular,
+	Linear,   // case 1
+	Circular, // case 2
 }
 
 func TestTopology(t *testing.T) {
-	for _, in := range topologyTests {
-		s := in.String()
-		out, err := AsTopology(s)
-		if err != nil {
-			t.Errorf("AsTopology(%q): %v", s, err)
-		}
-		if in != out {
-			t.Errorf("AsTopology(%q) = %q, expected %q", in.String(), out.String(), in.String())
-		}
+	for i, in := range topologyTests {
+		testutils.RunCase(t, i, func(t *testing.T) {
+			s := in.String()
+			out, err := AsTopology(s)
+			if err != nil {
+				t.Errorf("AsTopology(%q): %v", s, err)
+			}
+			if in != out {
+				t.Errorf("AsTopology(%q) = %q, expected %q", in.String(), out.String(), in.String())
+			}
+		})
 	}
 }
 
@@ -32,28 +34,5 @@ func TestTopologyFail(t *testing.T) {
 	}
 	if out.String() != "" {
 		t.Errorf("Topology(%d).String() = %q, expected %q", out, out.String(), in)
-	}
-}
-
-func (wt seqWithTest) WithTopology(t Topology) Sequence {
-	if _, ok := wt.info.(Topology); ok {
-		return wt.WithInfo(t)
-	}
-	return wt
-}
-
-var withTopologyTests = []struct {
-	in  Sequence
-	out Sequence
-}{
-	{New(nil, nil, nil), New(nil, nil, nil)},
-	{newSeqWithTest(nil, nil, nil), newSeqWithTest(nil, nil, nil)},
-	{newSeqWithTest(Linear, nil, nil), newSeqWithTest(Circular, nil, nil)},
-}
-
-func TestWithTopology(t *testing.T) {
-	for _, tt := range withTopologyTests {
-		out := WithTopology(tt.in, Circular)
-		testutils.Equals(t, out, tt.out)
 	}
 }

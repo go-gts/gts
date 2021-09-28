@@ -13,6 +13,46 @@ import (
 	"github.com/go-pars/pars"
 )
 
+// INSDCSplit splits the string with the INSDC list convention.
+func INSDCSplit(s string) []string {
+	s = strings.TrimSuffix(s, ".")
+	if len(s) == 0 {
+		return nil
+	}
+	return strings.Split(s, "; ")
+}
+
+// INSDCJoin joints the string with the INSDC list convention.
+func INSDCJoin(ss []string) string {
+	return strings.Join(ss, "; ") + "."
+}
+
+func parseReferenceInfo(s string) pars.Parser {
+	prefix := fmt.Sprintf("(%s ", s)
+	parser := pars.Seq(pars.Int, " to ", pars.Int).Map(func(result *pars.Result) error {
+		start := result.Children[0].Value.(int) - 1
+		end := result.Children[2].Value.(int)
+		result.SetValue(gts.Range(start, end))
+		return nil
+	})
+	return pars.Seq(
+		prefix,
+		parser,
+		pars.Many(pars.Seq("; ", parser).Child(1)),
+		')',
+	).Map(func(result *pars.Result) error {
+		head := result.Children[1].Value.(gts.Ranged)
+		tail := result.Children[2].Children
+		locs := make([]gts.Ranged, len(tail)+1)
+		locs[0] = head
+		for i, r := range tail {
+			locs[i+1] = r.Value.(gts.Ranged)
+		}
+		result.SetValue(locs)
+		return nil
+	})
+}
+
 // QualifierIO represents a single qualifier name-value pair.
 type QualifierIO [2]string
 
@@ -322,15 +362,19 @@ func QualifierParser(prefix string) pars.Parser {
 
 // INSDCFormatter formats a Feature object with the given prefix and depth.
 type INSDCFormatter struct {
-	Table  []gts.Feature
-	Prefix string
-	Depth  int
+	Features gts.Features
+	Prefix   string
+	Depth    int
 }
 
 // String satisfies the fmt.Stringer interface.
 func (fmtr INSDCFormatter) String() string {
 	b := strings.Builder{}
-	for i, f := range fmtr.Table {
+	ff := append(
+		fmtr.Features.Filter(gts.Key("source")),
+		fmtr.Features.Filter(gts.Not(gts.Key("source")))...,
+	)
+	for i, f := range ff {
 		if i != 0 {
 			b.WriteByte('\n')
 		}
@@ -451,7 +495,7 @@ func INSDCTableParser(prefix string) pars.Parser {
 			}
 		}
 
-		ff := []gts.Feature{gts.NewFeature(key, loc, props)}
+		ff := gts.Features{gts.NewFeature(key, loc, props)}
 
 		for keylineParser(state, result) == nil {
 			tmp := result.Value.(keyline)

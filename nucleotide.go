@@ -24,28 +24,22 @@ func replaceBytes(p, old, new []byte) []byte {
 // representation. All 'A's will be complemented to a 'T'. If the resulting
 // sequence is intended to be RNA, use Transcribe instead.
 func Complement(seq Sequence) Sequence {
-	p := replaceBytes(
+	return Seq(replaceBytes(
 		seq.Bytes(),
 		[]byte("ACGTURYKMBDHVacgturykmbdhv"),
 		[]byte("TGCAAYRMKVHDBtgcaayrmkvhdb"),
-	)
-	ff := make([]Feature, len(seq.Features()))
-	for i, f := range seq.Features() {
-		ff[i] = Feature{f.Key, f.Loc.Complement(), f.Props.Clone()}
-	}
-	return WithBytes(WithFeatures(seq, ff), p)
+	))
 }
 
 // Transcribe returns the complement RNA sequence based on the FASTA sequence
 // representation. All 'A's will be transcribed to a 'U'. If the resulting
 // sequence is intended to be DNA, use Complement instead.
 func Transcribe(seq Sequence) Sequence {
-	p := replaceBytes(
+	return Seq(replaceBytes(
 		seq.Bytes(),
 		[]byte("ACGTURYKMBDHVacgturykmbdhv"),
 		[]byte("UGCAAYRMKVHDBugcaayrmkvhdb"),
-	)
-	return WithBytes(seq, p)
+	))
 }
 
 // Match for an oligomer within a sequence. The ambiguous nucleotides in the

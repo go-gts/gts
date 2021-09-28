@@ -39,19 +39,3 @@ func (t Topology) String() string {
 		return ""
 	}
 }
-
-type withTopology interface {
-	WithTopology(t Topology) Sequence
-}
-
-// WithTopology creates a shallow copy of the given Sequence object and swaps
-// the topology value with the given topology. If the sequence implements the
-// `WithTopology(t Topoplogy) Sequence` method, it will be called instead.
-func WithTopology(seq Sequence, t Topology) Sequence {
-	switch v := seq.(type) {
-	case withTopology:
-		return v.WithTopology(t)
-	default:
-		return seq
-	}
-}

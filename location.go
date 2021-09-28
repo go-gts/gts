@@ -327,13 +327,17 @@ type Partial struct {
 	Partial3 bool
 }
 
+func (p Partial) flip() Partial {
+	return Partial{p.Partial3, p.Partial5}
+}
+
 // Partiality values.
-var (
-	Complete    = Partial{false, false}
-	Partial5    = Partial{true, false}
-	Partial3    = Partial{false, true}
-	PartialBoth = Partial{true, true}
-)
+// var (
+// 	Complete    = Partial{false, false}
+// 	Partial5    = Partial{true, false}
+// 	Partial3    = Partial{false, true}
+// 	PartialBoth = Partial{true, true}
+// )
 
 // Ranged represents a contiguous region of bases in a sequence. The starting
 // and ending positions of a Ranged may be partial.
@@ -343,19 +347,21 @@ type Ranged struct {
 	Partial Partial
 }
 
-func asComplete(loc Location) Location {
+// AsComplete converts partial range locations into complete range locations in
+// a recurrent manner.
+func AsComplete(loc Location) Location {
 	switch v := loc.(type) {
 	case Ranged:
-		v.Partial = Complete
+		v.Partial = Partial{false, false}
 		return v
 	case Joined:
 		for i, u := range v {
-			v[i] = asComplete(u)
+			v[i] = AsComplete(u)
 		}
 		return v
 	case Ordered:
 		for i, u := range v {
-			v[i] = asComplete(u)
+			v[i] = AsComplete(u)
 		}
 		return v
 	default:
@@ -366,7 +372,7 @@ func asComplete(loc Location) Location {
 // PartialRange returns the range between the start and end positions where the
 // specified ends are partial. They can be Complete, Partial5, Partial3, or
 // PartialBoth.
-func PartialRange(start, end int, partial Partial) Ranged {
+func partialRange(start, end int, partial Partial) Ranged {
 	if end <= start {
 		panic(fmt.Errorf("Ranged bounds out of range [%d:%d]", start, end))
 	}
@@ -380,7 +386,22 @@ func PartialRange(start, end int, partial Partial) Ranged {
 
 // Range returns the complete range between the start and end positions.
 func Range(start, end int) Ranged {
-	return PartialRange(start, end, Complete)
+	return partialRange(start, end, Partial{false, false})
+}
+
+// Partial5 returns a range with the 5' end marked as partial.
+func Partial5(start, end int) Ranged {
+	return partialRange(start, end, Partial{true, false})
+}
+
+// Partial3 returns a range with the 3' end marked as partial.
+func Partial3(start, end int) Ranged {
+	return partialRange(start, end, Partial{false, true})
+}
+
+// PartialBoth returns a range with the both ends marked as partial.
+func PartialBoth(start, end int) Ranged {
+	return partialRange(start, end, Partial{true, true})
 }
 
 func (ranged Ranged) span() (int, int) {
@@ -420,14 +441,7 @@ func (ranged Ranged) Complement() Location {
 
 // Reverse returns the reversed location for the given length sequence.
 func (ranged Ranged) Reverse(length int) Location {
-	ret := PartialRange(length-ranged.End, length-ranged.Start, ranged.Partial)
-	switch ret.Partial {
-	case Partial5:
-		ret.Partial = Partial3
-	case Partial3:
-		ret.Partial = Partial5
-	}
-	return ret
+	return partialRange(length-ranged.End, length-ranged.Start, ranged.Partial.flip())
 }
 
 // Normalize returns a location normalized for the given length sequence.
@@ -437,14 +451,14 @@ func (ranged Ranged) Normalize(length int) Location {
 	}
 	start, end := ranged.Start%length, (ranged.End-1)%length+1
 	if start < end {
-		return PartialRange(start, end, ranged.Partial)
+		return partialRange(start, end, ranged.Partial)
 	}
 	left, right := Range(start, length), Range(0, end)
 	if ranged.Partial.Partial5 {
-		left.Partial = Partial5
+		left.Partial.Partial5 = true
 	}
 	if ranged.Partial.Partial3 {
-		right.Partial = Partial3
+		right.Partial.Partial3 = true
 	}
 	return Join(left, right)
 }
@@ -461,10 +475,10 @@ func (ranged Ranged) Shift(i, n int) Location {
 	if start < i && i < end {
 		left, right := Range(start, i), Range(i+n, end+n)
 		if partial.Partial5 {
-			left.Partial = Partial5
+			left.Partial.Partial5 = true
 		}
 		if partial.Partial3 {
-			right.Partial = Partial3
+			right.Partial.Partial3 = true
 		}
 		return Join(left, right)
 	}
@@ -485,6 +499,9 @@ func (ranged Ranged) Expand(i, n int) Location {
 	start, end, partial := ranged.Start, ranged.End, ranged.Partial
 	if n < 0 {
 		j := i - n
+		if n == intMin {
+			j = intMax
+		}
 		if i <= start && start < j {
 			partial.Partial5 = true
 		}
@@ -615,15 +632,15 @@ func (ll *LocationList) Slice() []Location {
 // be joined with the last element to form a contiguous Location location, the
 // last element will be replaced with the joined Location object. If the force
 // option is false, then only partial ranges will be joined.
-func (ll *LocationList) Push(loc Location, force bool) {
+func (ll *LocationList) Push(loc Location) {
 	if ll.Next != nil {
-		ll.Next.Push(loc, force)
+		ll.Next.Push(loc)
 		return
 	}
 
 	if joined, ok := loc.(Joined); ok {
 		for i := range joined {
-			ll.Push(joined[i], force)
+			ll.Push(joined[i])
 		}
 		return
 	}
@@ -680,7 +697,7 @@ func (ll *LocationList) Push(loc Location, force bool) {
 				return
 			}
 		case Ranged:
-			if ((v.Partial.Partial3 && u.Partial.Partial5) || force) && v.End == u.Start {
+			if v.End == u.Start {
 				partial := Partial{v.Partial.Partial5, u.Partial.Partial3}
 				ll.Data = Ranged{v.Start, u.End, partial}
 				return
@@ -690,7 +707,7 @@ func (ll *LocationList) Push(loc Location, force bool) {
 	case Complemented:
 		if u, ok := loc.(Complemented); ok {
 			tmp := LocationList{u.Location, nil}
-			tmp.Push(v.Location, force)
+			tmp.Push(v.Location)
 			ll.Data = Complemented{Join(tmp.Slice()...)}
 			return
 		}
@@ -712,7 +729,7 @@ type Joined []Location
 func Join(locs ...Location) Location {
 	list := LocationList{}
 	for _, loc := range locs {
-		list.Push(loc, true)
+		list.Push(loc)
 	}
 
 	switch list.Len() {

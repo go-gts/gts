@@ -1,15 +1,18 @@
 package gts
 
+import "math/bits"
+
 // Unpack the integer pair to its elements.
 func Unpack(p [2]int) (int, int) {
 	return p[0], p[1]
 }
 
-const intSize = 32 << (^uint(0) >> 63)
+const intMin = -1 << (bits.UintSize - 1)
+const intMax = 1 << (bits.UintSize - 2)
 
 // Abs returns the absolute value of the given integer.
 func Abs(x int) int {
-	y := x >> (intSize - 1)
+	y := x >> (bits.UintSize - 1)
 	return (x ^ y) - y
 }
 

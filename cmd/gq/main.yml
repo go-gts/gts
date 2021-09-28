@@ -1,0 +1,153 @@
+---
+version: 0.29.0
+name: gq
+info: the genome transformation subprograms command line tool
+desc: |
+  **GQ** provides basic manipulation utilities for genome flatfiles. The command
+  consists of a number of subcommands listed in the **COMMANDS** section.
+cmds:
+  - name: select
+    info: select features using the given feature selector(s)
+    desc: |
+      **gq-select** takes a _selector_ and a single sequence input, and selects the
+      features which satisfy the _selector_ criteria. If the sequence input is
+      ommited, standard input will be read instead. A _selector_ takes the form
+      `[feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]...`. See
+      gq-selector(7) for more details.
+
+      **gq-select** serves as a central command, allowing the user to filter out
+      features for use in other commands like gq-extract(1) and gq-query(1). See
+      the EXAMPLES section for more insight.
+    args:
+      pos:
+        - name: seqin
+          type: string
+          info: "input sequence file (may be omitted if standard input is provided)"
+          desc: |
+            Input sequence file (may be omitted if standard input is provided). See
+            gq-seqin(7) for a list of currently supported list of sequence formats.
+        - name: selector
+          type: extra
+          info: "feature selector (syntax: [feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]...)"
+          desc: |
+            Feature selector
+            (syntax: [feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]...).
+            See gq-selector(7) for more details.
+      opt:
+        - name: output
+          abbr: o
+          type: string
+          init: "-"
+          info: "output sequence file (specifying `-` will force standard output)"
+          desc: |
+            Output sequence file (specifying `-` will force standard output). The
+            output file format will be automatically detected from the filename if none
+            is specified with the `-F` or `--format` option.
+        - name: strand
+          abbr: s
+          type: string
+          init: both
+          info: "strand to select features from (`both`, `forward`, or `reverse`)"
+          desc: |
+            Strand to select features from (`both`, `forward`, or `reverse`). If
+            `forward` is specified, only features that reside strictly on the forward
+            strand (features with non-complement locations or join/order locations whose
+            locations are all non-complement). The inverse is true for `reverse`.
+        - name: invert-match
+          abbr: v
+          type: switch
+          init: both
+          info: "select features that do not match the given criteria"
+          desc: "Select features that do not match the given criteria."
+    sect:
+      - name: examples
+        body: |
+          Select all of the CDS features:
+
+              $ gq select CDS <seqin>
+
+          Select all features with `locus_tag` of `b0001`:
+
+              $ gq select /locus_tag=b0001 <seqin>
+
+          Select all features with the qualifier `translation`:
+
+              $ gq select /translation <seqin>
+
+          Select all features with a qualifier value matching `recombinase`
+
+              $ gq select /=recombinase <seqin>
+      - name: bugs
+        body: "**gq-select** currently has no known bugs."
+      - name: author
+        body: "**gq-select** is written and maintained by Kotone Itaya."
+      - name: see also
+        body: gq(1), gq-query(1), gq-selector(7), gq-seqin(7), gq-seqout(7)
+docs:
+  - name: seqin
+    info: input sequence formats supported in GQ
+    sect:
+      - name: synopsis
+        body: |
+          * `GenBank`
+          * `FASTA`
+      - name: description
+        body: |
+          **GQ** implements parsers for a number of sequence formats, and have plans for
+          implementing more commonly used sequence formats.
+      - name: see also
+        body: gq(1), gq-seqout(7)
+  - name: seqout
+    info: output sequence formats supported in GQ
+    sect:
+      - name: synopsis
+        body: |
+          * `GenBank`
+          * `FASTA`
+      - name: description
+        body: |
+          **GQ** implements parsers for a number of sequence formats, and have plans for
+          implementing more commonly used sequence formats.
+      - name: see also
+        body: gq(1), gq-seqin(7)
+  - name: selector
+    info: patterns to select sequence features
+    chpt: 7
+    sect:
+      - name: synopsis
+        body: "[feature_key][/[qualifier1][=regexp1]][/[qualifier2][=regexp2]]..."
+      - name: description
+        body: |
+          **gq-selector**s are patterns for selecting sequence features that match the
+          given _selector_. A _selector_ consists of a single feature key and/or multiple
+          qualifier matchers. A feature key must currently be a perfect match
+          (case sensitive) and if omitted all feature keys will match. A qualifier
+          matcher has two parts: a qualifier name and a regular expression delimited by
+          the `=` sign. The qualifier name must currently be a perfect match (case
+          sensitive) and if omitted all qualifier names will match. The regular
+          expression will be tested against the contents of the qualifier value. If
+          omitted, any features that has the qualifier with the given qualifier name will
+          match.
+      - name: examples
+        body: |
+          Select all `gene` features:
+
+              gene
+
+          Select all `CDS` features that produce a DNA-binding `product`:
+
+              CDS/product=DNA-binding
+
+          Select all features with `locus_tag` of `b0001`:
+
+              /locus_tag=b0001
+
+          Select all features with the qualifier `translation`:
+
+              /translation
+
+          Select all features with a qualifier value matching `recombinase`
+
+              /=recombinase
+      - name: see also
+        body: gq(1), gq-select(1), gq-locator(7)

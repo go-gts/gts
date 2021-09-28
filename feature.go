@@ -1,73 +1,26 @@
 package gts
 
 import (
-	"fmt"
 	"regexp"
 	"sort"
 	"strings"
 )
 
+// Feature represents a generic sequence feature. A Feature consists of three
+// main values: a key representing the type of feature, the location of the
+// feature, and its properties. The key should be restricted by the controlled
+// vocabulary of the feature specification for the represented sequence format.
+// Properties are represented as an ordered dictionary with multiple values for
+// each key.
 type Feature struct {
 	Key   string
 	Loc   Location
 	Props Props
 }
 
+// NewFeature returns a new feature with the given arguments.
 func NewFeature(key string, loc Location, props Props) Feature {
 	return Feature{key, loc, props}
-}
-
-// Repair attempts to reconstruct features by joining features with identical
-// feature keys and values which have adjacent locations.
-func Repair(ff []Feature) []Feature {
-	gg := make([]Feature, len(ff))
-	copy(gg, ff)
-
-	// Identify the features with similar keys and values.
-	index := make(map[string][]int)
-	for i, f := range gg {
-		key := fmt.Sprintf("%s:%v", f.Key, f.Props)
-		index[key] = append(index[key], i)
-	}
-
-	keep := make([]int, 0, len(gg))
-	for _, indices := range index {
-		if len(indices) > 0 {
-			locs := make([]Location, len(indices))
-			for j, i := range indices {
-				locs[j] = gg[i].Loc
-			}
-			sort.Sort(Locations(locs))
-
-			force := ff[indices[0]].Key == "source"
-			list := LocationList{}
-			for _, loc := range locs {
-				list.Push(loc, force)
-			}
-
-			// DISCUSS: Should we join these locations?
-			locs = list.Slice()
-
-			// Some locations were merged.
-			if len(locs) < len(indices) {
-				for i, loc := range locs {
-					gg[indices[i]].Loc = loc
-				}
-			}
-			keep = append(keep, indices[:len(locs)]...)
-		}
-	}
-
-	sort.Sort(sort.IntSlice(keep))
-
-	i := 0
-	for _, j := range keep {
-		gg[i] = gg[j]
-		i++
-	}
-	gg = gg[:len(keep)]
-
-	return gg
 }
 
 // Filter represents a filtering function for a Feature. It should return a
@@ -243,19 +196,19 @@ func ReverseStrand(f Feature) bool {
 	return CheckStrand(f.Loc) == StrandReverse
 }
 
-// FeatureSlice represents a slice of Features.
-type FeatureSlice []Feature
+// Features represents a slice of Features.
+type Features []Feature
 
 // Filter returns a FeatureSlice containing the features that match the given
 // Filter within this FeatureSlice.
-func (ff FeatureSlice) Filter(filter Filter) FeatureSlice {
+func (ff Features) Filter(filter Filter) Features {
 	indices := make([]int, 0, len(ff))
 	for i, f := range ff {
 		if filter(NewFeature(f.Key, f.Loc, f.Props)) {
 			indices = append(indices, i)
 		}
 	}
-	gg := make(FeatureSlice, len(indices))
+	gg := make(Features, len(indices))
 	for i, index := range indices {
 		gg[i] = ff[index]
 	}
@@ -263,40 +216,27 @@ func (ff FeatureSlice) Filter(filter Filter) FeatureSlice {
 }
 
 // Len is the number of elements in the collection.
-func (ff FeatureSlice) Len() int {
+func (ff Features) Len() int {
 	return len(ff)
 }
 
 // Less reports whether the element with index i should sort before the element
 // with index j.
-func (ff FeatureSlice) Less(i, j int) bool {
-	f, g := ff[i], ff[j]
-	if f.Key == "source" && g.Key != "source" {
-		return true
-	}
-	if f.Key != "source" && g.Key == "source" {
-		return false
-	}
-	return LocationLess(f.Loc, g.Loc)
+func (ff Features) Less(i, j int) bool {
+	return LocationLess(ff[i].Loc, ff[j].Loc)
 }
 
 // Swap the elements with indexes i and j.
-func (ff FeatureSlice) Swap(i, j int) {
+func (ff Features) Swap(i, j int) {
 	ff[i], ff[j] = ff[j], ff[i]
 }
 
 // Insert takes the given Feature and inserts it into the sorted position in
 // the FeatureSlice.
-func (ff FeatureSlice) Insert(f Feature) FeatureSlice {
-	i := 0
-	for i < len(ff) && ff[i].Key == "source" {
-		i++
-	}
-	if f.Key != "source" {
-		i += sort.Search(len(ff[i:]), func(j int) bool {
-			return LocationLess(f.Loc, ff[i+j].Loc)
-		})
-	}
+func (ff Features) Insert(f Feature) Features {
+	i := sort.Search(len(ff), func(i int) bool {
+		return LocationLess(f.Loc, ff[i].Loc)
+	})
 
 	ff = append(ff, Feature{})
 	copy(ff[i+1:], ff[i:])

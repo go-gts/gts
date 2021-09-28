@@ -2,6 +2,14 @@ package gts
 
 type Props [][]string
 
+func (props Props) Len() int {
+	n := 0
+	for i := range props {
+		n += len(props[i])
+	}
+	return n - len(props)
+}
+
 func (props Props) Index(key string) int {
 	for i := range props {
 		if props[i][0] == key {

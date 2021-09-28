@@ -8,10 +8,9 @@ import (
 )
 
 // Locator is a function that maps features to its regions.
-type Locator func(seq Sequence) Regions
+type Locator func(ff Features, seq Sequence) Regions
 
-func allLocator(seq Sequence) Regions {
-	ff := seq.Features()
+func allLocator(ff Features, seq Sequence) Regions {
 	rr := make(Regions, len(ff))
 	for i, f := range ff {
 		rr[i] = f.Loc.Region()
@@ -20,8 +19,8 @@ func allLocator(seq Sequence) Regions {
 }
 
 func resizeLocator(locate Locator, mod Modifier) Locator {
-	return func(seq Sequence) Regions {
-		rr := locate(seq)
+	return func(ff Features, seq Sequence) Regions {
+		rr := locate(ff, seq)
 		for i, r := range rr {
 			rr[i] = r.Resize(mod)
 		}
@@ -30,21 +29,20 @@ func resizeLocator(locate Locator, mod Modifier) Locator {
 }
 
 func relativeLocator(mod Modifier) Locator {
-	return func(seq Sequence) Regions {
+	return func(ff Features, seq Sequence) Regions {
 		seg := Segment{0, Len(seq)}
 		return Regions{seg.Resize(mod)}
 	}
 }
 
 func locationLocator(loc Location) Locator {
-	return func(seq Sequence) Regions {
+	return func(ff Features, seq Sequence) Regions {
 		return Regions{loc.Region()}
 	}
 }
 
 func filterLocator(f Filter) Locator {
-	return func(seq Sequence) Regions {
-		ff := seq.Features()
+	return func(ff Features, seq Sequence) Regions {
 		ff = ff.Filter(f)
 		rr := make(Regions, len(ff))
 		for i, f := range ff {

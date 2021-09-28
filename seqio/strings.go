@@ -1,14 +1,11 @@
 package seqio
 
-import "strings"
+import (
+	"strings"
+)
 
-// FlatFileSplit splits the string with the flatfile convention.
-func FlatFileSplit(s string) []string {
-	s = strings.TrimSuffix(s, ".")
-	if len(s) == 0 {
-		return nil
-	}
-	return strings.Split(s, "; ")
+func multiLineString(ss ...string) string {
+	return strings.Join(ss, "\n")
 }
 
 // AddPrefix adds the given prefix after each newline.

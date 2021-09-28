@@ -1,6 +1,9 @@
 package gts
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"strings"
+)
 
 func jsonify(v interface{}) string {
 	p, err := json.Marshal(v)
@@ -8,4 +11,8 @@ func jsonify(v interface{}) string {
 		panic(err)
 	}
 	return string(p)
+}
+
+func multiLineString(ss ...string) string {
+	return strings.Join(ss, "\n")
 }
