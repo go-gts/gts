@@ -6,5 +6,5 @@ import "github.com/go-gts/flags"
 var Version = flags.Version{
 	Major: 0,
 	Minor: 28,
-	Patch: 0,
+	Patch: 1,
 }
