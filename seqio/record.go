@@ -14,7 +14,7 @@ type Record struct {
 	Sequence gts.Sequence
 }
 
-func (rec Record) Manipulate(manip Manipulator, i int) error {
+func (rec Record) Manipulate(manip FeatureHandler, i int) error {
 	cb, err := manip(i, rec.Header, rec.Features)
 	if err != nil {
 		return err

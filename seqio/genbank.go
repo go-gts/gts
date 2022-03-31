@@ -799,94 +799,109 @@ func GenBankParser(state *pars.State, result *pars.Result) error {
 	return nil
 }
 
-type GenBankIOStream struct {
+type GenBankIStream struct {
 	state  *pars.State
 	result *pars.Result
 	index  int
+	peeked bool
+}
 
+func NewGenBankIStream(r io.Reader) *GenBankIStream {
+	return &GenBankIStream{
+		state:  pars.NewState(r),
+		result: &pars.Result{},
+		index:  0,
+		peeked: false,
+	}
+}
+
+func (istream *GenBankIStream) Peek() error {
+	if istream.peeked {
+		return nil
+	}
+	istream.state.Push()
+	if err := GenBankParser(istream.state, istream.result); err != nil {
+		istream.state.Drop()
+		return err
+	}
+	istream.peeked = true
+	return nil
+}
+
+func (istream *GenBankIStream) Next(fh FeatureHandler) error {
+	if err := istream.Peek(); err != nil {
+		return err
+	}
+	rec := istream.result.Value.(Record)
+	if err := rec.Manipulate(fh, istream.index); err != nil {
+		return err
+	}
+	istream.index++
+	istream.peeked = false
+	return nil
+}
+
+func (istream *GenBankIStream) ForEach(fh FeatureHandler) error {
+	var err error
+	for err == nil {
+		err = istream.Next(fh)
+	}
+	if errors.Is(err, io.EOF) {
+		err = nil
+	}
+	return err
+}
+
+type GenBankOStream struct {
 	w  io.Writer
 	hh []GenBankHeader
 	ff []gts.Features
 	ss []gts.Sequence
 }
 
-func NewGenBankIOStream(state *pars.State, w io.Writer) IOStream {
-	return &GenBankIOStream{state, &pars.Result{}, 0, w, nil, nil, nil}
-}
-
-func (stream *GenBankIOStream) Peek() error {
-	stream.state.Push()
-	if err := GenBankParser(stream.state, stream.result); err != nil {
-		stream.state.Pop()
-		return err
-	}
-	stream.state.Drop()
-	return nil
-}
-
-func (stream *GenBankIOStream) Next(manip Manipulator) error {
-	if stream.result.Value == nil {
-		if err := stream.Peek(); err != nil {
-			return err
-		}
-	}
-
-	rec := stream.result.Value.(Record)
-	if err := rec.Manipulate(manip, stream.index); err != nil {
-		return err
-	}
-
-	stream.result.SetValue(nil)
-	stream.index++
-
-	return nil
-}
-
-func (stream *GenBankIOStream) ForEach(manip Manipulator) error {
-	for {
-		if err := stream.Next(manip); err != nil {
-			if dig(err) == io.EOF {
-				return nil
-			}
-			return err
-		}
+func NewGenBankOstream(w io.Writer) OStream {
+	return &GenBankOStream{
+		w:  w,
+		hh: nil,
+		ff: nil,
+		ss: nil,
 	}
 }
 
-func (stream *GenBankIOStream) PushHeader(header interface{}) error {
+func (ostream *GenBankOStream) PushHeader(header interface{}) error {
 	switch v := header.(type) {
 	case GenBankHeader:
-		stream.hh = append(stream.hh, v)
-		return stream.tryWrite()
+		ostream.hh = append(ostream.hh, v)
+		return ostream.tryWrite()
 	default:
 		return fmt.Errorf("gts does not know how to format a sequence with header type `%T` as GenBank", v)
 	}
 }
 
-func (stream *GenBankIOStream) PushFeatures(ff gts.Features) error {
-	stream.ff = append(stream.ff, ff)
-	return stream.tryWrite()
+func (ostream *GenBankOStream) PushFeatures(ff gts.Features) error {
+	ostream.ff = append(ostream.ff, ff)
+	return ostream.tryWrite()
 }
 
-func (stream *GenBankIOStream) PushSequence(seq gts.Sequence) error {
+func (ostream *GenBankOStream) PushSequence(seq gts.Sequence) error {
 	if contig, ok := seq.(Contig); ok && contig.Accession == "" {
 		return errors.New("invalid CONTIG")
 
 	}
-	stream.ss = append(stream.ss, seq)
-	return stream.tryWrite()
+	ostream.ss = append(ostream.ss, seq)
+	return ostream.tryWrite()
 }
 
-func (stream *GenBankIOStream) tryWrite() error {
-	if len(stream.hh) == 0 || len(stream.ff) == 0 || len(stream.ss) == 0 {
+func (ostream *GenBankOStream) tryWrite() error {
+	if len(ostream.hh) == 0 || len(ostream.ff) == 0 || len(ostream.ss) == 0 {
 		return nil
 	}
 
-	header, ff, seq := stream.hh[0], stream.ff[0], stream.ss[0]
+	header, ff, seq := ostream.hh[0], ostream.ff[0], ostream.ss[0]
 
-	stream.hh = stream.hh[1:]
-	stream.ff = stream.ff[1:]
-	stream.ss = stream.ss[1:]
+	ostream.hh = ostream.hh[1:]
+	ostream.ff = ostream.ff[1:]
+	ostream.ss = ostream.ss[1:]
 
 	sources := ff.Filter(gts.Key("source"))
 	others := ff.Filter(gts.Not(gts.Key("source")))
@@ -1007,7 +1022,7 @@ func (stream *GenBankIOStream) tryWrite() error {
 
 	b.WriteString("//\n")
 
-	_, err := stream.w.Write(b.Bytes())
+	_, err := ostream.w.Write(b.Bytes())
 	return err
 }
 

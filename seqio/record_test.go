@@ -12,12 +12,12 @@ var errRecordManipulate = errors.New("Record Manipulate error")
 var errManipulatorCallback = errors.New("Manipulator Callback error")
 
 var recordManipulateTests = []struct {
-	manip Manipulator
+	manip FeatureHandler
 	err   error
 }{
 	// case 1
 	{
-		func(i int, header interface{}, ff gts.Features) (Callback, error) {
+		func(i int, header interface{}, ff gts.Features) (SequenceHandler, error) {
 			return func(seq gts.Sequence) error {
 				return nil
 			}, nil
@@ -27,7 +27,7 @@ var recordManipulateTests = []struct {
 
 	// case 2
 	{
-		func(i int, header interface{}, ff gts.Features) (Callback, error) {
+		func(i int, header interface{}, ff gts.Features) (SequenceHandler, error) {
 			return nil, errRecordManipulate
 		},
 		errRecordManipulate,
@@ -35,7 +35,7 @@ var recordManipulateTests = []struct {
 
 	// case 3
 	{
-		func(i int, header interface{}, ff gts.Features) (Callback, error) {
+		func(i int, header interface{}, ff gts.Features) (SequenceHandler, error) {
 			return func(seq gts.Sequence) error {
 				return errManipulatorCallback
 			}, nil
@@ -45,7 +45,7 @@ var recordManipulateTests = []struct {
 
 	// case 4
 	{
-		func(i int, header interface{}, ff gts.Features) (Callback, error) {
+		func(i int, header interface{}, ff gts.Features) (SequenceHandler, error) {
 			return nil, nil
 		},
 		errNilManipulatorCallback,

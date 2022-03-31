@@ -85,13 +85,13 @@ func TestFastaIOStream(t *testing.T) {
 		}
 	}
 
-	if stream.ForEach(func(i int, header interface{}, ff gts.Features) (Callback, error) {
+	if stream.ForEach(func(i int, header interface{}, ff gts.Features) (SequenceHandler, error) {
 		return nil, errors.New("error")
 	}) == nil {
 		t.Error("stream.ForEach: expected error")
 	}
 
-	if stream.ForEach(func(i int, header interface{}, ff gts.Features) (Callback, error) {
+	if stream.ForEach(func(i int, header interface{}, ff gts.Features) (SequenceHandler, error) {
 		return func(seq gts.Sequence) error {
 			return errors.New("error")
 		}, nil
@@ -99,7 +99,7 @@ func TestFastaIOStream(t *testing.T) {
 		t.Error("stream.ForEach: expected error")
 	}
 
-	manip := func(i int, header interface{}, ff gts.Features) (Callback, error) {
+	manip := func(i int, header interface{}, ff gts.Features) (SequenceHandler, error) {
 		return func(seq gts.Sequence) error {
 			testutils.RunCase(t, i, func(t *testing.T) {
 				testutils.Equals(t, header, fastaTestRecords[i].Header)

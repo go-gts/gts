@@ -17,21 +17,21 @@ import (
 )
 
 func TestGenBankHeaderSlice(t *testing.T) {
-	b := &bytes.Buffer{}
-
 	in := testutils.ReadTestfile(t, "NC_001422.gb")
-	state := pars.FromString(in)
-	stream := NewGenBankIOStream(state, b)
+	out := &bytes.Buffer{}
+
+	istream := NewGenBankIStream(strings.NewReader(in))
+	ostream := NewGenBankOstream(out)
 
 	exp := testutils.ReadTestfile(t, "NC_001422_part.gb")
 
-	err := stream.ForEach(func(i int, header interface{}, ff gts.Features) (Callback, error) {
+	err := istream.ForEach(func(i int, header interface{}, ff gts.Features) (SequenceHandler, error) {
 		switch v := header.(type) {
 		case GenBankHeader:
-			if err := stream.PushHeader(v.Slice(2379, 2512)); err != nil {
+			if err := ostream.PushHeader(v.Slice(2379, 2512)); err != nil {
 				return nil, err
 			}
-			if err := stream.PushFeatures(gts.Segment{2379, 2512}.Crop(ff)); err != nil {
+			if err := ostream.PushFeatures(gts.Segment{2379, 2512}.Crop(ff)); err != nil {
 				return nil, err
 			}
 
@@ -41,15 +41,15 @@ func TestGenBankHeaderSlice(t *testing.T) {
 		}
 
 		return func(seq gts.Sequence) error {
-			return stream.PushSequence(gts.Slice(seq, 2379, 2512))
+			return ostream.PushSequence(gts.Slice(seq, 2379, 2512))
 		}, nil
 	})
 
 	if err != nil {
-		t.Errorf("stream.ForEach: %v", err)
+		t.Errorf("istream.ForEach: %v", err)
 	}
 
-	testutils.DiffLine(t, b.String(), exp)
+	testutils.DiffLine(t, out.String(), exp)
 }
 
 var originTests = []struct {
@@ -937,38 +937,37 @@ func generateGenBankTestRecords() []Record {
 
 func TestGenBankIOStream(t *testing.T) {
 	buf := &bytes.Buffer{}
-	state := pars.NewState(buf)
-
-	stream := NewGenBankIOStream(state, buf)
+	istream := NewGenBankIStream(buf)
+	ostream := NewGenBankOstream(buf)
 	genbankTestRecords := generateGenBankTestRecords()
 
 	for _, rec := range genbankTestRecords {
-		if err := stream.PushHeader(rec.Header); err != nil {
-			t.Errorf("stream.PushHeader: %v", err)
+		if err := ostream.PushHeader(rec.Header); err != nil {
+			t.Errorf("ostream.PushHeader: %v", err)
 		}
-		if err := stream.PushFeatures(rec.Features); err != nil {
-			t.Errorf("stream.PushFeatures: %v", err)
+		if err := ostream.PushFeatures(rec.Features); err != nil {
+			t.Errorf("ostream.PushFeatures: %v", err)
 		}
-		if err := stream.PushSequence(rec.Sequence); err != nil {
-			t.Errorf("stream.PushSequence: %v", err)
+		if err := ostream.PushSequence(rec.Sequence); err != nil {
+			t.Errorf("ostream.PushSequence: %v", err)
 		}
 	}
 
-	if stream.ForEach(func(i int, header interface{}, ff gts.Features) (Callback, error) {
+	if istream.ForEach(func(i int, header interface{}, ff gts.Features) (SequenceHandler, error) {
 		return nil, errors.New("error")
 	}) == nil {
-		t.Error("stream.ForEach: expected error")
+		t.Error("istream.ForEach: expected error")
 	}
 
-	if stream.ForEach(func(i int, header interface{}, ff gts.Features) (Callback, error) {
+	if istream.ForEach(func(i int, header interface{}, ff gts.Features) (SequenceHandler, error) {
 		return func(seq gts.Sequence) error {
 			return errors.New("error")
 		}, nil
 	}) == nil {
-		t.Error("stream.ForEach: expected error")
+		t.Error("istream.ForEach: expected error")
 	}
 
-	manip := func(i int, header interface{}, ff gts.Features) (Callback, error) {
+	manip := func(i int, header interface{}, ff gts.Features) (SequenceHandler, error) {
 		testutils.Equals(t, header, genbankTestRecords[i].Header)
 		testutils.Equals(t, ff, genbankTestRecords[i].Features)
 		return func(seq gts.Sequence) error {
@@ -980,15 +979,15 @@ func TestGenBankIOStream(t *testing.T) {
 		}, nil
 	}
 
-	if err := stream.ForEach(manip); err != nil {
+	if err := istream.ForEach(manip); err != nil {
 		t.Errorf("stream.ForEach: %v", err)
 	}
 
-	if stream.PushHeader("foo") == nil {
-		t.Errorf("stream.PushHeader(%q): expected error", "foo")
+	if ostream.PushHeader("foo") == nil {
+		t.Errorf("ostream.PushHeader(%q): expected error", "foo")
 	}
 
-	if stream.PushSequence(Contig{}) == nil {
-		t.Errorf("stream.PushSequence(%q): expected error", Contig{})
+	if ostream.PushSequence(Contig{}) == nil {
+		t.Errorf("ostream.PushSequence(%q): expected error", Contig{})
 	}
 }

@@ -82,7 +82,7 @@ func (stream *FastaIOStream) Peek() error {
 	return nil
 }
 
-func (stream *FastaIOStream) Next(manip Manipulator) error {
+func (stream *FastaIOStream) Next(manip FeatureHandler) error {
 	if stream.result.Value == nil {
 		if err := stream.Peek(); err != nil {
 			return err
@@ -100,7 +100,7 @@ func (stream *FastaIOStream) Next(manip Manipulator) error {
 	return nil
 }
 
-func (stream *FastaIOStream) ForEach(manip Manipulator) error {
+func (stream *FastaIOStream) ForEach(manip FeatureHandler) error {
 	for {
 		if err := stream.Next(manip); err != nil {
 			if dig(err) == io.EOF {
